@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="CMS Learning Management System Dashboard">
+    <title>Dashboard | CMS Learning Management System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/dashboard.css">
+    <link rel="stylesheet" href="/css/subjects.css">
+</head>
+<body>
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">
+                <div class="logo-icon">
+                    <svg width="32" height="32" viewBox="0 0 48 48" fill="none">
+                        <rect width="48" height="48" rx="12" fill="currentColor" fill-opacity="0.15"/>
+                        <path d="M14 16h20v4H14zm0 6h20v4H14zm0 6h14v4H14z" fill="currentColor"/>
+                    </svg>
+                </div>
+                <span class="logo-text">CMS<span class="brand-dot">.</span>LMS</span>
+            </div>
+            <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="3" y1="12" x2="21" y2="12"/>
+                    <line x1="3" y1="6" x2="21" y2="6"/>
+                    <line x1="3" y1="18" x2="21" y2="18"/>
+                </svg>
+            </button>
+        </div>
+
+        <nav class="sidebar-nav">
+            <div class="nav-section">
+                <span class="nav-section-title">Main</span>
+                <a href="#dashboard" class="nav-item active" data-page="dashboard">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7"/>
+                        <rect x="14" y="3" width="7" height="7"/>
+                        <rect x="14" y="14" width="7" height="7"/>
+                        <rect x="3" y="14" width="7" height="7"/>
+                    </svg>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#subjects" class="nav-item" data-page="subjects">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                    </svg>
+                    <span>Subjects</span>
+                </a>
+                <a href="#topics" class="nav-item" data-page="topics">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                        <polyline points="10 9 9 9 8 9"/>
+                    </svg>
+                    <span>Topics</span>
+                </a>
+                <a href="#quizzes" class="nav-item" data-page="quizzes">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                        <line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                    <span>Quizzes</span>
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <span class="nav-section-title">Reports</span>
+                <a href="#scores" class="nav-item" data-page="scores">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="20" x2="18" y2="10"/>
+                        <line x1="12" y1="20" x2="12" y2="4"/>
+                        <line x1="6" y1="20" x2="6" y2="14"/>
+                    </svg>
+                    <span>Scores & Summary</span>
+                </a>
+            </div>
+
+            <!-- Admin Only Section -->
+            <div class="nav-section admin-only" id="adminNav" style="display: none;">
+                <span class="nav-section-title">Administration</span>
+                <a href="#users" class="nav-item" data-page="users">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                    <span>User Management</span>
+                </a>
+            </div>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="user-info" id="userInfo">
+                <div class="user-avatar" id="userAvatar">U</div>
+                <div class="user-details">
+                    <span class="user-name" id="userName">User</span>
+                    <span class="user-role" id="userRole">Role</span>
+                </div>
+            </div>
+            <button class="btn-logout" id="logoutBtn" title="Sign Out">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                    <polyline points="16 17 21 12 16 7"/>
+                    <line x1="21" y1="12" x2="9" y2="12"/>
+                </svg>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content" id="mainContent">
+        <!-- Top Bar -->
+        <header class="topbar">
+            <div class="topbar-left">
+                <button class="mobile-menu-btn" id="mobileMenuBtn">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="3" y1="12" x2="21" y2="12"/>
+                        <line x1="3" y1="6" x2="21" y2="6"/>
+                        <line x1="3" y1="18" x2="21" y2="18"/>
+                    </svg>
+                </button>
+                <div class="page-title-area">
+                    <h1 class="page-title" id="pageTitle">Dashboard</h1>
+                    <p class="page-subtitle" id="pageSubtitle">Welcome back to your learning hub</p>
+                </div>
+            </div>
+            <div class="topbar-right">
+                <div class="portal-badge" id="portalBadge">
+                    <span class="portal-dot"></span>
+                    <span class="portal-text" id="portalText">Portal</span>
+                </div>
+                <div class="topbar-user">
+                    <span class="greeting" id="greeting">Hello</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Dashboard Content -->
+        <div class="content-area" id="contentArea">
+            <!-- Dashboard Page -->
+            <div class="page active" id="page-dashboard">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon stat-icon-subjects">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                            </svg>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="statSubjects">0</span>
+                            <span class="stat-label">Subjects</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon stat-icon-topics">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                            </svg>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="statTopics">0</span>
+                            <span class="stat-label">Topics</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon stat-icon-quizzes">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                                <line x1="12" y1="17" x2="12.01" y2="17"/>
+                            </svg>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="statQuizzes">0</span>
+                            <span class="stat-label">Quizzes Taken</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon stat-icon-score">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="20" x2="18" y2="10"/>
+                                <line x1="12" y1="20" x2="12" y2="4"/>
+                                <line x1="6" y1="20" x2="6" y2="14"/>
+                            </svg>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="statAvgScore">—</span>
+                            <span class="stat-label">Avg. Score</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Recent Activity</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="empty-state" id="recentActivity">
+                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <polyline points="12 6 12 12 16 14"/>
+                                </svg>
+                                <p>No recent activity yet</p>
+                                <span>Start by exploring your subjects</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Quick Actions</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="quick-actions">
+                                <button class="quick-action-btn" onclick="navigateTo('subjects')">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                                    </svg>
+                                    <span>View Subjects</span>
+                                </button>
+                                <button class="quick-action-btn faculty-only" onclick="navigateTo('subjects')" style="display:none;">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="12" y1="5" x2="12" y2="19"/>
+                                        <line x1="5" y1="12" x2="19" y2="12"/>
+                                    </svg>
+                                    <span>Create Subject</span>
+                                </button>
+                                <button class="quick-action-btn" onclick="navigateTo('topics')">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                        <polyline points="14 2 14 8 20 8"/>
+                                        <line x1="16" y1="13" x2="8" y2="13"/>
+                                        <line x1="16" y1="17" x2="8" y2="17"/>
+                                    </svg>
+                                    <span>Topics & Lessons</span>
+                                </button>
+                                <button class="quick-action-btn" onclick="navigateTo('scores')">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="18" y1="20" x2="18" y2="10"/>
+                                        <line x1="12" y1="20" x2="12" y2="4"/>
+                                        <line x1="6" y1="20" x2="6" y2="14"/>
+                                    </svg>
+                                    <span>View Scores</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== SUBJECTS PAGE (Requirement #2) ==================== -->
+            <div class="page" id="page-subjects">
+                <!-- Toolbar -->
+                <div class="section-toolbar">
+                    <div class="toolbar-left">
+                        <div class="search-box">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"/>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                            </svg>
+                            <input type="text" id="subjectSearchInput" class="search-input" placeholder="Search by name, code, or description...">
+                        </div>
+                        <select id="subjectTermFilter" class="filter-select">
+                            <option value="">All Terms</option>
+                            <option value="1st Semester">1st Semester</option>
+                            <option value="2nd Semester">2nd Semester</option>
+                            <option value="Summer">Summer</option>
+                        </select>
+                        <select id="subjectYearFilter" class="filter-select">
+                            <option value="">All Year Levels</option>
+                            <option value="1st Year">1st Year</option>
+                            <option value="2nd Year">2nd Year</option>
+                            <option value="3rd Year">3rd Year</option>
+                            <option value="4th Year">4th Year</option>
+                        </select>
+                        <span id="subjectsTotalCount" style="font-size: var(--font-size-xs); font-weight: 600; color: var(--color-text-muted);">0 Subjects</span>
+                    </div>
+                    <div class="toolbar-right">
+                        <div class="view-switch">
+                            <button id="subjectViewGridBtn" class="view-btn active" title="Grid View">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="3" width="7" height="7"/>
+                                    <rect x="14" y="3" width="7" height="7"/>
+                                    <rect x="14" y="14" width="7" height="7"/>
+                                    <rect x="3" y="14" width="7" height="7"/>
+                                </svg>
+                            </button>
+                            <button id="subjectViewTableBtn" class="view-btn" title="Catalog Table View">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="8" y1="6" x2="21" y2="6"/>
+                                    <line x1="8" y1="12" x2="21" y2="12"/>
+                                    <line x1="8" y1="18" x2="21" y2="18"/>
+                                    <line x1="3" y1="6" x2="3.01" y2="6"/>
+                                    <line x1="3" y1="12" x2="3.01" y2="12"/>
+                                    <line x1="3" y1="18" x2="3.01" y2="18"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <button class="btn-primary-action faculty-only" onclick="openCreateSubjectModal()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <line x1="12" y1="5" x2="12" y2="19"/>
+                                <line x1="5" y1="12" x2="19" y2="12"/>
+                            </svg>
+                            <span>New Subject</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Subjects Grid -->
+                <div id="subjectsGrid" class="subjects-grid">
+                    <!-- Populated by subjects.js -->
+                </div>
+
+                <!-- Catalog Table Wrapper -->
+                <div id="subjectsTableWrapper" class="catalog-table-wrapper" style="display: none;">
+                    <table class="catalog-table">
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Subject Name</th>
+                                <th>Term</th>
+                                <th>Year Level</th>
+                                <th>Curriculum</th>
+                                <th>Slides</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="subjectsTableBody">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Empty State -->
+                <div id="subjectsEmptyState" class="empty-state-full" style="display: none;">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                    </svg>
+                    <h3>No Subjects Found</h3>
+                    <p>There are no courses matching your filter criteria.</p>
+                    <button class="btn-primary-action faculty-only" onclick="openCreateSubjectModal()" style="margin-top: var(--space-4);">
+                        <span>Create Subject</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- ==================== TOPICS & TOC PAGE (Requirement #3) ==================== -->
+            <div class="page" id="page-topics">
+                <!-- Subject Switcher & Return Bar -->
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); margin-bottom: var(--space-4); flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap;">
+                        <button class="btn-open-toc" onclick="navigateTo('subjects')">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <line x1="19" y1="12" x2="5" y2="12"/>
+                                <polyline points="12 19 5 12 12 5"/>
+                            </svg>
+                            <span>All Subjects</span>
+                        </button>
+                        <span style="color: var(--color-text-muted);">|</span>
+                        <div style="display: flex; align-items: center; gap: var(--space-2);">
+                            <span style="font-size: var(--font-size-xs); font-weight: 600; color: var(--color-text-muted); text-transform: uppercase;">Active Course:</span>
+                            <select id="tocSubjectSwitcher" class="filter-select" style="font-weight: 600; color: var(--color-primary);"></select>
+                        </div>
+                    </div>
+                    <div class="toolbar-right">
+                        <button class="btn-primary-action faculty-only" onclick="openAddTopicModal()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <line x1="12" y1="5" x2="12" y2="19"/>
+                                <line x1="5" y1="12" x2="19" y2="12"/>
+                            </svg>
+                            <span>Add Lesson</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Empty State if no subject selected -->
+                <div id="tocEmptyState" class="empty-state-full" style="display: none;">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                    <h3>No Course Selected</h3>
+                    <p>Select a subject to view its Table of Contents and lesson presentations.</p>
+                </div>
+
+                <!-- TOC Content Wrapper -->
+                <div id="tocContentWrapper">
+                    <!-- Hero Banner -->
+                    <div class="toc-hero">
+                        <div class="toc-breadcrumb" onclick="navigateTo('subjects')">
+                            <span>Subjects</span>
+                            <span>/</span>
+                            <span id="tocHeroCode">CMS 101</span>
+                            <span>/</span>
+                            <span>Table of Contents</span>
+                        </div>
+                        <div class="toc-hero-badges">
+                            <span class="chip-term" id="tocHeroTerm">1st Semester</span>
+                            <span class="chip-year" id="tocHeroYear">3rd Year</span>
+                        </div>
+                        <h2 class="toc-hero-title" id="tocHeroTitle">Content Management Systems</h2>
+                        <p class="toc-hero-desc" id="tocHeroDesc"></p>
+                        <div class="toc-hero-metrics">
+                            <div class="toc-metric-item">
+                                <span class="toc-metric-val" id="tocMetricTopics">6</span>
+                                <span class="toc-metric-lbl">Curriculum Lessons</span>
+                            </div>
+                            <div class="toc-metric-item">
+                                <span class="toc-metric-val" id="tocMetricSlides">162</span>
+                                <span class="toc-metric-lbl">PowerPoint Slides</span>
+                            </div>
+                            <div class="toc-metric-item">
+                                <span class="toc-metric-val" style="color: #4ade80;">100%</span>
+                                <span class="toc-metric-lbl">Extracted & Ready</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TOC Controls Bar -->
+                    <div class="toc-controls-bar">
+                        <div style="display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap;">
+                            <span style="font-size: var(--font-size-xs); font-weight: 700; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">
+                                Table of Contents View:
+                            </span>
+                            <div class="toc-view-selector">
+                                <button id="tocViewWhiteboardBtn" class="toc-view-btn active" title="2-Column Grid (1-3, 4-6) as in whiteboard">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="3" y="3" width="8" height="18" rx="1"/>
+                                        <rect x="13" y="3" width="8" height="18" rx="1"/>
+                                    </svg>
+                                    <span>Whiteboard Layout (1–3, 4–6)</span>
+                                </button>
+                                <button id="tocViewSeqBtn" class="toc-view-btn" title="Sequential Book List">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="8" y1="6" x2="21" y2="6"/>
+                                        <line x1="8" y1="12" x2="21" y2="12"/>
+                                        <line x1="8" y1="18" x2="21" y2="18"/>
+                                        <line x1="3" y1="6" x2="3.01" y2="6"/>
+                                        <line x1="3" y1="12" x2="3.01" y2="12"/>
+                                        <line x1="3" y1="18" x2="3.01" y2="18"/>
+                                    </svg>
+                                    <span>Sequential Book TOC</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div style="font-size: var(--font-size-xs); color: var(--color-text-muted);">
+                            <span>Tip: Click any slide cover to launch the interactive viewer.</span>
+                        </div>
+                    </div>
+
+                    <!-- Whiteboard 2-Column Grid View (1-3 on Left, 4-6 on Right) -->
+                    <div id="tocWhiteboardGrid" class="toc-whiteboard-grid">
+                        <div class="toc-column" id="tocCol1"></div>
+                        <div class="toc-column" id="tocCol2"></div>
+                    </div>
+
+                    <!-- Sequential Book TOC View -->
+                    <div id="tocSequentialList" class="toc-sequential-list" style="display: none;"></div>
+                </div>
+            </div>
+
+            <!-- Quizzes Page (Placeholder for #5) -->
+            <div class="page" id="page-quizzes">
+                <div class="empty-state-full">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                        <line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                    <h3>Quizzes</h3>
+                    <p>Quiz system will be built in Requirement #5</p>
+                </div>
+            </div>
+
+            <!-- Scores Page (Placeholder for #6 & #8) -->
+            <div class="page" id="page-scores">
+                <div class="empty-state-full">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4">
+                        <line x1="18" y1="20" x2="18" y2="10"/>
+                        <line x1="12" y1="20" x2="12" y2="4"/>
+                        <line x1="6" y1="20" x2="6" y2="14"/>
+                    </svg>
+                    <h3>Scores & Summary</h3>
+                    <p>Score summaries will be built in Requirements #6 & #8</p>
+                </div>
+            </div>
+
+            <!-- User Management Page (Admin only) -->
+            <div class="page" id="page-users">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Registered Users</h3>
+                        <span class="badge" id="userCount">0 users</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-wrapper">
+                            <table class="data-table" id="usersTable">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Username</th>
+                                        <th>Email</th>
+                                        <th>Role</th>
+                                        <th>Joined</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="usersTableBody">
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ==================== MODALS ==================== -->
+
+    <!-- 1. Subject Modal (Create / Edit) -->
+    <div id="subjectModal" class="modal-overlay">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3 id="subjectModalTitle">Create New Subject</h3>
+                <button type="button" class="modal-close-btn" onclick="closeModal('subjectModal')">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <form id="subjectForm">
+                <div class="modal-body">
+                    <input type="hidden" id="subjectIdInput">
+
+                    <div class="form-group">
+                        <label for="subjectNameInput" class="form-label">Subject / Course Name *</label>
+                        <input type="text" id="subjectNameInput" class="form-input" placeholder="e.g. Content Management Systems" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="subjectCodeInput" class="form-label">Subject Code * (e.g. IT 315, CMS 101)</label>
+                        <input type="text" id="subjectCodeInput" class="form-input" style="font-family: var(--code-font); text-transform: uppercase;" placeholder="e.g. IT 315" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Term / Semester *</label>
+                        <div class="segmented-control" id="termSegmented">
+                            <div class="segmented-option selected" data-value="1st Semester" onclick="selectSegment('termSegmented', '1st Semester')">1st Semester</div>
+                            <div class="segmented-option" data-value="2nd Semester" onclick="selectSegment('termSegmented', '2nd Semester')">2nd Semester</div>
+                            <div class="segmented-option" data-value="Summer" onclick="selectSegment('termSegmented', 'Summer')">Summer</div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Year Level *</label>
+                        <div class="segmented-control" id="yearSegmented">
+                            <div class="segmented-option selected" data-value="1st Year" onclick="selectSegment('yearSegmented', '1st Year')">1st Year</div>
+                            <div class="segmented-option" data-value="2nd Year" onclick="selectSegment('yearSegmented', '2nd Year')">2nd Year</div>
+                            <div class="segmented-option" data-value="3rd Year" onclick="selectSegment('yearSegmented', '3rd Year')">3rd Year</div>
+                            <div class="segmented-option" data-value="4th Year" onclick="selectSegment('yearSegmented', '4th Year')">4th Year</div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="subjectDescInput" class="form-label">Course Description</label>
+                        <textarea id="subjectDescInput" class="form-input" rows="3" placeholder="Brief overview of course topics, competencies, and learning goals..."></textarea>
+                    </div>
+
+                    <!-- Live Preview Box -->
+                    <div class="modal-preview-box">
+                        <div class="modal-preview-title">Live Preview Card</div>
+                        <div style="background: var(--color-surface); padding: var(--space-4); border-radius: var(--radius-md); border: 1px solid var(--color-border-light);">
+                            <div style="display: flex; gap: var(--space-2); margin-bottom: var(--space-2);">
+                                <span class="subject-code-badge" id="previewSubjectCode">IT 315</span>
+                                <span class="chip-term" id="previewSubjectTerm">1st Semester</span>
+                                <span class="chip-year" id="previewSubjectYear">1st Year</span>
+                            </div>
+                            <h4 id="previewSubjectName" style="font-size: var(--font-size-base); font-weight: 700; color: var(--color-text-primary); margin-bottom: 4px;">Course Title</h4>
+                            <p id="previewSubjectDesc" style="font-size: var(--font-size-xs); color: var(--color-text-secondary); line-height: 1.4;">Course overview and learning objectives.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('subjectModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="saveSubjectBtn">Save Subject</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 2. Delete Subject Confirmation Modal -->
+    <div id="deleteSubjectModal" class="modal-overlay">
+        <div class="modal-container" style="max-width: 440px;">
+            <div class="modal-header">
+                <h3 style="color: var(--color-error);">Delete Subject</h3>
+                <button type="button" class="modal-close-btn" onclick="closeModal('deleteSubjectModal')">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete <strong id="deleteSubjectName">this subject</strong>?</p>
+                <p style="font-size: var(--font-size-xs); color: var(--color-error); margin-top: var(--space-2);">
+                    Warning: All associated lessons, topics, quizzes, and slide materials will be permanently removed.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('deleteSubjectModal')">Cancel</button>
+                <button type="button" class="btn btn-danger" id="deleteSubjectConfirmBtn" style="background: var(--color-error); color: #fff; border: none; padding: 0.5rem 1rem; border-radius: var(--radius-md); font-weight: 600; cursor: pointer;">Delete Subject</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Topic Modal (Add / Edit Lesson) -->
+    <div id="topicModal" class="modal-overlay">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3 id="topicModalTitle">Add Lesson</h3>
+                <button type="button" class="modal-close-btn" onclick="closeModal('topicModal')">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <form id="topicForm">
+                <div class="modal-body">
+                    <input type="hidden" id="topicIdInput">
+                    <input type="hidden" id="topicSubjectIdInput">
+
+                    <div class="form-group">
+                        <label for="topicTitleInput" class="form-label">Lesson / Topic Title *</label>
+                        <input type="text" id="topicTitleInput" class="form-input" placeholder="e.g. WordPress, Joomla, E-Commerce Systems" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="topicDescInput" class="form-label">Lesson Description</label>
+                        <textarea id="topicDescInput" class="form-input" rows="2" placeholder="Brief explanation of what this lesson covers..."></textarea>
+                    </div>
+
+                    <div class="form-group" style="background: #f8fafc; padding: var(--space-4); border-radius: var(--radius-md); border: 1px solid var(--color-border-light);">
+                        <label class="form-label" style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; margin-bottom: 0;">
+                            <div>
+                                <strong style="color: var(--color-text-primary);">Upload & Publish to Students</strong>
+                                <div style="font-size: var(--font-size-xs); color: var(--color-text-muted); font-weight: normal; margin-top: 2px;">
+                                    When checked, this lesson will show to students. If unchecked, it remains a draft visible only to faculty.
+                                </div>
+                            </div>
+                            <input type="checkbox" id="topicIsPublishedCheckbox" checked style="width: 20px; height: 20px; cursor: pointer; accent-color: var(--color-primary);">
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="topicPresentationSelect" class="form-label">Attach PowerPoint Presentation (from Library)</label>
+                        <select id="topicPresentationSelect" class="filter-select" style="width: 100%;">
+                            <!-- Populated by JS -->
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="topicCustomFileInput" class="form-label">Or Upload New Presentation (.pptx, .pdf)</label>
+                        <input type="file" id="topicCustomFileInput" class="form-input" accept=".pptx,.ppt,.pdf">
+                        <div id="topicFileUploadStatus" style="font-size: var(--font-size-xs); margin-top: 4px; display: none;"></div>
+                    </div>
+
+                    <!-- Selected Presentation Live Preview Box -->
+                    <div id="topicPresentationPreviewBox" class="modal-preview-box" style="display: none; align-items: center; gap: var(--space-4);">
+                        <!-- Populated by JS -->
+                    </div>
+
+                    <div class="form-group">
+                        <label for="topicOutlineInput" class="form-label">Syllabus Outline (One topic per line)</label>
+                        <textarea id="topicOutlineInput" class="form-input" rows="4" placeholder="Introduction&#10;Architecture overview&#10;Key features&#10;Installation process"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('topicModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="saveTopicBtn">Save Lesson</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 4. Delete Topic Confirmation Modal -->
+    <div id="deleteTopicModal" class="modal-overlay">
+        <div class="modal-container" style="max-width: 440px;">
+            <div class="modal-header">
+                <h3 style="color: var(--color-error);">Delete Lesson</h3>
+                <button type="button" class="modal-close-btn" onclick="closeModal('deleteTopicModal')">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete <strong id="deleteTopicTitle">this lesson</strong> from the Table of Contents?</p>
+                <p style="font-size: var(--font-size-xs); color: var(--color-text-muted); margin-top: var(--space-2);">
+                    Remaining lessons will automatically be re-numbered sequentially.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('deleteTopicModal')">Cancel</button>
+                <button type="button" class="btn btn-danger" id="deleteTopicConfirmBtn" style="background: var(--color-error); color: #fff; border: none; padding: 0.5rem 1rem; border-radius: var(--radius-md); font-weight: 600; cursor: pointer;">Delete Lesson</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. Interactive Fullscreen Slide Theater Viewer Modal -->
+    <div id="slideViewerModal" class="slide-viewer-modal">
+        <!-- Header -->
+        <div class="viewer-header">
+            <div class="viewer-title-group">
+                <button type="button" class="viewer-close-btn" onclick="closeSlideViewer()" title="Close Viewer (Esc)">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+                <div>
+                    <h3 id="viewerTopicTitle" class="viewer-topic-title">WordPress</h3>
+                    <div style="font-size: 0.6875rem; color: rgba(255,255,255,0.6);" id="viewerDeckCategory">Presentation</div>
+                </div>
+                <span id="viewerCounterBadge" class="viewer-counter-badge">Slide 1 of 12</span>
+            </div>
+
+            <!-- Top Progress Bar -->
+            <div id="viewerProgressBar" class="viewer-progress-bar" style="width: 8%;"></div>
+
+            <!-- Header Actions -->
+            <div class="viewer-actions">
+                <a id="viewerDownloadBtn" href="#" download class="viewer-btn" title="Download original PPTX file">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    <span>Download .PPTX</span>
+                </a>
+                <button type="button" class="viewer-btn" onclick="toggleViewerNotes()" title="Toggle Syllabus / Notes Drawer">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                    <span>Syllabus Notes</span>
+                </button>
+                <button type="button" class="viewer-btn" onclick="toggleViewerFullscreen()" title="Toggle Fullscreen">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Stage Area -->
+        <div class="viewer-stage">
+            <button id="viewerPrevBtn" class="viewer-nav-btn prev" onclick="viewerPrevSlide()" title="Previous Slide (Left Arrow)">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="15 18 9 12 15 6"/>
+                </svg>
+            </button>
+
+            <img id="viewerSlideImage" src="" alt="Presentation Slide" class="viewer-slide-image">
+
+            <button id="viewerNextBtn" class="viewer-nav-btn next" onclick="viewerNextSlide()" title="Next Slide (Right Arrow or Space)">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="9 18 15 12 9 6"/>
+                </svg>
+            </button>
+
+            <!-- Side Notes Drawer -->
+            <div id="viewerNotesDrawer" class="viewer-notes-drawer">
+                <div id="viewerNotesContent"></div>
+            </div>
+        </div>
+
+        <!-- Bottom Filmstrip -->
+        <div id="viewerFilmstrip" class="viewer-filmstrip"></div>
+    </div>
+
+    <!-- Toast Notifications Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="/js/dashboard.js"></script>
+    <script src="/js/subjects.js"></script>
+</body>
+</html>

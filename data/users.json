@@ -1,0 +1,35 @@
+[
+  {
+    "id": "e953e1ff-3bb3-499d-b19e-bce2d6422a83",
+    "username": "admin",
+    "email": "admin@lms.com",
+    "password": "$2b$10$dYYV3dp2ztP9wd8nerLHrOy2FppdHPF6uhNjaU.bRF8xhECDTZDwK",
+    "firstName": "System",
+    "lastName": "Administrator",
+    "role": "admin",
+    "createdAt": "2026-10-22T03:32:14.889Z",
+    "isActive": true
+  },
+  {
+    "id": "feb675b3-d156-484f-b00d-d07941e2dc5f",
+    "username": "student_juan",
+    "email": "juan@student.edu",
+    "password": "$2b$10$C/n4H75WwCfPz8jtFxRC/OtYQvDjIaYuT5JjHk/Q0iOqLwverAQ8G",
+    "firstName": "Juan",
+    "lastName": "Dela Cruz",
+    "role": "student",
+    "createdAt": "2026-10-22T03:45:39.891Z",
+    "isActive": true
+  },
+  {
+    "id": "60429a4a-e5f1-46e2-8636-a5c58915048f",
+    "username": "prof_santos",
+    "email": "santos@faculty.edu",
+    "password": "$2b$10$WDLvRD8Nu9YIbvZj.9JXfeMkvOGfxShz3ztGf.u.rIs9Eo7nac0Ea",
+    "firstName": "Maria",
+    "lastName": "Santos",
+    "role": "faculty",
+    "createdAt": "2026-10-22T03:45:47.623Z",
+    "isActive": true
+  }
+]
