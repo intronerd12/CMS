@@ -747,6 +747,8 @@
             const pres = topic.presentation || {};
             const coverUrl = pres.cover || '/uploads/presentations/placeholder.webp';
             const slideCount = pres.slideCount || 0;
+            const sourceUrl = pres.sourceUrl || null;
+            const sourceName = pres.sourceName || `${topic.title}.pptx`;
             const isUploaded = topic.isPublished !== 0;
 
             return `
@@ -773,6 +775,16 @@
                         <button class="btn-deck-action btn-open-slides" onclick="openTopicSlides('${topic.id}')" style="padding: 0.35rem 0.65rem;">
                             View
                         </button>
+                        ${sourceUrl ? `
+                            <a href="${sourceUrl}" download="${escapeHtml(sourceName)}" class="btn-deck-action btn-download-deck" style="padding: 0.35rem 0.65rem;" title="Download ${escapeHtml(sourceName)}">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                    <polyline points="7 10 12 15 17 10"/>
+                                    <line x1="12" y1="15" x2="12" y2="3"/>
+                                </svg>
+                                <span>.PPTX</span>
+                            </a>
+                        ` : ''}
                         ${isStaff ? `
                             <button class="btn-toggle-upload ${isUploaded ? 'hide-btn' : 'upload-btn'}" 
                                     onclick="toggleTopicPublish('${topic.id}', ${!isUploaded})" style="padding: 0.3rem 0.6rem;">
@@ -990,8 +1002,10 @@
         // Download link
         const downloadBtn = document.getElementById('viewerDownloadBtn');
         if (downloadBtn) {
-            if (topic.presentation.sourceUrl) {
+            if (topic.presentation && topic.presentation.sourceUrl) {
                 downloadBtn.href = topic.presentation.sourceUrl;
+                downloadBtn.setAttribute('download', topic.presentation.sourceName || `${topic.title}.pptx`);
+                downloadBtn.title = `Download ${topic.presentation.sourceName || `${topic.title}.pptx`}`;
                 downloadBtn.style.display = 'inline-flex';
             } else {
                 downloadBtn.style.display = 'none';

@@ -186,6 +186,52 @@ app.get('/api/presentations/:key', (req, res) => {
     }
 });
 
+// Download presentation file with proper attachment headers
+app.get('/api/presentations/:key/download', (req, res) => {
+    try {
+        const key = (req.params.key || '').toLowerCase();
+        const deck = presentations.getPresentation(key);
+        if (!deck || !deck.sourceName) {
+            return res.status(404).json({ error: 'Presentation deck or file not found' });
+        }
+        const filePath = path.join(__dirname, 'public', 'uploads', 'presentations', key, deck.sourceName);
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({ error: 'Source presentation file not found on disk' });
+        }
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
+        res.download(filePath, deck.sourceName);
+    } catch (error) {
+        console.error('Download presentation error:', error);
+        res.status(500).json({ error: 'Server error downloading presentation' });
+    }
+});
+
+// Download presentation for a topic
+app.get('/api/topics/:id/download', (req, res) => {
+    try {
+        const topic = db.getTopicById(req.params.id);
+        if (!topic) {
+            return res.status(404).json({ error: 'Topic not found' });
+        }
+        if (!topic.presentationKey) {
+            return res.status(404).json({ error: 'No presentation linked to this topic' });
+        }
+        const deck = presentations.getPresentation(topic.presentationKey);
+        if (!deck || !deck.sourceName) {
+            return res.status(404).json({ error: 'Presentation file not found' });
+        }
+        const filePath = path.join(__dirname, 'public', 'uploads', 'presentations', topic.presentationKey, deck.sourceName);
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({ error: 'Presentation file does not exist on disk' });
+        }
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
+        res.download(filePath, deck.sourceName);
+    } catch (error) {
+        console.error('Download topic presentation error:', error);
+        res.status(500).json({ error: 'Server error downloading topic presentation' });
+    }
+});
+
 // ==================== SUBJECT ROUTES (Requirement #2) ====================
 
 app.get('/api/subjects', (req, res) => {

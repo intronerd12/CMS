@@ -53,7 +53,8 @@ function readDeck(key) {
         slides,
         slideCount: slides.length,
         cover: slides[0] || null,
-        sourceUrl: source ? `${PUBLIC_PREFIX}/${key}/${source}` : null,
+        sourceUrl: source ? `/api/presentations/${key}/download` : null,
+        staticUrl: source ? `${PUBLIC_PREFIX}/${key}/${source}` : null,
         sourceName: source || null
     };
 }
