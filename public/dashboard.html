@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="/css/base.css">
     <link rel="stylesheet" href="/css/dashboard.css">
     <link rel="stylesheet" href="/css/subjects.css">
+    <link rel="stylesheet" href="/css/quiz.css">
 </head>
 <body>
     <!-- Sidebar Navigation -->
@@ -82,20 +83,6 @@
                         <line x1="6" y1="20" x2="6" y2="14"/>
                     </svg>
                     <span>Scores & Summary</span>
-                </a>
-            </div>
-
-            <!-- Admin Only Section -->
-            <div class="nav-section admin-only" id="adminNav" style="display: none;">
-                <span class="nav-section-title">Administration</span>
-                <a href="#users" class="nav-item" data-page="users">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                        <circle cx="9" cy="7" r="4"/>
-                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                    </svg>
-                    <span>User Management</span>
                 </a>
             </div>
         </nav>
@@ -474,58 +461,75 @@
                 </div>
             </div>
 
-            <!-- Quizzes Page (Placeholder for #5) -->
+            <!-- ==================== QUIZZES PAGE ==================== -->
             <div class="page" id="page-quizzes">
-                <div class="empty-state-full">
-                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4">
-                        <circle cx="12" cy="12" r="10"/>
-                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
-                        <line x1="12" y1="17" x2="12.01" y2="17"/>
-                    </svg>
-                    <h3>Quizzes</h3>
-                    <p>Quiz system will be built in Requirement #5</p>
+                <!-- Subject Header Toolbar -->
+                <div class="classroom-toolbar" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <label for="quizSubjectSelect" style="font-weight: 700; font-size: 0.875rem; color: var(--color-text);">Course Subject:</label>
+                        <select id="quizSubjectSelect" class="form-control" style="min-width: 260px; font-weight: 600;">
+                            <!-- Populated by JS -->
+                        </select>
+                    </div>
+
+                    <!-- Faculty Actions Bar -->
+                    <div id="quizzesFacultyActions" style="display: none; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="window.openQuizUploadModal()" title="Upload quiz from computer (.json or .csv)">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="17 8 12 3 7 8"/>
+                                <line x1="12" y1="3" x2="12" y2="15"/>
+                            </svg>
+                            <span>Upload Quiz File</span>
+                        </button>
+                        <a href="/api/quizzes/template/download?format=csv" class="btn btn-secondary btn-sm" title="Download sample CSV format">
+                            <span>📥 CSV Template</span>
+                        </a>
+                        <a href="/api/quizzes/template/download?format=json" class="btn btn-secondary btn-sm" title="Download sample JSON format">
+                            <span>📥 JSON Template</span>
+                        </a>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="window.openCreateQuizModal('')">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19"/>
+                                <line x1="5" y1="12" x2="19" y2="12"/>
+                            </svg>
+                            <span>+ Create Quiz</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Google Classroom Style Banner -->
+                <div id="classroomHeaderBanner"></div>
+
+                <!-- Quizzes Grid Container (Topics 1 to 14) -->
+                <div id="quizzesContainer">
+                    <div class="quiz-grid" id="quizzesGrid">
+                        <!-- Populated by JS -->
+                    </div>
                 </div>
             </div>
 
-            <!-- Scores Page (Placeholder for #6 & #8) -->
+            <!-- ==================== DEDICATED QUIZ RESULT PAGE ==================== -->
+            <!-- Requirement #5: Student can only proceed if passed; result can be downloaded -->
+            <div class="page" id="page-quiz-result">
+                <div id="quizResultContent">
+                    <!-- Populated dynamically upon quiz submission or viewing past results -->
+                </div>
+            </div>
+
+            <!-- ==================== SCORES & GRADEBOOK PAGE ==================== -->
             <div class="page" id="page-scores">
-                <div class="empty-state-full">
-                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4">
-                        <line x1="18" y1="20" x2="18" y2="10"/>
-                        <line x1="12" y1="20" x2="12" y2="4"/>
-                        <line x1="6" y1="20" x2="6" y2="14"/>
-                    </svg>
-                    <h3>Scores & Summary</h3>
-                    <p>Score summaries will be built in Requirements #6 & #8</p>
+                <div class="classroom-toolbar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <label for="scoresSubjectSelect" style="font-weight: 700; font-size: 0.875rem; color: var(--color-text);">Course Subject:</label>
+                        <select id="scoresSubjectSelect" class="form-control" style="min-width: 260px; font-weight: 600;">
+                            <!-- Populated by JS -->
+                        </select>
+                    </div>
                 </div>
-            </div>
 
-            <!-- User Management Page (Admin only) -->
-            <div class="page" id="page-users">
-                <div class="card">
-                    <div class="card-header">
-                        <h3>Registered Users</h3>
-                        <span class="badge" id="userCount">0 users</span>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-wrapper">
-                            <table class="data-table" id="usersTable">
-                                <thead>
-                                    <tr>
-                                        <th>Name</th>
-                                        <th>Username</th>
-                                        <th>Email</th>
-                                        <th>Role</th>
-                                        <th>Joined</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="usersTableBody">
-                                    <!-- Populated by JS -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                <div id="scoresContent">
+                    <!-- Populated by JS: Student Transcript or Faculty Gradebook -->
                 </div>
             </div>
         </div>
@@ -676,20 +680,29 @@
                         </select>
                     </div>
 
-                    <div class="form-group">
-                        <label for="topicCustomFileInput" class="form-label">Or Upload New Presentation (.pptx, .pdf)</label>
-                        <input type="file" id="topicCustomFileInput" class="form-input" accept=".pptx,.ppt,.pdf">
-                        <div id="topicFileUploadStatus" style="font-size: var(--font-size-xs); margin-top: 4px; display: none;"></div>
+                    <div class="form-group" style="margin-top: var(--space-3); padding: var(--space-3); background: #eff6ff; border: 1px dashed #3b82f6; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: space-between;">
+                        <div>
+                            <strong style="color: #1e40af; font-size: 0.875rem;">In-System Interactive Slides</strong>
+                            <div style="font-size: 0.75rem; color: #4b5563;">Create customized presentation slides with bullet points and themes directly inside the system.</div>
+                        </div>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="launchInSystemSlideCreatorFromModal()" style="font-size: 0.75rem; white-space: nowrap;">
+                            ✨ Make Your Own Inside
+                        </button>
                     </div>
 
-                    <!-- Selected Presentation Live Preview Box -->
-                    <div id="topicPresentationPreviewBox" class="modal-preview-box" style="display: none; align-items: center; gap: var(--space-4);">
-                        <!-- Populated by JS -->
+                    <div class="form-group">
+                        <label for="topicSummaryInput" class="form-label">Topic Summary / Key Takeaways *</label>
+                        <textarea id="topicSummaryInput" class="form-input" rows="2" placeholder="Summary of fundamental principles and core competencies for this topic..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="topicContentInput" class="form-label">Lesson Content (Insert Text Notes / Study Guide)</label>
+                        <textarea id="topicContentInput" class="form-input" rows="3" placeholder="Insert text, lecture notes, documentation links, or reading material..."></textarea>
                     </div>
 
                     <div class="form-group">
                         <label for="topicOutlineInput" class="form-label">Syllabus Outline (One topic per line)</label>
-                        <textarea id="topicOutlineInput" class="form-input" rows="4" placeholder="Introduction&#10;Architecture overview&#10;Key features&#10;Installation process"></textarea>
+                        <textarea id="topicOutlineInput" class="form-input" rows="3" placeholder="Introduction&#10;Architecture overview&#10;Key features&#10;Installation process"></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -763,6 +776,13 @@
                     </svg>
                     <span>Syllabus Notes</span>
                 </button>
+                <button type="button" id="viewerQuizBtn" class="viewer-btn" style="background: rgba(16, 185, 129, 0.25); border-color: rgba(16, 185, 129, 0.5); color: #fff; font-weight: 700; display: none;" onclick="window.launchQuizFromViewer()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polygon points="10 8 16 12 10 16 10 8"/>
+                    </svg>
+                    <span>Take Topic Quiz</span>
+                </button>
                 <button type="button" class="viewer-btn" onclick="toggleViewerFullscreen()" title="Toggle Fullscreen">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
@@ -780,6 +800,7 @@
             </button>
 
             <img id="viewerSlideImage" src="" alt="Presentation Slide" class="viewer-slide-image">
+            <div id="viewerCustomSlideContent" style="display: none; max-width: 900px; width: 100%; margin: 0 auto;"></div>
 
             <button id="viewerNextBtn" class="viewer-nav-btn next" onclick="viewerNextSlide()" title="Next Slide (Right Arrow or Space)">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -797,10 +818,273 @@
         <div id="viewerFilmstrip" class="viewer-filmstrip"></div>
     </div>
 
+    <!-- ==================== 6. ACTIVE QUIZ THEATER MODAL (ANTI-CHEATING) ==================== -->
+    <div id="quizTheaterModal" class="quiz-theater-modal">
+        <div class="theater-topbar">
+            <div class="theater-quiz-info">
+                <div style="display: flex; align-items: center; gap: 0.6rem;">
+                    <h3 id="theaterQuizTitle" style="margin: 0;">CMS Fundamentals Evaluation</h3>
+                    <span style="display: inline-flex; align-items: center; gap: 0.25rem; background: #ecfdf5; color: #065f46; font-size: 0.72rem; font-weight: 700; padding: 0.2rem 0.55rem; border-radius: 9999px; border: 1px solid #a7f3d0;">
+                        🛡️ Anti-Cheat Shuffled
+                    </span>
+                </div>
+                <span id="theaterTopicTitle">Topic 1 • 10–30 Multiple Choice Questions (10 Min)</span>
+            </div>
+            <div id="theaterTimer" class="theater-timer">⏱ 10:00</div>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="if(confirm('Are you sure you want to exit the quiz? Your answers will not be submitted.')) closeQuizTheater()">
+                Exit Test
+            </button>
+        </div>
+
+        <div class="theater-body">
+            <div class="theater-container">
+                <!-- Question Navigator Pills -->
+                <div id="theaterNavPills" class="theater-nav-pills"></div>
+
+                <!-- Question Card -->
+                <div class="theater-question-card">
+                    <div class="question-header-row">
+                        <span id="questionCounterLabel" class="question-counter-label">Question 1 of 10</span>
+                        <span class="badge badge-primary">Multiple Choice</span>
+                    </div>
+
+                    <div id="questionTextBox" class="question-text-box">
+                        Loading question...
+                    </div>
+
+                    <!-- Options List (Shuffled for Anti-Cheating) -->
+                    <div id="theaterOptionsList" class="theater-options-list"></div>
+                </div>
+
+                <!-- Footer Navigation Buttons -->
+                <div class="theater-footer" style="border-radius: var(--radius-lg);">
+                    <button type="button" id="theaterPrevBtn" class="btn btn-secondary" onclick="window.theaterPrevQuestion()">
+                        ← Previous
+                    </button>
+                    <div style="display: flex; gap: 0.75rem;">
+                        <button type="button" id="theaterNextBtn" class="btn btn-primary" onclick="window.theaterNextQuestion()">
+                            Next Question →
+                        </button>
+                        <button type="button" id="theaterSubmitBtn" class="btn btn-success" style="display: none; background: #10b981; color: #fff; font-weight: 700;" onclick="window.confirmSubmitQuiz()">
+                            ✓ Submit Quiz Assessment
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 7. FACULTY QUIZ BUILDER MODAL ==================== -->
+    <div id="quizModal" class="modal-overlay">
+        <div class="modal-container" style="max-width: 760px; max-height: 90vh; display: flex; flex-direction: column;">
+            <div class="modal-header">
+                <h3 id="quizModalTitle">Create Topic Quiz (10 Min • Max 30 Multiple Choice)</h3>
+                <button type="button" class="modal-close-btn" onclick="closeModal('quizModal')">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body" style="overflow-y: auto; flex: 1;">
+                <input type="hidden" id="quizModalTopicId">
+                <input type="hidden" id="quizModalSubjectId">
+
+                <div class="form-group">
+                    <label for="quizTitleInput">Quiz Title</label>
+                    <input type="text" id="quizTitleInput" class="form-control" placeholder="e.g., Topic 1: CMS Fundamentals Quiz" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="quizDescInput">Description / Instructions</label>
+                    <input type="text" id="quizDescInput" class="form-control" placeholder="Instructions for students...">
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1.25rem;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="quizPassingScoreInput">Passing Score Threshold (%)</label>
+                        <select id="quizPassingScoreInput" class="form-control" style="font-weight: 700;">
+                            <option value="50">50% Minimum Pass</option>
+                            <option value="60">60% Minimum Pass</option>
+                            <option value="70">70% Standard Pass</option>
+                            <option value="75" selected>75% Standard College Pass (Recommended)</option>
+                            <option value="80">80% Mastery Pass</option>
+                            <option value="90">90% Honors Mastery Pass</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="quizTimeLimitInput">Time Limit (Minutes)</label>
+                        <select id="quizTimeLimitInput" class="form-control" style="font-weight: 700;">
+                            <option value="10" selected>10 Minutes (Standard Requirement)</option>
+                            <option value="15">15 Minutes</option>
+                            <option value="20">20 Minutes</option>
+                            <option value="25">25 Minutes</option>
+                            <option value="30">30 Minutes</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Questions Builder Header -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--color-border);">
+                    <div>
+                        <strong style="font-size: 0.95rem;">Quiz Questions (Multiple Choice)</strong>
+                        <div id="builderQuestionCounter" style="font-size: 0.78rem; font-weight: 700;">Questions: 10 / 30 (Min: 10, Max: 30)</div>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="window.autoFillTopicQuestions()" title="Auto-fill sample questions for this topic">
+                            ⚡ Auto-Fill 10 Qs
+                        </button>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="window.addBuilderQuestion()">
+                            + Add Question
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Questions List Container -->
+                <div id="builderQuestionsList"></div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('quizModal')">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="window.saveQuizFromBuilder()">Save Quiz Assessment</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 8. UPLOAD QUIZ MODAL ==================== -->
+    <div id="quizUploadModal" class="modal-overlay">
+        <div class="modal-container" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3>Upload Quiz from Computer</h3>
+                <button type="button" class="modal-close-btn" onclick="closeModal('quizUploadModal')">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 0.875rem; color: var(--color-text-muted); margin-bottom: 1rem;">
+                    Upload a <strong>.json</strong> or <strong>.csv</strong> file created on your computer. Files must contain between <strong>10 and 30 multiple-choice questions</strong>.
+                </p>
+
+                <div style="border: 2px dashed var(--color-border); border-radius: var(--radius-lg); padding: 2rem 1.5rem; text-align: center; background: var(--color-bg); margin-bottom: 1.25rem;">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--color-primary); margin-bottom: 0.75rem;">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    <div style="font-weight: 700; margin-bottom: 0.25rem;">Select Quiz File (.json or .csv)</div>
+                    <div style="font-size: 0.75rem; color: var(--color-text-muted); margin-bottom: 1rem;">Supports CSV (Question, Option A, B, C, D, Correct Answer, Explanation)</div>
+                    <input type="file" id="quizFileInput" accept=".json,.csv,.txt" style="display: none;" onchange="window.handleQuizFileUpload(this.files[0])">
+                    <button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('quizFileInput').click()">
+                        Browse from Computer
+                    </button>
+                </div>
+
+                <div id="quizUploadStatus" style="display: none; padding: 0.75rem; border-radius: var(--radius-md); font-size: 0.8125rem; background: var(--color-bg); border: 1px solid var(--color-border); margin-bottom: 1rem;"></div>
+
+                <div style="font-size: 0.8125rem; color: var(--color-text-muted); border-top: 1px solid var(--color-border); padding-top: 0.75rem;">
+                    <span>Don't have a template?</span>
+                    <a href="/api/quizzes/template/download?format=csv" style="color: var(--color-primary); font-weight: 600; margin-left: 0.5rem;">Download CSV Template</a>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('quizUploadModal')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 9. OFFICIAL GRADE SLIP & CERTIFICATE MODAL ==================== -->
+    <div id="certificateModal" class="modal-overlay">
+        <div class="modal-container" style="max-width: 860px; max-height: 90vh; display: flex; flex-direction: column;">
+            <div class="modal-header no-print">
+                <h3>Official Academic Assessment Record</h3>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <button type="button" class="btn btn-primary btn-sm" onclick="window.printOfficialCertificate()">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 6 2 18 2 18 9"/>
+                            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                            <rect x="6" y="14" width="12" height="8"/>
+                        </svg>
+                        <span>Print / Save as PDF</span>
+                    </button>
+                    <button type="button" class="modal-close-btn" onclick="closeModal('certificateModal')">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="modal-body" style="overflow-y: auto; flex: 1; padding: 1.5rem; background: #f1f5f9;">
+                <div id="printableCertificate">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Printable Report Container for Print & PDF (Whiteboard Items 6 & 8) -->
+    <div id="printableReportBox" style="display: none;"></div>
+
+    <!-- ==================== 10. SEQUENTIAL LOCKED TOPIC MODAL ==================== -->
+    <div id="lockedTopicModal" class="modal-overlay">
+        <div class="modal-container" style="max-width: 440px; text-align: center;">
+            <div class="modal-header" style="justify-content: center; border-bottom: none; padding-bottom: 0;">
+                <div style="width: 56px; height: 56px; border-radius: 50%; background: rgba(239, 68, 68, 0.1); color: #ef4444; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="modal-body" style="padding-top: 1rem;">
+                <h3 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 0.5rem; color: var(--color-text);">Topic Locked</h3>
+                <div id="lockedTopicModalDesc" style="font-size: 0.9rem; line-height: 1.5;"></div>
+            </div>
+            <div class="modal-footer" style="justify-content: center; border-top: none;">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('lockedTopicModal')">Understood</button>
+                <button type="button" id="lockedTopicModalBtn" class="btn btn-primary">Take Prerequisite Quiz</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 11. IN-SYSTEM SLIDE CREATOR MODAL (FACULTY) ==================== -->
+    <div id="slideCreatorModal" class="modal-overlay">
+        <div class="modal-container" style="max-width: 760px; max-height: 90vh; display: flex; flex-direction: column;">
+            <div class="modal-header">
+                <div>
+                    <h3 id="slideCreatorTopicTitle">Presentation Slides Creator</h3>
+                    <div style="font-size: 0.75rem; color: var(--color-text-muted);">Author interactive PowerPoint-style slides directly in the LMS</div>
+                </div>
+                <button type="button" class="modal-close-btn" onclick="closeModal('slideCreatorModal')">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body" style="overflow-y: auto; flex: 1;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <span style="font-size: 0.875rem; font-weight: 700;">Slides in this Topic Presentation</span>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="window.addSlideItem()">+ Add Slide</button>
+                </div>
+                <div id="slideBuilderList" class="slide-builder-list"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('slideCreatorModal')">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="window.savePresentationSlides()">Save Presentation Slides</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Notifications Container -->
     <div id="toastContainer" class="toast-container"></div>
 
     <script src="/js/dashboard.js"></script>
     <script src="/js/subjects.js"></script>
+    <script src="/js/quiz.js"></script>
 </body>
 </html>

@@ -18,8 +18,8 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initializeDashboard() {
-    // Apply role-based theme (student: blue, faculty: yellow, admin: red)
-    const role = currentUser.role || 'student';
+    // Apply role-based theme (student: blue, faculty: yellow)
+    const role = (currentUser.role === 'faculty') ? 'faculty' : 'student';
     document.body.setAttribute('data-role', role);
     document.body.classList.remove('theme-student', 'theme-faculty', 'theme-admin');
     document.body.classList.add(`theme-${role}`);
@@ -27,9 +27,7 @@ function initializeDashboard() {
     // Set portal badge in topbar
     const portalText = document.getElementById('portalText');
     if (portalText) {
-        if (role === 'admin') {
-            portalText.textContent = 'Admin Console';
-        } else if (role === 'faculty') {
+        if (role === 'faculty') {
             portalText.textContent = 'Faculty Portal';
         } else {
             portalText.textContent = 'Student Portal';
@@ -38,7 +36,7 @@ function initializeDashboard() {
 
     // Set user info in sidebar
     document.getElementById('userName').textContent = `${currentUser.firstName} ${currentUser.lastName}`;
-    document.getElementById('userRole').textContent = role;
+    document.getElementById('userRole').textContent = role === 'faculty' ? 'Faculty Member' : 'Student';
     document.getElementById('userAvatar').textContent = currentUser.firstName.charAt(0).toUpperCase();
 
     // Set greeting
@@ -51,22 +49,15 @@ function initializeDashboard() {
     // Role-specific subtitle
     const pageSubtitle = document.getElementById('pageSubtitle');
     if (pageSubtitle) {
-        if (role === 'admin') {
-            pageSubtitle.textContent = 'System administration and user oversight';
-        } else if (role === 'faculty') {
+        if (role === 'faculty') {
             pageSubtitle.textContent = 'Course management and student assessment';
         } else {
             pageSubtitle.textContent = 'Welcome back to your learning hub';
         }
     }
 
-    // Show admin nav if admin
-    if (currentUser.role === 'admin') {
-        document.getElementById('adminNav').style.display = 'block';
-    }
-
     // Show faculty actions
-    if (currentUser.role === 'faculty' || currentUser.role === 'admin') {
+    if (currentUser.role === 'faculty') {
         document.querySelectorAll('.faculty-only').forEach(el => {
             el.style.display = 'flex';
         });
@@ -131,6 +122,7 @@ function navigateTo(pageName) {
         topics: { title: 'Topics & Lessons', subtitle: 'Content and learning materials' },
         quizzes: { title: 'Quizzes', subtitle: 'Assessments and evaluations' },
         scores: { title: 'Scores & Summary', subtitle: 'View performance reports' },
+        'quiz-result': { title: 'Quiz Assessment Results', subtitle: 'Official evaluation report and certification' },
         users: { title: 'User Management', subtitle: 'Manage registered users' }
     };
 
@@ -142,15 +134,25 @@ function navigateTo(pageName) {
     window.location.hash = pageName;
 
     // Load page-specific data
-    if (pageName === 'users') {
-        loadUsers();
-    } else if (pageName === 'subjects') {
+    if (pageName === 'subjects') {
         if (typeof window.loadSubjectsPage === 'function') {
             window.loadSubjectsPage();
         }
     } else if (pageName === 'topics') {
         if (typeof window.loadTopicsPage === 'function') {
             window.loadTopicsPage();
+        }
+    } else if (pageName === 'quizzes') {
+        if (typeof window.loadQuizzesPage === 'function') {
+            window.loadQuizzesPage();
+        }
+    } else if (pageName === 'scores') {
+        if (typeof window.loadScoresPage === 'function') {
+            window.loadScoresPage();
+        }
+    } else if (pageName === 'quiz-result') {
+        if (typeof window.loadQuizResultPage === 'function') {
+            window.loadQuizResultPage();
         }
     }
 
@@ -220,38 +222,27 @@ async function loadDashboardData() {
         }
         document.getElementById('statTopics').textContent = totalTopics;
 
+        // Fetch stats
+        const statsRes = await fetch(`${API_BASE}/api/stats`);
+        if (statsRes.ok) {
+            const stats = await statsRes.json();
+            const statQuizzesEl = document.getElementById('statQuizzes');
+            if (statQuizzesEl) {
+                if (role === 'student' && currentUser && currentUser.id) {
+                    const scRes = await fetch(`${API_BASE}/api/scores/student/${currentUser.id}`);
+                    if (scRes.ok) {
+                        const scData = await scRes.json();
+                        statQuizzesEl.textContent = scData.scores ? scData.scores.filter(s => s.passed === 1).length : 0;
+                    } else {
+                        statQuizzesEl.textContent = stats.totalQuizzes || 0;
+                    }
+                } else {
+                    statQuizzesEl.textContent = stats.totalQuizzes || 0;
+                }
+            }
+        }
     } catch (error) {
         console.error('Error loading dashboard data:', error);
-    }
-}
-
-async function loadUsers() {
-    try {
-        const response = await fetch(`${API_BASE}/api/users`);
-        const data = await response.json();
-
-        const tbody = document.getElementById('usersTableBody');
-        const countBadge = document.getElementById('userCount');
-
-        if (data.users && data.users.length > 0) {
-            countBadge.textContent = `${data.users.length} user${data.users.length !== 1 ? 's' : ''}`;
-
-            tbody.innerHTML = data.users.map(user => `
-                <tr>
-                    <td><strong>${user.firstName} ${user.lastName}</strong></td>
-                    <td>${user.username}</td>
-                    <td>${user.email}</td>
-                    <td><span class="badge badge-${getRoleBadgeClass(user.role)}">${user.role}</span></td>
-                    <td>${formatDate(user.createdAt)}</td>
-                    <td><span class="badge ${user.isActive ? 'badge-success' : 'badge-error'}">${user.isActive ? 'Active' : 'Inactive'}</span></td>
-                </tr>
-            `).join('');
-        } else {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem; color: var(--color-text-muted);">No users found</td></tr>';
-        }
-
-    } catch (error) {
-        console.error('Error loading users:', error);
     }
 }
 
@@ -259,7 +250,6 @@ async function loadUsers() {
 
 function getRoleBadgeClass(role) {
     switch (role) {
-        case 'admin': return 'error';
         case 'faculty': return 'warning';
         case 'student': return '';
         default: return '';

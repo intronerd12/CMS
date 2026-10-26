@@ -155,6 +155,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
+            const privacyConsent = document.getElementById('privacyConsent');
+            if (privacyConsent && !privacyConsent.checked) {
+                showError(errorDiv, 'Please agree to the Privacy Policy & Academic Integrity Guidelines to register');
+                return;
+            }
+
             // Show loading
             btn.disabled = true;
             btnText.style.display = 'none';

@@ -46,7 +46,7 @@
 
     function isTeacherOrAdmin() {
         const r = getUserRole();
-        return r === 'faculty' || r === 'admin';
+        return r === 'faculty';
     }
 
     // Initialize when DOM is ready
@@ -98,6 +98,28 @@
             if (!res.ok) throw new Error('Failed to fetch subject');
             const data = await res.json();
             currentSubject = data.subject;
+
+            // If user is a student, fetch progression status for all topics
+            if (!isTeacherOrAdmin()) {
+                const u = (typeof currentUser !== 'undefined' && currentUser) ? currentUser : JSON.parse(sessionStorage.getItem('currentUser') || '{}');
+                if (u && u.id) {
+                    try {
+                        const progRes = await fetch(`/api/subjects/${id}/student-progress/${u.id}`);
+                        if (progRes.ok) {
+                            const progData = await progRes.json();
+                            if (currentSubject && currentSubject.topics && progData.topics) {
+                                currentSubject.topics = currentSubject.topics.map(t => {
+                                    const pt = progData.topics.find(p => p.id === t.id);
+                                    return pt ? { ...t, isUnlocked: pt.isUnlocked, isPassed: pt.isPassed, status: pt.status } : t;
+                                });
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Progress fetch error:', e);
+                    }
+                }
+            }
+
             return currentSubject;
         } catch (err) {
             showToast(err.message, 'error');
@@ -564,15 +586,19 @@
         const outlineItems = topic.outline ? topic.outline.split('\n').filter(Boolean) : [];
         const isStaff = isTeacherOrAdmin();
         const isUploaded = topic.isPublished !== 0;
+        const isLocked = !isStaff && topic.isUnlocked === false;
+        const isPassed = !isStaff && topic.isPassed === true;
 
         return `
-            <div class="topic-card ${!isUploaded ? 'is-draft' : ''}" data-topic-id="${topic.id}">
-                <div class="topic-card-accent-bar" style="background: ${brand.color};"></div>
+            <div class="topic-card ${!isUploaded ? 'is-draft' : ''} ${isLocked ? 'is-locked-card' : ''}" data-topic-id="${topic.id}">
+                <div class="topic-card-accent-bar" style="background: ${isLocked ? '#9ca3af' : brand.color};"></div>
                 <div class="topic-card-body">
                     <div class="topic-head-row">
                         <div style="display: flex; align-items: center; gap: var(--space-2);">
-                            <span class="topic-numeral" style="color: ${brand.color};">${String(displayIndex).padStart(2, '0')}</span>
-                            <span class="topic-brand-tag" style="background: ${brand.color};">
+                            <span class="topic-numeral" style="color: ${isLocked ? '#9ca3af' : brand.color};">
+                                ${isLocked ? '🔒 ' : ''}${String(displayIndex).padStart(2, '0')}
+                            </span>
+                            <span class="topic-brand-tag" style="background: ${isLocked ? '#6b7280' : brand.color};">
                                 ${escapeHtml(brand.label)}
                             </span>
                         </div>
@@ -582,18 +608,44 @@
                                 <span class="status-dot ${isUploaded ? 'green' : 'amber'}"></span>
                                 ${isUploaded ? 'Uploaded (Live)' : 'Not Uploaded (Draft)'}
                             </span>
-                        ` : ''}
+                        ` : `
+                            ${isPassed ? `
+                                <span class="status-badge published" style="background: #ecfdf5; color: #065f46; border: 1px solid rgba(16, 185, 129, 0.4);">
+                                    <span class="status-dot green"></span>
+                                    Passed
+                                </span>
+                            ` : isLocked ? `
+                                <span class="status-badge draft" style="background: #f3f4f6; color: #6b7280; border: 1px solid #e5e7eb;">
+                                    🔒 Locked
+                                </span>
+                            ` : `
+                                <span class="status-badge" style="background: #eff6ff; color: #1d4ed8; border: 1px solid rgba(59, 130, 246, 0.4);">
+                                    <span class="status-dot green" style="background: #3b82f6; box-shadow: 0 0 6px rgba(59, 130, 246, 0.6);"></span>
+                                    Available
+                                </span>
+                            `}
+                        `}
                     </div>
 
                     <!-- Slide Preview Thumbnail -->
-                    <div class="topic-preview-container" onclick="openTopicSlides('${topic.id}')" title="Click to launch interactive slide theater">
-                        <img src="${coverUrl}" alt="${escapeHtml(topic.title)}" class="topic-preview-img" onerror="this.src='/uploads/presentations/placeholder.webp'">
+                    <div class="topic-preview-container ${isLocked ? 'locked-preview' : ''}" 
+                         onclick="${isLocked ? `window.showTopicLockModal(${displayIndex})` : `openTopicSlides('${topic.id}')`}" 
+                         title="${isLocked ? `Topic ${displayIndex} is locked. Pass Topic ${displayIndex - 1} Quiz first!` : 'Click to launch interactive slide presentation'}">
+                        <img src="${coverUrl}" alt="${escapeHtml(topic.title)}" class="topic-preview-img" style="${isLocked ? 'filter: grayscale(85%) opacity(0.7);' : ''}" onerror="this.src='/uploads/presentations/placeholder.webp'">
                         <div class="topic-preview-overlay">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="10"/>
-                                <polygon points="10 8 16 12 10 16 10 8"/>
-                            </svg>
-                            <span>Launch Presentation</span>
+                            ${isLocked ? `
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                                </svg>
+                                <span>Locked (Pass Topic ${displayIndex - 1} Quiz)</span>
+                            ` : `
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <polygon points="10 8 16 12 10 16 10 8"/>
+                                </svg>
+                                <span>Launch Presentation</span>
+                            `}
                         </div>
                         <span class="topic-slide-counter-chip">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -604,7 +656,7 @@
                     </div>
 
                     <div>
-                        <h4 class="topic-title">${escapeHtml(topic.title)}</h4>
+                        <h4 class="topic-title" style="${isLocked ? 'color: var(--color-text-muted);' : ''}">${escapeHtml(topic.title)}</h4>
                         <p class="topic-description">${escapeHtml(topic.description || 'Slide presentation module and structured syllabus.')}</p>
                     </div>
 
@@ -633,14 +685,41 @@
 
                 <div class="topic-card-footer">
                     <div style="display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap;">
-                        <button class="btn-deck-action btn-open-slides" onclick="openTopicSlides('${topic.id}')">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polygon points="5 3 19 12 5 21 5 3"/>
-                            </svg>
-                            <span>Open Slides</span>
-                        </button>
+                        ${isLocked ? `
+                            <button class="btn-deck-action" onclick="window.showTopicLockModal(${displayIndex})" style="background: #f3f4f6; color: #6b7280; border: 1px dashed #d1d5db;">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                                </svg>
+                                <span>Locked</span>
+                            </button>
+                        ` : `
+                            <button class="btn-deck-action btn-open-slides" onclick="openTopicSlides('${topic.id}')">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polygon points="5 3 19 12 5 21 5 3"/>
+                                </svg>
+                                <span>Open Slides</span>
+                            </button>
+                        `}
 
-                        ${sourceUrl ? `
+                        ${!isStaff && isPassed ? `
+                            <button class="btn-deck-action" onclick="window.navigateTo('scores')" style="background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0;" title="View official grade slip">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                </svg>
+                                <span>Grade Slip</span>
+                            </button>
+                        ` : !isStaff && !isLocked ? `
+                            <button class="btn-deck-action" onclick="window.navigateTo('quizzes')" style="background: var(--color-primary); color: #ffffff; border: none; font-weight: 700;" title="Take topic quiz">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <polygon points="10 8 16 12 10 16 10 8"/>
+                                </svg>
+                                <span>Take Quiz</span>
+                            </button>
+                        ` : ''}
+
+                        ${sourceUrl && !isLocked ? `
                             <a href="${sourceUrl}" download="${sourceName}" class="btn-deck-action btn-download-deck" title="Download original PowerPoint presentation (.pptx)">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -652,6 +731,26 @@
                         ` : ''}
 
                         ${isStaff ? `
+                            <button class="btn-deck-action" onclick="window.openSlideCreatorModal('${topic.id}')" title="Create or edit interactive presentation slides" style="background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe;">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 20h9"/>
+                                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                                </svg>
+                                <span>+ Slides</span>
+                            </button>
+                            <button class="btn-deck-action" onclick="window.openCreateQuizModal('${topic.id}')" title="Create or edit multiple choice quiz (10-30 questions)" style="background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0;">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                                </svg>
+                                <span>+ Quiz</span>
+                            </button>
+                            ${topic.quiz ? `
+                                <button class="btn-deck-action" onclick="if(window.previewQuiz) window.previewQuiz('${topic.quiz.id}')" title="Preview multiple choice quiz for this topic" style="background: #fef3c7; color: #92400e; border: 1px solid #fde68a;">
+                                    <span>👁️ Preview</span>
+                                </button>
+                            ` : ''}
                             <button class="btn-toggle-upload ${isUploaded ? 'hide-btn' : 'upload-btn'}" 
                                     onclick="toggleTopicPublish('${topic.id}', ${!isUploaded})">
                                 ${isUploaded ? `
@@ -659,14 +758,14 @@
                                         <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
                                         <line x1="1" y1="1" x2="23" y2="23"/>
                                     </svg>
-                                    <span>Hide from Students</span>
+                                    <span>Hide</span>
                                 ` : `
                                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <polyline points="16 16 12 12 8 16"/>
                                         <line x1="12" y1="12" x2="12" y2="21"/>
                                         <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
                                     </svg>
-                                    <span>Upload to Students</span>
+                                    <span>Upload</span>
                                 `}
                             </button>
                         ` : ''}
@@ -750,20 +849,35 @@
             const sourceUrl = pres.sourceUrl || null;
             const sourceName = pres.sourceName || `${topic.title}.pptx`;
             const isUploaded = topic.isPublished !== 0;
+            const isLocked = !isStaff && topic.isUnlocked === false;
+            const isPassed = !isStaff && topic.isPassed === true;
 
             return `
-                <div class="toc-seq-item" data-topic-id="${topic.id}">
-                    <span class="toc-seq-num">${String(i + 1).padStart(2, '0')}</span>
-                    <img src="${coverUrl}" alt="${escapeHtml(topic.title)}" class="toc-seq-thumb" onclick="openTopicSlides('${topic.id}')" title="Open slide viewer">
+                <div class="toc-seq-item ${isLocked ? 'locked' : ''}" data-topic-id="${topic.id}">
+                    <span class="toc-seq-num" style="${isLocked ? 'color: #9ca3af;' : ''}">
+                        ${isLocked ? '🔒' : String(i + 1).padStart(2, '0')}
+                    </span>
+                    <img src="${coverUrl}" alt="${escapeHtml(topic.title)}" class="toc-seq-thumb" 
+                         style="${isLocked ? 'filter: grayscale(85%) opacity(0.7);' : ''}"
+                         onclick="${isLocked ? `window.showTopicLockModal(${i + 1})` : `openTopicSlides('${topic.id}')`}" 
+                         title="${isLocked ? `Locked. Pass Topic ${i} Quiz first` : 'Open slide viewer'}">
                     <div class="toc-seq-info">
                         <div class="toc-seq-title-row">
-                            <span class="toc-seq-title">${escapeHtml(topic.title)}</span>
+                            <span class="toc-seq-title" style="${isLocked ? 'color: var(--color-text-muted);' : ''}">${escapeHtml(topic.title)}</span>
                             ${isStaff ? `
                                 <span class="status-badge ${isUploaded ? 'published' : 'draft'}" style="font-size: 0.6875rem; padding: 0.15rem 0.5rem;">
                                     <span class="status-dot ${isUploaded ? 'green' : 'amber'}"></span>
                                     ${isUploaded ? 'Uploaded' : 'Draft'}
                                 </span>
-                            ` : ''}
+                            ` : `
+                                ${isPassed ? `
+                                    <span class="status-badge published" style="font-size: 0.6875rem; padding: 0.15rem 0.5rem;">✓ Passed</span>
+                                ` : isLocked ? `
+                                    <span class="status-badge draft" style="font-size: 0.6875rem; padding: 0.15rem 0.5rem; background:#f3f4f6; color:#6b7280; border: 1px solid #e5e7eb;">🔒 Locked</span>
+                                ` : `
+                                    <span class="status-badge" style="font-size: 0.6875rem; padding: 0.15rem 0.5rem; background:#eff6ff; color:#1d4ed8; border: 1px solid rgba(59, 130, 246, 0.3);">Available</span>
+                                `}
+                            `}
                             <div class="toc-seq-leader"></div>
                             <span class="toc-seq-slides-badge">${slideCount} slides</span>
                         </div>
@@ -772,10 +886,16 @@
                         </div>
                     </div>
                     <div style="display: flex; gap: var(--space-2); align-items: center;">
-                        <button class="btn-deck-action btn-open-slides" onclick="openTopicSlides('${topic.id}')" style="padding: 0.35rem 0.65rem;">
-                            View
-                        </button>
-                        ${sourceUrl ? `
+                        ${isLocked ? `
+                            <button class="btn-deck-action" onclick="window.showTopicLockModal(${i + 1})" style="padding: 0.35rem 0.65rem; background: #f3f4f6; color: #6b7280; border: 1px dashed #d1d5db;">
+                                🔒 Locked
+                            </button>
+                        ` : `
+                            <button class="btn-deck-action btn-open-slides" onclick="openTopicSlides('${topic.id}')" style="padding: 0.35rem 0.65rem;">
+                                View
+                            </button>
+                        `}
+                        ${sourceUrl && !isLocked ? `
                             <a href="${sourceUrl}" download="${escapeHtml(sourceName)}" class="btn-deck-action btn-download-deck" style="padding: 0.35rem 0.65rem;" title="Download ${escapeHtml(sourceName)}">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -811,6 +931,9 @@
         document.getElementById('topicIdInput').value = '';
         document.getElementById('topicSubjectIdInput').value = currentSubject.id;
 
+        if (document.getElementById('topicSummaryInput')) document.getElementById('topicSummaryInput').value = '';
+        if (document.getElementById('topicContentInput')) document.getElementById('topicContentInput').value = '';
+
         // Default: Upload to students checked
         const publishCheckbox = document.getElementById('topicIsPublishedCheckbox');
         if (publishCheckbox) publishCheckbox.checked = true;
@@ -836,6 +959,13 @@
         document.getElementById('topicDescInput').value = topic.description || '';
         document.getElementById('topicOutlineInput').value = topic.outline || '';
 
+        if (document.getElementById('topicSummaryInput')) {
+            document.getElementById('topicSummaryInput').value = topic.summary || '';
+        }
+        if (document.getElementById('topicContentInput')) {
+            document.getElementById('topicContentInput').value = topic.content || '';
+        }
+
         const publishCheckbox = document.getElementById('topicIsPublishedCheckbox');
         if (publishCheckbox) {
             publishCheckbox.checked = topic.isPublished !== 0;
@@ -854,6 +984,16 @@
         openModal('topicModal');
     };
 
+    window.launchInSystemSlideCreatorFromModal = function () {
+        const topicId = document.getElementById('topicIdInput').value;
+        closeModal('topicModal');
+        if (topicId && typeof window.openSlideCreatorModal === 'function') {
+            window.openSlideCreatorModal(topicId);
+        } else {
+            showToast('Save the lesson first, then you can customize presentation slides.', 'info');
+        }
+    };
+
     // Save Topic
     window.handleTopicFormSubmit = async function (e) {
         e.preventDefault();
@@ -863,6 +1003,8 @@
         const description = document.getElementById('topicDescInput').value.trim();
         const presentationKey = document.getElementById('topicPresentationSelect').value;
         const outline = document.getElementById('topicOutlineInput').value.trim();
+        const summary = document.getElementById('topicSummaryInput') ? document.getElementById('topicSummaryInput').value.trim() : '';
+        const content = document.getElementById('topicContentInput') ? document.getElementById('topicContentInput').value.trim() : '';
         const isPublished = document.getElementById('topicIsPublishedCheckbox') ? document.getElementById('topicIsPublishedCheckbox').checked : true;
 
         if (!title) {
@@ -875,6 +1017,8 @@
             description,
             presentationKey: presentationKey || null,
             outline,
+            summary: summary || null,
+            content: content || null,
             isPublished
         };
 
@@ -980,14 +1124,31 @@
     window.openTopicSlides = function (topicId) {
         if (!currentSubject || !currentSubject.topics) return;
         const topic = currentSubject.topics.find(t => t.id === topicId);
-        if (!topic || !topic.presentation || !topic.presentation.slides) {
-            showToast('No slide presentation attached to this lesson.', 'error');
+        if (!topic) return;
+
+        // Prerequisite check: if student attempts to open a locked topic
+        if (!isTeacherOrAdmin() && topic.isUnlocked === false) {
+            window.showTopicLockModal(topic.orderIndex);
+            return;
+        }
+
+        let slides = [];
+        let isCustom = false;
+        if (topic.presentation && Array.isArray(topic.presentation.slides) && topic.presentation.slides.length > 0) {
+            slides = topic.presentation.slides;
+            isCustom = false;
+        } else if (Array.isArray(topic.customSlides) && topic.customSlides.length > 0) {
+            slides = topic.customSlides;
+            isCustom = true;
+        } else {
+            showToast('No slide presentation attached to this lesson yet.', 'info');
             return;
         }
 
         slideViewer.active = true;
         slideViewer.topic = topic;
-        slideViewer.slides = topic.presentation.slides;
+        slideViewer.slides = slides;
+        slideViewer.isCustom = isCustom;
         slideViewer.currentIndex = 0;
         slideViewer.notesOpen = false;
 
@@ -997,7 +1158,7 @@
 
         // Title and meta
         document.getElementById('viewerTopicTitle').textContent = topic.title;
-        document.getElementById('viewerDeckCategory').textContent = topic.presentation.category || 'Presentation';
+        document.getElementById('viewerDeckCategory').textContent = isCustom ? 'In-System Slides' : (topic.presentation?.category || 'Presentation');
 
         // Download link
         const downloadBtn = document.getElementById('viewerDownloadBtn');
@@ -1009,6 +1170,16 @@
                 downloadBtn.style.display = 'inline-flex';
             } else {
                 downloadBtn.style.display = 'none';
+            }
+        }
+
+        // Quiz button in viewer
+        const quizBtn = document.getElementById('viewerQuizBtn');
+        if (quizBtn) {
+            if (topic.hasQuiz && topic.quiz) {
+                quizBtn.style.display = 'inline-flex';
+            } else {
+                quizBtn.style.display = 'none';
             }
         }
 
@@ -1025,13 +1196,31 @@
 
         // Render Filmstrip
         const filmstrip = document.getElementById('viewerFilmstrip');
-        filmstrip.innerHTML = slideViewer.slides.map((url, i) => `
-            <img src="${url}" alt="Slide ${i + 1}" class="filmstrip-thumb ${i === 0 ? 'active' : ''}" 
-                 onclick="window.jumpToSlide(${i})" data-index="${i}">
-        `).join('');
+        if (isCustom) {
+            filmstrip.innerHTML = slides.map((s, i) => `
+                <div class="filmstrip-thumb ${i === 0 ? 'active' : ''}" style="width: 72px; height: 42px; background: #1e293b; color: #fff; font-size: 0.72rem; display: flex; align-items: center; justify-content: center; font-weight: 700; cursor: pointer; border-radius: 4px;" onclick="window.jumpToSlide(${i})" data-index="${i}">
+                    Slide ${i + 1}
+                </div>
+            `).join('');
+        } else {
+            filmstrip.innerHTML = slides.map((url, i) => `
+                <img src="${url}" alt="Slide ${i + 1}" class="filmstrip-thumb ${i === 0 ? 'active' : ''}" 
+                     onclick="window.jumpToSlide(${i})" data-index="${i}">
+            `).join('');
+        }
 
         renderCurrentSlide();
         document.addEventListener('keydown', handleViewerKeydown);
+    };
+
+    window.launchQuizFromViewer = function () {
+        if (slideViewer.topic && slideViewer.topic.quiz) {
+            const qId = slideViewer.topic.quiz.id;
+            window.closeSlideViewer();
+            if (typeof window.startQuizAttempt === 'function') {
+                window.startQuizAttempt(qId);
+            }
+        }
     };
 
     window.closeSlideViewer = function () {
@@ -1084,14 +1273,33 @@
     function renderCurrentSlide() {
         const total = slideViewer.slides.length;
         const current = slideViewer.currentIndex;
-        const slideUrl = slideViewer.slides[current];
 
         const img = document.getElementById('viewerSlideImage');
-        img.style.opacity = '0.4';
-        img.src = slideUrl;
-        img.onload = () => {
-            img.style.opacity = '1';
-        };
+        const customContainer = document.getElementById('viewerCustomSlideContent');
+
+        if (slideViewer.isCustom) {
+            if (img) img.style.display = 'none';
+            if (customContainer) {
+                customContainer.style.display = 'block';
+                const slide = slideViewer.slides[current];
+                customContainer.className = `slide-html-card theme-${slide.theme || 'indigo'}`;
+                customContainer.innerHTML = `
+                    <h3 class="slide-html-title">${escapeHtml(slide.title)}</h3>
+                    <div class="slide-html-subtitle">${escapeHtml(slide.subtitle || '')}</div>
+                    <ul class="slide-html-bullets">
+                        ${(slide.bullets || []).map(b => `<li>${escapeHtml(b)}</li>`).join('')}
+                    </ul>
+                `;
+            }
+        } else {
+            if (customContainer) customContainer.style.display = 'none';
+            if (img) {
+                img.style.display = 'block';
+                img.style.opacity = '0.4';
+                img.src = slideViewer.slides[current];
+                img.onload = () => { img.style.opacity = '1'; };
+            }
+        }
 
         document.getElementById('viewerCounterBadge').textContent = `Slide ${current + 1} of ${total}`;
         const pct = ((current + 1) / total) * 100;

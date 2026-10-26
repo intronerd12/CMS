@@ -16,3 +16,4 @@ desktop.ini
 # SQLite WAL temp files (main lms.db is committed as requested)
 *.db-journal
 *.db-shm
+*.db-wal
