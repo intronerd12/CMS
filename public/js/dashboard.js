@@ -172,9 +172,23 @@ function setupSidebar() {
     const mobileMenuBtn = document.getElementById('mobileMenuBtn');
     const sidebar = document.getElementById('sidebar');
 
+    if (!sidebar) return;
+
+    // Restore saved minimized/maximized state
+    const isCollapsedSaved = localStorage.getItem('sidebar_collapsed') === 'true';
+    if (isCollapsedSaved && window.innerWidth > 768) {
+        sidebar.classList.add('collapsed');
+        document.body.classList.add('sidebar-collapsed');
+    }
+
     if (sidebarToggle) {
-        sidebarToggle.addEventListener('click', () => {
+        sidebarToggle.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             sidebar.classList.toggle('collapsed');
+            document.body.classList.toggle('sidebar-collapsed');
+            const isNowCollapsed = sidebar.classList.contains('collapsed');
+            localStorage.setItem('sidebar_collapsed', isNowCollapsed ? 'true' : 'false');
         });
     }
 
