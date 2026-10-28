@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e3a8a"/>
+      <stop offset="50%" stop-color="#1d4ed8"/>
+      <stop offset="100%" stop-color="#3b82f6"/>
+    </linearGradient>
+    <linearGradient id="capGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#e0e7ff"/>
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+    <linearGradient id="layerGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#0f172a" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- App Rounded Base -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)"/>
+  <rect x="6" y="6" width="500" height="500" rx="106" stroke="rgba(255,255,255,0.2)" stroke-width="6"/>
+
+  <g filter="url(#shadow)">
+    <!-- Graduation Cap (LMS) -->
+    <path d="M256 90 L400 160 L256 230 L112 160 Z" fill="url(#capGrad)"/>
+    <path d="M256 210 L370 155 V195 C370 235 320 265 256 265 C192 265 142 235 142 195 V155 Z" fill="#c7d2fe"/>
+    
+    <!-- Tassel -->
+    <circle cx="256" cy="160" r="10" fill="url(#goldGrad)"/>
+    <path d="M256 160 Q345 165 375 220" stroke="url(#goldGrad)" stroke-width="7" fill="none" stroke-linecap="round"/>
+    <polygon points="368,218 382,222 378,255 365,252" fill="url(#goldGrad)"/>
+
+    <!-- Open Book / CMS Layers -->
+    <!-- Base Book Spine & Pages -->
+    <path d="M256 385 C230 365 180 355 120 360 V435 C180 430 230 440 256 460 C282 440 332 430 392 435 V360 C332 355 282 365 256 385 Z" fill="#ffffff" opacity="0.95"/>
+    <path d="M256 385 V460" stroke="#1e3a8a" stroke-width="4"/>
+
+    <!-- Layer 1: Bottom Layer -->
+    <polygon points="170,350 256,385 342,350 256,315" fill="url(#goldGrad)" opacity="0.9"/>
+    
+    <!-- Layer 2: Mid Content Layer -->
+    <polygon points="180,320 256,355 332,320 256,285" fill="url(#layerGrad)" opacity="0.95"/>
+    <polygon points="195,315 256,340 317,315 256,290" fill="#ffffff" opacity="0.4"/>
+
+    <!-- CMS Text Badge -->
+    <rect x="186" y="398" width="140" height="28" rx="6" fill="#1e3a8a"/>
+    <text x="256" y="418" font-family="system-ui, -apple-system, sans-serif" font-size="16" font-weight="900" fill="#ffffff" text-anchor="middle" letter-spacing="3">CMS·LMS</text>
+  </g>
+</svg>

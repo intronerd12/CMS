@@ -1026,6 +1026,14 @@ app.get('/dashboard', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
+app.get('/favicon.ico', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'favicon.ico'));
+});
+
+app.get('/favicon.png', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'favicon.png'));
+});
+
 // Export app for serverless (Vercel)
 module.exports = app;
 
