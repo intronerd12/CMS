@@ -291,7 +291,7 @@
 
             // Status Badge
             let badgeClass = 'status-locked';
-            let badgeText = '🔒 Locked';
+            let badgeText = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align: -1px; margin-right: 3px;"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Locked';
             if (isPassed) {
                 badgeClass = 'status-passed';
                 badgeText = `✓ Passed (${bestScore}%)`;
@@ -1084,10 +1084,12 @@
             <!-- Tabs Bar: Whiteboard #6 vs Whiteboard #8 -->
             <div class="scores-tabs-bar">
                 <button type="button" class="scores-tab-btn ${scoresCurrentTab === 'topic-summary' ? 'active' : ''}" onclick="window.switchScoresTab('topic-summary')">
-                    📋 Topic Assessment Summary (Item 6)
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                    <span>Topic Assessment Summary (Item 6)</span>
                 </button>
                 <button type="button" class="scores-tab-btn ${scoresCurrentTab === 'master-matrix' ? 'active' : ''}" onclick="window.switchScoresTab('master-matrix')">
-                    📊 Summary of ALL Quiz Scores per Student (Item 8)
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+                    <span>Summary of ALL Quiz Scores per Student (Item 8)</span>
                 </button>
             </div>
 
@@ -1136,6 +1138,11 @@
     };
 
     function updateActiveTabContent() {
+        const activeEl = document.activeElement;
+        const activeId = activeEl && activeEl.id ? activeEl.id : null;
+        const selStart = activeEl && typeof activeEl.selectionStart === 'number' ? activeEl.selectionStart : null;
+        const selEnd = activeEl && typeof activeEl.selectionEnd === 'number' ? activeEl.selectionEnd : null;
+
         const tabBox = document.getElementById('scoresActiveTabContent');
         if (tabBox) {
             tabBox.innerHTML = scoresCurrentTab === 'topic-summary' ? renderTopicSummaryHtml() : renderMasterMatrixHtml();
@@ -1144,6 +1151,16 @@
         if (matrixPageBox) {
             if (isFacultyUser()) {
                 renderMasterMatrixPageUI();
+            }
+        }
+
+        if (activeId) {
+            const nextEl = document.getElementById(activeId);
+            if (nextEl) {
+                nextEl.focus();
+                if (selStart !== null && typeof nextEl.setSelectionRange === 'function') {
+                    nextEl.setSelectionRange(selStart, selEnd !== null ? selEnd : selStart);
+                }
             }
         }
     }
@@ -1218,57 +1235,88 @@
 
         return `
             <!-- Summary KPI Cards -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
-                <div class="card" style="padding: 1.25rem;">
-                    <div style="font-size: 0.8125rem; color: var(--color-text-muted);">Total Quiz Submissions</div>
-                    <div style="font-size: 1.75rem; font-weight: 800; color: var(--color-primary);">${totalAttempts}</div>
+            <div class="matrix-kpi-grid">
+                <div class="matrix-stat-card">
+                    <div class="matrix-stat-icon icon-blue">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 11l3 3L22 4"/>
+                            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                        </svg>
+                    </div>
+                    <div class="matrix-stat-body">
+                        <div class="matrix-stat-value" style="color: var(--color-primary);">${totalAttempts}</div>
+                        <div class="matrix-stat-label">Total Quiz Submissions</div>
+                    </div>
                 </div>
-                <div class="card" style="padding: 1.25rem;">
-                    <div style="font-size: 0.8125rem; color: var(--color-text-muted);">Overall Pass Rate</div>
-                    <div style="font-size: 1.75rem; font-weight: 800; color: #10b981;">${passRate}%</div>
+                <div class="matrix-stat-card">
+                    <div class="matrix-stat-icon icon-emerald">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                            <polyline points="22 4 12 14.01 9 11.01"/>
+                        </svg>
+                    </div>
+                    <div class="matrix-stat-body">
+                        <div class="matrix-stat-value" style="color: #059669;">${passRate}%</div>
+                        <div class="matrix-stat-label">Overall Pass Rate</div>
+                    </div>
                 </div>
-                <div class="card" style="padding: 1.25rem;">
-                    <div style="font-size: 0.8125rem; color: var(--color-text-muted);">Class Average Grade</div>
-                    <div style="font-size: 1.75rem; font-weight: 800; color: var(--color-text);">${avgScore}%</div>
+                <div class="matrix-stat-card">
+                    <div class="matrix-stat-icon icon-violet">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="20" x2="18" y2="10"/>
+                            <line x1="12" y1="20" x2="12" y2="4"/>
+                            <line x1="6" y1="20" x2="6" y2="14"/>
+                        </svg>
+                    </div>
+                    <div class="matrix-stat-body">
+                        <div class="matrix-stat-value">${avgScore}%</div>
+                        <div class="matrix-stat-label">Class Average Grade</div>
+                    </div>
                 </div>
             </div>
 
             <!-- Controls Row: Search, Topic Filter, Sort by Surname / Score, Export (Print/PDF/CSV) -->
             <div class="scores-controls-row">
                 <div class="scores-filters-group">
-                    <input type="text" class="form-control" style="max-width: 200px;" placeholder="Search student..." value="${escapeHtml(summarySearch)}" oninput="window.setSummarySearch(this.value)">
+                    <div class="search-box">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                        <input type="text" id="summarySearchInput" class="search-input" placeholder="Search student name or ID..." value="${escapeHtml(summarySearch)}" oninput="window.setSummarySearch(this.value)">
+                    </div>
 
-                    <select class="form-control" style="max-width: 170px;" onchange="window.setSummaryTopicFilter(this.value)">
+                    <select class="filter-select" onchange="window.setSummaryTopicFilter(this.value)">
                         <option value="all" ${summaryTopicFilter === 'all' ? 'selected' : ''}>All Topics (1 to 14)</option>
                         ${topicOptions.map(num => `
                             <option value="${num}" ${summaryTopicFilter === String(num) ? 'selected' : ''}>Topic ${num}</option>
                         `).join('')}
                     </select>
 
-                    <select class="form-control" style="max-width: 150px;" onchange="window.setSummaryVerdictFilter(this.value)">
+                    <select class="filter-select" onchange="window.setSummaryVerdictFilter(this.value)">
                         <option value="all" ${summaryVerdictFilter === 'all' ? 'selected' : ''}>All Verdicts</option>
                         <option value="passed" ${summaryVerdictFilter === 'passed' ? 'selected' : ''}>Passed Only</option>
                         <option value="failed" ${summaryVerdictFilter === 'failed' ? 'selected' : ''}>Needs Retake</option>
                     </select>
 
-                    <select class="form-control" style="max-width: 210px; font-weight: 700; color: var(--color-primary);" onchange="window.setSummarySort(this.value)">
-                        <option value="surname-asc" ${summarySort === 'surname-asc' ? 'selected' : ''}>🔤 Sorted by Surname (A → Z)</option>
-                        <option value="surname-desc" ${summarySort === 'surname-desc' ? 'selected' : ''}>🔤 Sorted by Surname (Z → A)</option>
-                        <option value="score-desc" ${summarySort === 'score-desc' ? 'selected' : ''}>⭐ Sorted by Score (High → Low)</option>
-                        <option value="score-asc" ${summarySort === 'score-asc' ? 'selected' : ''}>⭐ Sorted by Score (Low → High)</option>
-                        <option value="date-desc" ${summarySort === 'date-desc' ? 'selected' : ''}>⏱ Sorted by Date (Newest)</option>
+                    <select class="filter-select sort-select-control" onchange="window.setSummarySort(this.value)">
+                        <option value="surname-asc" ${summarySort === 'surname-asc' ? 'selected' : ''}>Sort: Surname (A → Z)</option>
+                        <option value="surname-desc" ${summarySort === 'surname-desc' ? 'selected' : ''}>Sort: Surname (Z → A)</option>
+                        <option value="score-desc" ${summarySort === 'score-desc' ? 'selected' : ''}>Sort: Score (High → Low)</option>
+                        <option value="score-asc" ${summarySort === 'score-asc' ? 'selected' : ''}>Sort: Score (Low → High)</option>
+                        <option value="date-desc" ${summarySort === 'date-desc' ? 'selected' : ''}>Sort: Date (Newest)</option>
                     </select>
                 </div>
 
                 <div class="scores-export-group">
-                    <button type="button" class="btn-export-action" onclick="window.printSummaryReport('topic-summary')" title="Print summary table to physical printer">
-                        🖨️ <span>Print</span>
+                    <button type="button" class="btn-export-action btn-print" onclick="window.printSummaryReport('topic-summary')" title="Print summary table to physical printer">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                        <span>Print</span>
                     </button>
                     <button type="button" class="btn-export-action btn-pdf" onclick="window.printSummaryReport('topic-summary')" title="Save report as PDF">
-                        📄 <span>PDF</span>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                        <span>PDF</span>
                     </button>
                     <button type="button" class="btn-export-action btn-csv" onclick="window.exportTopicSummaryCSV()" title="Download spreadsheet (.csv) for Excel or Google Sheets">
-                        📊 <span>Spreadsheet (.CSV)</span>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="9" x2="9" y2="21"/></svg>
+                        <span>Spreadsheet (.CSV)</span>
                     </button>
                 </div>
             </div>
@@ -1388,26 +1436,32 @@
             <!-- Controls Row: Search, Sort, Export (Print/PDF/CSV) -->
             <div class="scores-controls-row">
                 <div class="scores-filters-group">
-                    <input type="text" class="form-control" style="max-width: 240px;" placeholder="Search student name..." value="${escapeHtml(matrixSearch)}" oninput="window.setMatrixSearch(this.value)">
+                    <div class="search-box">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                        <input type="text" id="matrixTabSearchInput" class="search-input" placeholder="Search student name or ID..." value="${escapeHtml(matrixSearch)}" oninput="window.setMatrixSearch(this.value)">
+                    </div>
 
-                    <select class="form-control" style="max-width: 240px; font-weight: 700; color: var(--color-primary);" onchange="window.setMatrixSort(this.value)">
-                        <option value="surname-asc" ${matrixSort === 'surname-asc' ? 'selected' : ''}>🔤 Sorted by Surname (A → Z)</option>
-                        <option value="surname-desc" ${matrixSort === 'surname-desc' ? 'selected' : ''}>🔤 Sorted by Surname (Z → A)</option>
-                        <option value="avg-desc" ${matrixSort === 'avg-desc' ? 'selected' : ''}>⭐ Sorted by Average Grade (High → Low)</option>
-                        <option value="avg-asc" ${matrixSort === 'avg-asc' ? 'selected' : ''}>⭐ Sorted by Average Grade (Low → High)</option>
-                        <option value="completed-desc" ${matrixSort === 'completed-desc' ? 'selected' : ''}>🏆 Sorted by Topics Passed</option>
+                    <select class="filter-select sort-select-control" onchange="window.setMatrixSort(this.value)">
+                        <option value="surname-asc" ${matrixSort === 'surname-asc' ? 'selected' : ''}>Sort: Surname (A → Z)</option>
+                        <option value="surname-desc" ${matrixSort === 'surname-desc' ? 'selected' : ''}>Sort: Surname (Z → A)</option>
+                        <option value="avg-desc" ${matrixSort === 'avg-desc' ? 'selected' : ''}>Sort: Average Grade (High → Low)</option>
+                        <option value="avg-asc" ${matrixSort === 'avg-asc' ? 'selected' : ''}>Sort: Average Grade (Low → High)</option>
+                        <option value="completed-desc" ${matrixSort === 'completed-desc' ? 'selected' : ''}>Sort: Topics Passed</option>
                     </select>
                 </div>
 
                 <div class="scores-export-group">
-                    <button type="button" class="btn-export-action" onclick="window.printSummaryReport('master-matrix')" title="Print Master Matrix to physical printer">
-                        🖨️ <span>Print</span>
+                    <button type="button" class="btn-export-action btn-print" onclick="window.printSummaryReport('master-matrix')" title="Print Master Matrix to physical printer">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                        <span>Print</span>
                     </button>
                     <button type="button" class="btn-export-action btn-pdf" onclick="window.printSummaryReport('master-matrix')" title="Save Master Matrix as PDF">
-                        📄 <span>PDF</span>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                        <span>PDF</span>
                     </button>
                     <button type="button" class="btn-export-action btn-csv" onclick="window.exportMatrixCSV()" title="Download master matrix (.csv) for Excel or Google Sheets">
-                        📊 <span>Spreadsheet (.CSV)</span>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="9" x2="9" y2="21"/></svg>
+                        <span>Spreadsheet (.CSV)</span>
                     </button>
                 </div>
             </div>
@@ -1591,36 +1645,89 @@
                     </p>
                 </div>
                 <div class="matrix-hero-right">
-                    <div class="matrix-badge-pill">🔤 Sorted by Surname & Score</div>
-                    <div class="matrix-badge-pill">🖨️ Print • 📄 PDF • 📊 Spreadsheet</div>
+                    <div class="matrix-badge-pill">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M11 5h10"/>
+                            <path d="M11 9h7"/>
+                            <path d="M11 13h4"/>
+                            <path d="M3 17l3 3 3-3"/>
+                            <path d="M6 18V4"/>
+                        </svg>
+                        <span>Sorted by Surname &amp; Score</span>
+                    </div>
+                    <div class="matrix-badge-pill">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="6 9 6 2 18 2 18 9"/>
+                            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                            <rect x="6" y="14" width="12" height="8"/>
+                        </svg>
+                        <span>Print</span>
+                        <span class="pill-dot">•</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                        </svg>
+                        <span>PDF</span>
+                        <span class="pill-dot">•</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2"/>
+                            <line x1="3" y1="9" x2="21" y2="9"/>
+                            <line x1="9" y1="21" x2="9" y2="9"/>
+                        </svg>
+                        <span>Spreadsheet</span>
+                    </div>
                 </div>
             </div>
 
             <!-- KPI Analytics Grid -->
             <div class="matrix-kpi-grid">
                 <div class="matrix-stat-card">
-                    <div class="matrix-stat-icon" style="background: rgba(37, 99, 235, 0.1); color: #2563eb;">👥</div>
+                    <div class="matrix-stat-icon icon-blue">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                        </svg>
+                    </div>
                     <div class="matrix-stat-body">
                         <div class="matrix-stat-value">${totalStudents}</div>
                         <div class="matrix-stat-label">Enrolled Students</div>
                     </div>
                 </div>
                 <div class="matrix-stat-card">
-                    <div class="matrix-stat-icon" style="background: rgba(16, 185, 129, 0.1); color: #059669;">⭐</div>
+                    <div class="matrix-stat-icon icon-emerald">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                        </svg>
+                    </div>
                     <div class="matrix-stat-body">
                         <div class="matrix-stat-value" style="color: ${classAvg >= 75 ? '#059669' : '#d97706'};">${classAvg}%</div>
                         <div class="matrix-stat-label">Class Quiz Average</div>
                     </div>
                 </div>
                 <div class="matrix-stat-card">
-                    <div class="matrix-stat-icon" style="background: rgba(139, 92, 246, 0.1); color: #7c3aed;">🏆</div>
+                    <div class="matrix-stat-icon icon-violet">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
+                            <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+                            <path d="M4 22h16"/>
+                            <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
+                            <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
+                            <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
+                        </svg>
+                    </div>
                     <div class="matrix-stat-body">
                         <div class="matrix-stat-value">${completedCount} <span style="font-size: 0.85rem; color: var(--color-text-muted);">/ ${totalStudents}</span></div>
                         <div class="matrix-stat-label">Curriculum Mastered</div>
                     </div>
                 </div>
                 <div class="matrix-stat-card">
-                    <div class="matrix-stat-icon" style="background: rgba(245, 158, 11, 0.1); color: #d97706;">👑</div>
+                    <div class="matrix-stat-icon icon-amber">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14"/>
+                        </svg>
+                    </div>
                     <div class="matrix-stat-body">
                         <div class="matrix-stat-value" style="font-size: 1.15rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${topStudent ? `${topStudent.lastName}, ${topStudent.firstName}` : 'None'}">
                             ${topStudent ? `${escapeHtml(topStudent.lastName)}, ${escapeHtml(topStudent.firstName || '')}` : '—'}
@@ -1633,26 +1740,32 @@
             <!-- Matrix Filter, Search and Export Toolbar -->
             <div class="scores-controls-row" style="margin-top: 1.5rem;">
                 <div class="scores-filters-group">
-                    <input type="text" class="form-control" style="max-width: 250px;" placeholder="Search student name or ID..." value="${escapeHtml(matrixSearch)}" oninput="window.setMatrixSearch(this.value)">
+                    <div class="search-box">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                        <input type="text" id="matrixPageSearchInput" class="search-input" placeholder="Search student name or ID..." value="${escapeHtml(matrixSearch)}" oninput="window.setMatrixSearch(this.value)">
+                    </div>
 
-                    <select class="form-control" style="max-width: 260px; font-weight: 700; color: var(--color-primary);" onchange="window.setMatrixSort(this.value)">
-                        <option value="surname-asc" ${matrixSort === 'surname-asc' ? 'selected' : ''}>🔤 Sorted by Surname (A → Z)</option>
-                        <option value="surname-desc" ${matrixSort === 'surname-desc' ? 'selected' : ''}>🔤 Sorted by Surname (Z → A)</option>
-                        <option value="avg-desc" ${matrixSort === 'avg-desc' ? 'selected' : ''}>⭐ Sorted by Average Grade (High → Low)</option>
-                        <option value="avg-asc" ${matrixSort === 'avg-asc' ? 'selected' : ''}>⭐ Sorted by Average Grade (Low → High)</option>
-                        <option value="completed-desc" ${matrixSort === 'completed-desc' ? 'selected' : ''}>🏆 Sorted by Topics Passed</option>
+                    <select class="filter-select sort-select-control" onchange="window.setMatrixSort(this.value)">
+                        <option value="surname-asc" ${matrixSort === 'surname-asc' ? 'selected' : ''}>Sort: Surname (A → Z)</option>
+                        <option value="surname-desc" ${matrixSort === 'surname-desc' ? 'selected' : ''}>Sort: Surname (Z → A)</option>
+                        <option value="avg-desc" ${matrixSort === 'avg-desc' ? 'selected' : ''}>Sort: Average Grade (High → Low)</option>
+                        <option value="avg-asc" ${matrixSort === 'avg-asc' ? 'selected' : ''}>Sort: Average Grade (Low → High)</option>
+                        <option value="completed-desc" ${matrixSort === 'completed-desc' ? 'selected' : ''}>Sort: Topics Passed</option>
                     </select>
                 </div>
 
                 <div class="scores-export-group">
-                    <button type="button" class="btn-export-action" onclick="window.printSummaryReport('master-matrix')" title="Print Master Matrix to physical printer">
-                        🖨️ <span>Print</span>
+                    <button type="button" class="btn-export-action btn-print" onclick="window.printSummaryReport('master-matrix')" title="Print Master Matrix to physical printer">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                        <span>Print</span>
                     </button>
                     <button type="button" class="btn-export-action btn-pdf" onclick="window.printSummaryReport('master-matrix')" title="Save Master Matrix as PDF">
-                        📄 <span>PDF</span>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                        <span>PDF</span>
                     </button>
                     <button type="button" class="btn-export-action btn-csv" onclick="window.exportMatrixCSV()" title="Download master matrix (.csv) for Excel or Google Sheets">
-                        📊 <span>Spreadsheet (.CSV)</span>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="9" x2="9" y2="21"/></svg>
+                        <span>Spreadsheet (.CSV)</span>
                     </button>
                 </div>
             </div>
@@ -1774,29 +1887,70 @@
                     </p>
                 </div>
                 <div class="matrix-hero-right">
-                    <div class="matrix-badge-pill">🎓 Student Transcript</div>
-                    <div class="matrix-badge-pill">🖨️ Print • 📄 PDF • 📊 Spreadsheet</div>
+                    <div class="matrix-badge-pill">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                            <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+                        </svg>
+                        <span>Student Transcript</span>
+                    </div>
+                    <div class="matrix-badge-pill">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="6 9 6 2 18 2 18 9"/>
+                            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                            <rect x="6" y="14" width="12" height="8"/>
+                        </svg>
+                        <span>Print</span>
+                        <span class="pill-dot">•</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                        </svg>
+                        <span>PDF</span>
+                        <span class="pill-dot">•</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2"/>
+                            <line x1="3" y1="9" x2="21" y2="9"/>
+                            <line x1="9" y1="21" x2="9" y2="9"/>
+                        </svg>
+                        <span>Spreadsheet</span>
+                    </div>
                 </div>
             </div>
 
             <!-- Student KPI Summary -->
             <div class="matrix-kpi-grid">
                 <div class="matrix-stat-card">
-                    <div class="matrix-stat-icon" style="background: rgba(37, 99, 235, 0.1); color: #2563eb;">📚</div>
+                    <div class="matrix-stat-icon icon-blue">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                        </svg>
+                    </div>
                     <div class="matrix-stat-body">
                         <div class="matrix-stat-value">${passedTopicsCount} <span style="font-size: 0.85rem; color: var(--color-text-muted);">/ ${totalTopics}</span></div>
                         <div class="matrix-stat-label">Modules Passed (${completionRate}%)</div>
                     </div>
                 </div>
                 <div class="matrix-stat-card">
-                    <div class="matrix-stat-icon" style="background: rgba(16, 185, 129, 0.1); color: #059669;">⭐</div>
+                    <div class="matrix-stat-icon icon-emerald">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                        </svg>
+                    </div>
                     <div class="matrix-stat-body">
                         <div class="matrix-stat-value" style="color: ${avgScore >= 75 ? '#059669' : '#d97706'};">${avgScore}%</div>
                         <div class="matrix-stat-label">My Cumulative Average</div>
                     </div>
                 </div>
                 <div class="matrix-stat-card">
-                    <div class="matrix-stat-icon" style="background: rgba(139, 92, 246, 0.1); color: #7c3aed;">🎯</div>
+                    <div class="matrix-stat-icon icon-violet">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <circle cx="12" cy="12" r="6"/>
+                            <circle cx="12" cy="12" r="2"/>
+                        </svg>
+                    </div>
                     <div class="matrix-stat-body">
                         <div class="matrix-stat-value" style="font-size: 1.15rem; color: ${isGraduated ? '#059669' : '#2563eb'};">
                             ${isGraduated ? '★ Mastered All' : `At Topic ${passedTopicsCount + 1}`}
@@ -1805,7 +1959,13 @@
                     </div>
                 </div>
                 <div class="matrix-stat-card">
-                    <div class="matrix-stat-icon" style="background: rgba(245, 158, 11, 0.1); color: #d97706;">📝</div>
+                    <div class="matrix-stat-icon icon-amber">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+                            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+                            <path d="M9 14l2 2 4-4"/>
+                        </svg>
+                    </div>
                     <div class="matrix-stat-body">
                         <div class="matrix-stat-value">${rawStudentScores.length}</div>
                         <div class="matrix-stat-label">Total Quiz Attempts</div>
@@ -1820,14 +1980,17 @@
                     <div style="font-size: 0.78rem; color: var(--color-text-muted);">Sequential unlocking history and grades</div>
                 </div>
                 <div class="scores-export-group">
-                    <button type="button" class="btn-export-action" onclick="window.printSummaryReport('student-transcript')" title="Print transcript">
-                        🖨️ <span>Print</span>
+                    <button type="button" class="btn-export-action btn-print" onclick="window.printSummaryReport('student-transcript')" title="Print transcript">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                        <span>Print</span>
                     </button>
                     <button type="button" class="btn-export-action btn-pdf" onclick="window.printSummaryReport('student-transcript')" title="Save as PDF">
-                        📄 <span>PDF</span>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                        <span>PDF</span>
                     </button>
                     <button type="button" class="btn-export-action btn-csv" onclick="window.exportStudentTranscriptCSV()" title="Download Spreadsheet (.CSV)">
-                        📊 <span>Spreadsheet (.CSV)</span>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="9" x2="9" y2="21"/></svg>
+                        <span>Spreadsheet (.CSV)</span>
                     </button>
                 </div>
             </div>
@@ -1875,7 +2038,7 @@
                                                 ` : isAvailable ? `
                                                     <span class="quiz-status-badge status-available">Unlocked</span>
                                                 ` : `
-                                                    <span class="quiz-status-badge status-locked">🔒 Locked</span>
+                                                    <span class="quiz-status-badge status-locked"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align: -1px; margin-right: 3px;"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Locked</span>
                                                 `}
                                             </td>
                                             <td>
@@ -1926,18 +2089,21 @@
         container.innerHTML = `
             <div class="scores-controls-row">
                 <div>
-                    <h3 style="margin: 0;">My Official Assessment Transcript</h3>
+                    <h3 style="margin: 0; font-size: 1.05rem; font-weight: 800; color: var(--color-text);">My Official Assessment Transcript</h3>
                     <div style="font-size: 0.78rem; color: var(--color-text-muted);">Recorded grades and pass/fail verification history</div>
                 </div>
                 <div class="scores-export-group">
-                    <button type="button" class="btn-export-action" onclick="window.printSummaryReport('student-transcript')" title="Print my assessment transcript">
-                        🖨️ <span>Print</span>
+                    <button type="button" class="btn-export-action btn-print" onclick="window.printSummaryReport('student-transcript')" title="Print my assessment transcript">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                        <span>Print</span>
                     </button>
                     <button type="button" class="btn-export-action btn-pdf" onclick="window.printSummaryReport('student-transcript')" title="Save transcript as PDF">
-                        📄 <span>PDF</span>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                        <span>PDF</span>
                     </button>
                     <button type="button" class="btn-export-action btn-csv" onclick="window.exportStudentTranscriptCSV()" title="Download spreadsheet (.csv)">
-                        📊 <span>Spreadsheet (.CSV)</span>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="9" x2="9" y2="21"/></svg>
+                        <span>Spreadsheet (.CSV)</span>
                     </button>
                 </div>
             </div>

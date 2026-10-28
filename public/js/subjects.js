@@ -595,8 +595,8 @@
                 <div class="topic-card-body">
                     <div class="topic-head-row">
                         <div style="display: flex; align-items: center; gap: var(--space-2);">
-                            <span class="topic-numeral" style="color: ${isLocked ? '#9ca3af' : brand.color};">
-                                ${isLocked ? '🔒 ' : ''}${String(displayIndex).padStart(2, '0')}
+                            <span class="topic-numeral" style="color: ${isLocked ? '#9ca3af' : brand.color}; display: inline-flex; align-items: center; gap: 3px;">
+                                ${isLocked ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>' : ''}${String(displayIndex).padStart(2, '0')}
                             </span>
                             <span class="topic-brand-tag" style="background: ${isLocked ? '#6b7280' : brand.color};">
                                 ${escapeHtml(brand.label)}
@@ -615,8 +615,9 @@
                                     Passed
                                 </span>
                             ` : isLocked ? `
-                                <span class="status-badge draft" style="background: #f3f4f6; color: #6b7280; border: 1px solid #e5e7eb;">
-                                    🔒 Locked
+                                <span class="status-badge draft" style="background: #f3f4f6; color: #6b7280; border: 1px solid #e5e7eb; display: inline-flex; align-items: center; gap: 4px;">
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                    <span>Locked</span>
                                 </span>
                             ` : `
                                 <span class="status-badge" style="background: #eff6ff; color: #1d4ed8; border: 1px solid rgba(59, 130, 246, 0.4);">
@@ -748,7 +749,8 @@
                             </button>
                             ${topic.quiz ? `
                                 <button class="btn-deck-action" onclick="if(window.previewQuiz) window.previewQuiz('${topic.quiz.id}')" title="Preview multiple choice quiz for this topic" style="background: #fef3c7; color: #92400e; border: 1px solid #fde68a;">
-                                    <span>👁️ Preview</span>
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                    <span>Preview</span>
                                 </button>
                             ` : ''}
                             <button class="btn-toggle-upload ${isUploaded ? 'hide-btn' : 'upload-btn'}" 

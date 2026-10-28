@@ -285,7 +285,7 @@
                             <option value="3rd Year">3rd Year</option>
                             <option value="4th Year">4th Year</option>
                         </select>
-                        <span id="subjectsTotalCount" style="font-size: var(--font-size-xs); font-weight: 600; color: var(--color-text-muted);">0 Subjects</span>
+                        <span id="subjectsTotalCount" class="toolbar-count-badge">0 Subjects</span>
                     </div>
                     <div class="toolbar-right">
                         <div class="view-switch">
@@ -360,8 +360,8 @@
             <!-- ==================== TOPICS & TOC PAGE (Requirement #3) ==================== -->
             <div class="page" id="page-topics">
                 <!-- Subject Switcher & Return Bar -->
-                <div style="display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); margin-bottom: var(--space-4); flex-wrap: wrap;">
-                    <div style="display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap;">
+                <div class="classroom-toolbar">
+                    <div class="subject-selector-group">
                         <button class="btn-open-toc" onclick="navigateTo('subjects')">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                                 <line x1="19" y1="12" x2="5" y2="12"/>
@@ -369,10 +369,16 @@
                             </svg>
                             <span>All Subjects</span>
                         </button>
-                        <span style="color: var(--color-text-muted);">|</span>
-                        <div style="display: flex; align-items: center; gap: var(--space-2);">
-                            <span style="font-size: var(--font-size-xs); font-weight: 600; color: var(--color-text-muted); text-transform: uppercase;">Active Course:</span>
-                            <select id="tocSubjectSwitcher" class="filter-select" style="font-weight: 600; color: var(--color-primary);"></select>
+                        <span style="color: var(--color-border);">|</span>
+                        <div class="subject-selector-group">
+                            <label for="tocSubjectSwitcher" class="subject-selector-label">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25">
+                                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                                </svg>
+                                <span>Active Course:</span>
+                            </label>
+                            <select id="tocSubjectSwitcher" class="filter-select subject-selector-control"></select>
                         </div>
                     </div>
                     <div class="toolbar-right">
@@ -475,16 +481,22 @@
             <!-- ==================== QUIZZES PAGE ==================== -->
             <div class="page" id="page-quizzes">
                 <!-- Subject Header Toolbar -->
-                <div class="classroom-toolbar" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
-                    <div style="display: flex; align-items: center; gap: 0.75rem;">
-                        <label for="quizSubjectSelect" style="font-weight: 700; font-size: 0.875rem; color: var(--color-text);">Course Subject:</label>
-                        <select id="quizSubjectSelect" class="form-control" style="min-width: 260px; font-weight: 600;">
+                <div class="classroom-toolbar">
+                    <div class="subject-selector-group">
+                        <label for="quizSubjectSelect" class="subject-selector-label">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25">
+                                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                            </svg>
+                            <span>Course Subject:</span>
+                        </label>
+                        <select id="quizSubjectSelect" class="form-control subject-selector-control">
                             <!-- Populated by JS -->
                         </select>
                     </div>
 
                     <!-- Faculty Actions Bar -->
-                    <div id="quizzesFacultyActions" style="display: none; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                    <div id="quizzesFacultyActions" class="toolbar-actions-group" style="display: none;">
                         <button type="button" class="btn btn-secondary btn-sm" onclick="window.openQuizUploadModal()" title="Upload quiz from computer (.json or .csv)">
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -493,18 +505,30 @@
                             </svg>
                             <span>Upload Quiz File</span>
                         </button>
-                        <a href="/api/quizzes/template/download?format=csv" class="btn btn-secondary btn-sm" title="Download sample CSV format">
-                            <span>📥 CSV Template</span>
+                        <a href="/api/quizzes/template/download?format=csv" class="btn-template-dl" title="Download sample CSV format">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                                <path d="M12 18v-6"/>
+                                <polyline points="9 15 12 18 15 15"/>
+                            </svg>
+                            <span>CSV Template</span>
                         </a>
-                        <a href="/api/quizzes/template/download?format=json" class="btn btn-secondary btn-sm" title="Download sample JSON format">
-                            <span>📥 JSON Template</span>
+                        <a href="/api/quizzes/template/download?format=json" class="btn-template-dl" title="Download sample JSON format">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                                <path d="M12 18v-6"/>
+                                <polyline points="9 15 12 18 15 15"/>
+                            </svg>
+                            <span>JSON Template</span>
                         </a>
                         <button type="button" class="btn btn-primary btn-sm" onclick="window.openCreateQuizModal('')">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                                 <line x1="12" y1="5" x2="12" y2="19"/>
                                 <line x1="5" y1="12" x2="19" y2="12"/>
                             </svg>
-                            <span>+ Create Quiz</span>
+                            <span>Create Quiz</span>
                         </button>
                     </div>
                 </div>
@@ -530,10 +554,16 @@
 
             <!-- ==================== SCORES & GRADEBOOK PAGE ==================== -->
             <div class="page" id="page-scores">
-                <div class="classroom-toolbar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                    <div style="display: flex; align-items: center; gap: 0.75rem;">
-                        <label for="scoresSubjectSelect" style="font-weight: 700; font-size: 0.875rem; color: var(--color-text);">Course Subject:</label>
-                        <select id="scoresSubjectSelect" class="form-control" style="min-width: 260px; font-weight: 600;">
+                <div class="classroom-toolbar">
+                    <div class="subject-selector-group">
+                        <label for="scoresSubjectSelect" class="subject-selector-label">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25">
+                                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                            </svg>
+                            <span>Course Subject:</span>
+                        </label>
+                        <select id="scoresSubjectSelect" class="form-control subject-selector-control">
                             <!-- Populated by JS -->
                         </select>
                     </div>
@@ -546,22 +576,46 @@
 
             <!-- ==================== SUMMARY OF ALL QUIZ SCORES PER STUDENT (WHITEBOARD ITEM #8) ==================== -->
             <div class="page" id="page-matrix">
-                <div class="classroom-toolbar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
-                    <div style="display: flex; align-items: center; gap: 0.75rem;">
-                        <label for="matrixSubjectSelect" style="font-weight: 700; font-size: 0.875rem; color: var(--color-text);">Course Subject:</label>
-                        <select id="matrixSubjectSelect" class="form-control" style="min-width: 260px; font-weight: 600;">
+                <div class="classroom-toolbar">
+                    <div class="subject-selector-group">
+                        <label for="matrixSubjectSelect" class="subject-selector-label">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25">
+                                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                            </svg>
+                            <span>Course Subject:</span>
+                        </label>
+                        <select id="matrixSubjectSelect" class="form-control subject-selector-control">
                             <!-- Populated by JS -->
                         </select>
                     </div>
-                    <div style="display: flex; gap: 0.5rem; align-items: center;">
-                        <button type="button" class="btn btn-secondary btn-sm" onclick="window.printSummaryReport('master-matrix')" title="Print Master Matrix to physical printer">
-                            🖨️ <span>Print</span>
+                    <div class="scores-export-group">
+                        <button type="button" class="btn-export-action btn-print" onclick="window.printSummaryReport('master-matrix')" title="Print Master Matrix to physical printer">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="6 9 6 2 18 2 18 9"/>
+                                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                                <rect x="6" y="14" width="12" height="8"/>
+                            </svg>
+                            <span>Print</span>
                         </button>
-                        <button type="button" class="btn btn-secondary btn-sm" onclick="window.printSummaryReport('master-matrix')" title="Save Master Matrix as PDF">
-                            📄 <span>PDF</span>
+                        <button type="button" class="btn-export-action btn-pdf" onclick="window.printSummaryReport('master-matrix')" title="Save Master Matrix as PDF">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                                <line x1="16" y1="13" x2="8" y2="13"/>
+                                <line x1="16" y1="17" x2="8" y2="17"/>
+                            </svg>
+                            <span>PDF</span>
                         </button>
-                        <button type="button" class="btn btn-primary btn-sm" onclick="window.exportMatrixCSV()" title="Download spreadsheet (.csv) for Excel or Google Sheets">
-                            📊 <span>Spreadsheet (.CSV)</span>
+                        <button type="button" class="btn-export-action btn-csv" onclick="window.exportMatrixCSV()" title="Download spreadsheet (.csv) for Excel or Google Sheets">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                <line x1="3" y1="9" x2="21" y2="9"/>
+                                <line x1="3" y1="15" x2="21" y2="15"/>
+                                <line x1="9" y1="3" x2="9" y2="21"/>
+                                <line x1="15" y1="3" x2="15" y2="21"/>
+                            </svg>
+                            <span>Spreadsheet (.CSV)</span>
                         </button>
                     </div>
                 </div>
