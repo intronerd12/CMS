@@ -11,10 +11,18 @@ const presentations = require('./presentations');
 const app = express();
 const PORT = 3000;
 
-// Custom uploads directory
-const customUploadsDir = path.join(__dirname, 'public', 'uploads', 'custom');
-if (!fs.existsSync(customUploadsDir)) {
-    fs.mkdirSync(customUploadsDir, { recursive: true });
+// Custom uploads directory (serverless safe)
+const isServerless = db.isServerless;
+const customUploadsDir = isServerless
+    ? path.join('/tmp', 'uploads', 'custom')
+    : path.join(__dirname, 'public', 'uploads', 'custom');
+
+try {
+    if (!fs.existsSync(customUploadsDir)) {
+        fs.mkdirSync(customUploadsDir, { recursive: true });
+    }
+} catch (e) {
+    console.warn('[Uploads] Note on uploads directory:', e.message);
 }
 
 const uploadStorage = multer.diskStorage({
@@ -40,6 +48,9 @@ function isStaffUser(req) {
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+if (isServerless) {
+    app.use('/uploads/custom', express.static(customUploadsDir));
+}
 
 // ==================== AUTH ROUTES ====================
 
@@ -599,9 +610,9 @@ app.post('/api/quizzes', (req, res) => {
             return res.status(400).json({ error: 'Topic, Subject, and Quiz Title are required' });
         }
 
-        if (!Array.isArray(questions) || questions.length < 10 || questions.length > 30) {
+        if (!Array.isArray(questions) || questions.length < 1 || questions.length > 20) {
             return res.status(400).json({
-                error: `Requirement: Quiz must have between 10 and 30 multiple-choice questions. Current count: ${Array.isArray(questions) ? questions.length : 0}.`
+                error: `Requirement: Quiz can have up to 20 multiple-choice questions (Whiteboard Item 5: max 20). Current count: ${Array.isArray(questions) ? questions.length : 0}.`
             });
         }
 
@@ -630,7 +641,7 @@ app.post('/api/quizzes', (req, res) => {
             subjectId,
             title: title.trim(),
             description: description ? description.trim() : null,
-            timeLimitMinutes: Number(timeLimitMinutes) || 15,
+            timeLimitMinutes: Number(timeLimitMinutes) || 10,
             passingScorePercent: Number(passingScorePercent) || 75.0,
             shuffleChoices: shuffleChoices !== false,
             createdBy: createdBy || null
@@ -658,9 +669,9 @@ app.put('/api/quizzes/:id', (req, res) => {
             return res.status(400).json({ error: 'Quiz title is required' });
         }
 
-        if (!Array.isArray(questions) || questions.length < 10 || questions.length > 30) {
+        if (!Array.isArray(questions) || questions.length < 1 || questions.length > 20) {
             return res.status(400).json({
-                error: `Requirement: Quiz must have between 10 and 30 multiple-choice questions. Current count: ${Array.isArray(questions) ? questions.length : 0}.`
+                error: `Requirement: Quiz can have up to 20 multiple-choice questions (Whiteboard Item 5: max 20). Current count: ${Array.isArray(questions) ? questions.length : 0}.`
             });
         }
 
@@ -668,7 +679,7 @@ app.put('/api/quizzes/:id', (req, res) => {
             id,
             title: title.trim(),
             description: description ? description.trim() : null,
-            timeLimitMinutes: Number(timeLimitMinutes) || 15,
+            timeLimitMinutes: Number(timeLimitMinutes) || 10,
             passingScorePercent: Number(passingScorePercent) || 75.0,
             shuffleChoices: shuffleChoices !== false
         }, questions);
@@ -798,10 +809,10 @@ app.post('/api/quizzes/upload', quizUpload.single('file'), (req, res) => {
             return res.status(400).json({ error: 'Unsupported file type. Please upload a .json or .csv quiz file.' });
         }
 
-        // Validate question count (10 to 30)
-        if (questions.length < 10 || questions.length > 30) {
+        // Validate question count (max 20 questions as per whiteboard item 5)
+        if (questions.length < 1 || questions.length > 20) {
             return res.status(400).json({
-                error: `Requirement check failed: Quiz must have between 10 and 30 questions. The uploaded file has ${questions.length} questions.`
+                error: `Requirement check failed: Quiz must have between 1 and 20 questions (Whiteboard Item 5: max 20). The uploaded file has ${questions.length} questions.`
             });
         }
 
@@ -1003,6 +1014,10 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
+app.get('/login', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
+
 app.get('/register', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'register.html'));
 });
@@ -1011,8 +1026,13 @@ app.get('/dashboard', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
-// Start Server
-app.listen(PORT, () => {
-    console.log(`LMS Server running at http://127.0.0.1:${PORT}`);
-    console.log(`Database: SQLite (data/lms.db)`);
-});
+// Export app for serverless (Vercel)
+module.exports = app;
+
+// Start Server locally if run directly
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`LMS Server running at http://127.0.0.1:${PORT}`);
+        console.log(`Database: SQLite (${db.DB_PATH})`);
+    });
+}

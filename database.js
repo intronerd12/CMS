@@ -6,18 +6,54 @@ const { v4: uuidv4 } = require('uuid');
 const { SYLLABUS_14_TOPICS } = require('./quiz-data');
 const presentations = require('./presentations');
 
-// Ensure data directory exists
-const DATA_DIR = path.join(__dirname, 'data');
-if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+const isServerless = Boolean(
+    process.env.VERCEL ||
+    process.env.AWS_LAMBDA_FUNCTION_NAME ||
+    process.env.NOW_REGION ||
+    process.env.LAMBDA_TASK_ROOT
+);
+
+function resolveDatabasePath() {
+    if (isServerless) {
+        const tmpDbPath = path.join('/tmp', 'lms.db');
+        const bundledDbPath = path.join(__dirname, 'data', 'lms.db');
+
+        // Copy bundled SQLite database to writable /tmp if not yet present in this lambda container
+        if (!fs.existsSync(tmpDbPath) && fs.existsSync(bundledDbPath)) {
+            try {
+                fs.copyFileSync(bundledDbPath, tmpDbPath);
+                console.log('[SQLite] Copied bundled database to /tmp/lms.db for Vercel');
+            } catch (err) {
+                console.error('[SQLite] Could not copy bundled database to /tmp:', err.message);
+            }
+        }
+        return tmpDbPath;
+    }
+
+    const localDataDir = path.join(__dirname, 'data');
+    if (!fs.existsSync(localDataDir)) {
+        try {
+            fs.mkdirSync(localDataDir, { recursive: true });
+        } catch (e) {
+            console.warn('[SQLite] Could not create local data dir, falling back to /tmp:', e.message);
+            return path.join('/tmp', 'lms.db');
+        }
+    }
+    return path.join(localDataDir, 'lms.db');
 }
 
-const DB_PATH = path.join(DATA_DIR, 'lms.db');
+const DB_PATH = resolveDatabasePath();
 const db = new Database(DB_PATH);
 
-// Enable foreign keys and WAL mode for better concurrency
+// Enable foreign keys
 db.pragma('foreign_keys = ON');
-db.pragma('journal_mode = WAL');
+
+// Use DELETE journal mode in serverless to avoid persistent -wal lock issues across lambda freezes, WAL locally
+if (isServerless) {
+    db.pragma('journal_mode = DELETE');
+} else {
+    db.pragma('journal_mode = WAL');
+}
 
 // ==================== SCHEMA INITIALIZATION ====================
 
@@ -301,7 +337,7 @@ function seedFull14TopicsAndQuizzes() {
 
 function seedAndMigrate() {
     // 1. Migrate existing users.json if present
-    const usersJsonPath = path.join(DATA_DIR, 'users.json');
+    const usersJsonPath = path.join(__dirname, 'data', 'users.json');
     if (fs.existsSync(usersJsonPath)) {
         try {
             const raw = fs.readFileSync(usersJsonPath, 'utf8');
@@ -333,7 +369,55 @@ function seedAndMigrate() {
         }
     }
 
-    // 2. Clean up any admin accounts - only student and faculty roles exist
+    // 2. Ensure standard demo accounts always exist
+    try {
+        const insertDemoUser = db.prepare(`
+            INSERT OR IGNORE INTO users (id, username, email, password, firstName, lastName, role, createdAt, isActive)
+            VALUES (@id, @username, @email, @password, @firstName, @lastName, @role, @createdAt, 1)
+        `);
+
+        // Faculty: prof_santos / faculty123
+        const facultyHash = bcrypt.hashSync('faculty123', 10);
+        insertDemoUser.run({
+            id: 'fa720e14-7d52-4a0b-93f5-7d8b524cb111',
+            username: 'prof_santos',
+            email: 'maria.santos@university.edu',
+            password: facultyHash,
+            firstName: 'Maria',
+            lastName: 'Santos',
+            role: 'faculty',
+            createdAt: new Date().toISOString()
+        });
+
+        // Student: student_juan / student123
+        const studentHash = bcrypt.hashSync('student123', 10);
+        insertDemoUser.run({
+            id: 'feb675b3-d156-484f-b00d-d07941e2dc5f',
+            username: 'student_juan',
+            email: 'juan.delacruz@student.university.edu',
+            password: studentHash,
+            firstName: 'Juan',
+            lastName: 'Dela Cruz',
+            role: 'student',
+            createdAt: new Date().toISOString()
+        });
+
+        // Student: sqlite_student / student123
+        insertDemoUser.run({
+            id: 'd1b3e379-66d7-42a3-83b5-d308a4c0105f',
+            username: 'sqlite_student',
+            email: 'carlo.reyes@student.university.edu',
+            password: studentHash,
+            firstName: 'Carlo',
+            lastName: 'Reyes',
+            role: 'student',
+            createdAt: new Date().toISOString()
+        });
+    } catch (err) {
+        console.error('[SQLite] Error ensuring demo users:', err.message);
+    }
+
+    // 3. Clean up any admin accounts - only student and faculty roles exist
     try {
         db.prepare("DELETE FROM users WHERE role = 'admin' OR username = 'admin'").run();
         db.prepare("UPDATE quizzes SET timeLimitMinutes = 10 WHERE timeLimitMinutes = 15").run();
@@ -341,7 +425,7 @@ function seedAndMigrate() {
         // Ignore if clean
     }
 
-    // 3. Seed 14 topics & quizzes
+    // 4. Seed 14 topics & quizzes
     seedFull14TopicsAndQuizzes();
 }
 
@@ -510,6 +594,8 @@ const stmtGetTotalScoresCount = db.prepare('SELECT COUNT(*) AS count FROM scores
 
 module.exports = {
     db,
+    DB_PATH,
+    isServerless,
     shuffleArray,
 
     // Users
@@ -656,8 +742,8 @@ module.exports = {
         return { ...quiz, questions };
     },
     createQuiz: (quizData, questions = []) => {
-        if (!questions || questions.length < 10 || questions.length > 30) {
-            throw new Error(`Quiz must have between 10 and 30 questions. You provided ${questions ? questions.length : 0}.`);
+        if (!questions || questions.length < 1 || questions.length > 20) {
+            throw new Error(`Quiz can have up to 20 questions (Whiteboard Item 5: max 20). You provided ${questions ? questions.length : 0}.`);
         }
         const now = new Date().toISOString();
         const quizId = quizData.id || uuidv4();
@@ -694,8 +780,8 @@ module.exports = {
         return module.exports.getQuizById(quizId, true);
     },
     updateQuiz: (quizData, questions = []) => {
-        if (!questions || questions.length < 10 || questions.length > 30) {
-            throw new Error(`Quiz must have between 10 and 30 questions. You provided ${questions ? questions.length : 0}.`);
+        if (!questions || questions.length < 1 || questions.length > 20) {
+            throw new Error(`Quiz can have up to 20 questions (Whiteboard Item 5: max 20). You provided ${questions ? questions.length : 0}.`);
         }
         const now = new Date().toISOString();
 

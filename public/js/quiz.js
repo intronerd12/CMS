@@ -58,6 +58,14 @@
     // ============================================
     document.addEventListener('DOMContentLoaded', () => {
         initQuizEventListeners();
+        const hash = (window.location.hash || '').replace('#', '');
+        if (hash === 'matrix' && typeof window.loadMatrixPage === 'function') {
+            window.loadMatrixPage();
+        } else if (hash === 'scores' && typeof window.loadScoresPage === 'function') {
+            window.loadScoresPage();
+        } else if (hash === 'quizzes' && typeof window.loadQuizzesPage === 'function') {
+            window.loadQuizzesPage();
+        }
     });
 
     function initQuizEventListeners() {
@@ -70,11 +78,20 @@
             });
         }
 
-        // Scores Subject Selector
+        // Scores Subject Selector (Item 6)
         const scoresSubSelect = document.getElementById('scoresSubjectSelect');
         if (scoresSubSelect) {
             scoresSubSelect.addEventListener('change', (e) => {
                 loadScoresForSubject(e.target.value);
+            });
+        }
+
+        // Master Matrix Subject Selector (Item 8)
+        const matrixSubSelect = document.getElementById('matrixSubjectSelect');
+        if (matrixSubSelect) {
+            matrixSubSelect.addEventListener('change', (e) => {
+                currentSubjectId = e.target.value;
+                loadMatrixForSubject(e.target.value);
             });
         }
 
@@ -767,32 +784,33 @@
                 </div>`;
         } else {
             heroHtml = `
-                <div class="result-hero-banner failed">
-                    <span class="result-hero-badge">
+                <div class="result-hero-banner failed" style="border-left: 6px solid #ef4444; background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);">
+                    <span class="result-hero-badge" style="background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5;">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                             <circle cx="12" cy="12" r="10"/>
                             <line x1="12" y1="8" x2="12" y2="12"/>
                             <line x1="12" y1="16" x2="12.01" y2="16"/>
                         </svg>
-                        PASSING SCORE NOT REACHED
+                        FAILED QUIZ • CANNOT PROCEED TO NEXT TOPIC (REPEAT TOPIC - ITEM 5)
                     </span>
-                    <h2 class="result-hero-title">Keep Going, ${user ? user.firstName : 'Student'}!</h2>
-                    <p class="result-hero-subtitle">
-                        You scored <strong>${percentage}%</strong>. The professor requires a minimum score of <strong>${passReq}%</strong> to unlock the next topic in the sequence. Please review the PowerPoint lecture slides and retake the quiz.
+                    <h2 class="result-hero-title" style="color: #991b1b;">Cannot Proceed to Next Topic</h2>
+                    <p class="result-hero-subtitle" style="color: #7f1d1d;">
+                        Whiteboard Requirement #5: You scored <strong>${percentage}%</strong>. The required passing threshold is <strong>${passReq}%</strong>.
+                        <br>⚠️ <strong>You cannot proceed to the next topic until you pass this quiz.</strong> Please repeat this topic and review the lecture presentation before retaking the test.
                     </p>
 
                     <div class="result-stats-row">
                         <div class="result-stat-box">
-                            <div class="result-stat-value">${score} / ${total}</div>
+                            <div class="result-stat-value" style="color: #dc2626;">${score} / ${total}</div>
                             <div class="result-stat-label">Correct Answers</div>
                         </div>
                         <div class="result-stat-box">
-                            <div class="result-stat-value">${percentage}%</div>
-                            <div class="result-stat-label">Final Grade</div>
+                            <div class="result-stat-value" style="color: #dc2626;">${percentage}%</div>
+                            <div class="result-stat-label">Your Grade</div>
                         </div>
                         <div class="result-stat-box">
-                            <div class="result-stat-value">${passReq}%</div>
-                            <div class="result-stat-label">Required Mark</div>
+                            <div class="result-stat-value" style="color: #15803d;">${passReq}%</div>
+                            <div class="result-stat-label">Passing Mark (75%)</div>
                         </div>
                         <div class="result-stat-box">
                             <div class="result-stat-value">${timeText}</div>
@@ -801,15 +819,15 @@
                     </div>
 
                     <div class="result-actions-row">
-                        <button type="button" class="btn-retake-quiz" onclick="window.startQuizAttempt('${activeQuiz ? activeQuiz.id : ''}')">
+                        <button type="button" class="btn-proceed-topic" style="background: #dc2626; border-color: #b91c1c; color: #fff;" onclick="window.repeatTopicLesson('${result.scoreRecord ? result.scoreRecord.topicId : ''}')">
+                            <span>🔄 Repeat Topic (Review Lessons & Presentation)</span>
+                        </button>
+                        <button type="button" class="btn-retake-quiz" onclick="window.startQuizAttempt('${activeQuiz ? activeQuiz.id : (result.scoreRecord ? result.scoreRecord.quizId : '')}')">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="1 4 1 10 7 10"/>
                                 <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
                             </svg>
-                            Retake Quiz Now
-                        </button>
-                        <button type="button" class="btn-download-cert" onclick="window.navigateTo('topics')">
-                            📖 Review Topic Slides
+                            <span>Retake Quiz Now</span>
                         </button>
                         <button type="button" class="btn-download-cert" onclick="window.openCertificateModal('${scoreId}')">
                             📄 Download Grade Slip Record
@@ -817,6 +835,14 @@
                     </div>
                 </div>`;
         }
+
+    window.repeatTopicLesson = function (topicId) {
+        if (topicId && typeof window.openTopicSlides === 'function') {
+            window.openTopicSlides(topicId);
+        } else {
+            window.navigateTo('topics');
+        }
+    };
 
         // Detailed Question Review Breakdown
         let reviewHtml = '';
@@ -1111,8 +1137,15 @@
 
     function updateActiveTabContent() {
         const tabBox = document.getElementById('scoresActiveTabContent');
-        if (!tabBox) return;
-        tabBox.innerHTML = scoresCurrentTab === 'topic-summary' ? renderTopicSummaryHtml() : renderMasterMatrixHtml();
+        if (tabBox) {
+            tabBox.innerHTML = scoresCurrentTab === 'topic-summary' ? renderTopicSummaryHtml() : renderMasterMatrixHtml();
+        }
+        const matrixPageBox = document.getElementById('matrixPageContent');
+        if (matrixPageBox) {
+            if (isFacultyUser()) {
+                renderMasterMatrixPageUI();
+            }
+        }
     }
 
     // ============================================
@@ -1449,6 +1482,417 @@
                             </table>
                         </div>
                     `}
+                </div>
+            </div>
+        `;
+    }
+
+    // ============================================
+    // WHITEBOARD ITEM #8: DEDICATED MATRIX PAGE
+    // Summary of ALL Quiz Scores per Student
+    // ============================================
+
+    window.loadMatrixPage = async function () {
+        const user = getCurrentUser();
+        if (!user) return;
+
+        const container = document.getElementById('matrixPageContent');
+        if (!container) return;
+
+        try {
+            // Populate subject dropdown for matrix
+            const subRes = await fetch(`/api/subjects?role=${encodeURIComponent(user.role || 'student')}`, {
+                headers: { 'x-user-role': user.role || 'student' }
+            });
+            const subData = await subRes.json();
+            const subjects = subData.subjects || [];
+
+            const selectEl = document.getElementById('matrixSubjectSelect');
+            if (selectEl && subjects.length > 0) {
+                selectEl.innerHTML = subjects.map(s => `
+                    <option value="${s.id}" ${s.id === currentSubjectId ? 'selected' : ''}>${s.code} - ${s.name} (${s.term || s.year || ''})</option>
+                `).join('');
+                if (!currentSubjectId) currentSubjectId = subjects[0].id;
+                selectEl.value = currentSubjectId;
+            }
+
+            await loadMatrixForSubject(currentSubjectId || (subjects[0] ? subjects[0].id : null));
+        } catch (err) {
+            console.error('Error loading matrix page:', err);
+            showToast('Failed to load matrix page', 'error');
+        }
+    };
+
+    async function loadMatrixForSubject(subjectId) {
+        if (!subjectId) return;
+        currentSubjectId = subjectId;
+        const user = getCurrentUser();
+        const isFaculty = isFacultyUser();
+        const matrixBox = document.getElementById('matrixPageContent');
+        if (!matrixBox) return;
+
+        matrixBox.innerHTML = `
+            <div style="text-align: center; padding: 3rem; color: var(--color-text-muted);">
+                <div class="spinner" style="margin: 0 auto 1rem;"></div>
+                <p>Loading Cumulative Quiz Performance Matrix (Whiteboard Item 8)...</p>
+            </div>
+        `;
+
+        try {
+            if (isFaculty) {
+                const res = await fetch(`/api/subjects/${subjectId}/matrix`);
+                const matData = await res.json();
+                rawFacultyMatrix = matData || { topics: [], matrix: [] };
+                renderMasterMatrixPageUI();
+            } else {
+                const [scoresRes, subRes] = await Promise.all([
+                    fetch(`/api/scores/student/${user.id}`),
+                    fetch(`/api/subjects/${subjectId}`)
+                ]);
+                const scoresData = await scoresRes.json();
+                const subData = await subRes.json();
+                rawStudentScores = scoresData.scores || [];
+                renderStudentMatrixPageUI(subData.subject);
+            }
+        } catch (err) {
+            console.error('Error loading matrix for subject:', err);
+            matrixBox.innerHTML = `
+                <div class="empty-state-full" style="padding: 2.5rem 1rem;">
+                    <h4>Failed to load quiz performance matrix</h4>
+                    <p>${escapeHtml(err.message || 'Please check your connection and try again.')}</p>
+                </div>
+            `;
+        }
+    }
+
+    function renderMasterMatrixPageUI() {
+        const matrixBox = document.getElementById('matrixPageContent');
+        if (!matrixBox) return;
+
+        const matrixList = getFilteredAndSortedMatrix();
+        const allStudents = (rawFacultyMatrix && Array.isArray(rawFacultyMatrix.matrix)) ? rawFacultyMatrix.matrix : [];
+        const topics = (rawFacultyMatrix && rawFacultyMatrix.topics) || [];
+        const totalStudents = allStudents.length;
+        const classAvg = totalStudents > 0 
+            ? Math.round(allStudents.reduce((acc, s) => acc + (s.overallAverage || 0), 0) / totalStudents) 
+            : 0;
+        const completedCount = allStudents.filter(s => s.isCompleted).length;
+        const topStudent = [...allStudents].sort((a, b) => (b.overallAverage || 0) - (a.overallAverage || 0))[0] || null;
+
+        matrixBox.innerHTML = `
+            <!-- Whiteboard Item #8 Requirement Banner -->
+            <div class="matrix-hero-banner">
+                <div class="matrix-hero-left">
+                    <span class="matrix-req-badge">Whiteboard Requirement #8</span>
+                    <h2 class="matrix-hero-title">Summary of ALL Quiz Scores per Student</h2>
+                    <p class="matrix-hero-desc">
+                        Cumulative assessment ledger tracking individual performance across all curriculum topics (Topics 1 to ${topics.length || 14}).
+                        Sequential progression requires ≥ 75% on each topic's quiz.
+                    </p>
+                </div>
+                <div class="matrix-hero-right">
+                    <div class="matrix-badge-pill">🔤 Sorted by Surname & Score</div>
+                    <div class="matrix-badge-pill">🖨️ Print • 📄 PDF • 📊 Spreadsheet</div>
+                </div>
+            </div>
+
+            <!-- KPI Analytics Grid -->
+            <div class="matrix-kpi-grid">
+                <div class="matrix-stat-card">
+                    <div class="matrix-stat-icon" style="background: rgba(37, 99, 235, 0.1); color: #2563eb;">👥</div>
+                    <div class="matrix-stat-body">
+                        <div class="matrix-stat-value">${totalStudents}</div>
+                        <div class="matrix-stat-label">Enrolled Students</div>
+                    </div>
+                </div>
+                <div class="matrix-stat-card">
+                    <div class="matrix-stat-icon" style="background: rgba(16, 185, 129, 0.1); color: #059669;">⭐</div>
+                    <div class="matrix-stat-body">
+                        <div class="matrix-stat-value" style="color: ${classAvg >= 75 ? '#059669' : '#d97706'};">${classAvg}%</div>
+                        <div class="matrix-stat-label">Class Quiz Average</div>
+                    </div>
+                </div>
+                <div class="matrix-stat-card">
+                    <div class="matrix-stat-icon" style="background: rgba(139, 92, 246, 0.1); color: #7c3aed;">🏆</div>
+                    <div class="matrix-stat-body">
+                        <div class="matrix-stat-value">${completedCount} <span style="font-size: 0.85rem; color: var(--color-text-muted);">/ ${totalStudents}</span></div>
+                        <div class="matrix-stat-label">Curriculum Mastered</div>
+                    </div>
+                </div>
+                <div class="matrix-stat-card">
+                    <div class="matrix-stat-icon" style="background: rgba(245, 158, 11, 0.1); color: #d97706;">👑</div>
+                    <div class="matrix-stat-body">
+                        <div class="matrix-stat-value" style="font-size: 1.15rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${topStudent ? `${topStudent.lastName}, ${topStudent.firstName}` : 'None'}">
+                            ${topStudent ? `${escapeHtml(topStudent.lastName)}, ${escapeHtml(topStudent.firstName || '')}` : '—'}
+                        </div>
+                        <div class="matrix-stat-label">Top Performer (${topStudent ? topStudent.overallAverage + '%' : 'N/A'})</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Matrix Filter, Search and Export Toolbar -->
+            <div class="scores-controls-row" style="margin-top: 1.5rem;">
+                <div class="scores-filters-group">
+                    <input type="text" class="form-control" style="max-width: 250px;" placeholder="Search student name or ID..." value="${escapeHtml(matrixSearch)}" oninput="window.setMatrixSearch(this.value)">
+
+                    <select class="form-control" style="max-width: 260px; font-weight: 700; color: var(--color-primary);" onchange="window.setMatrixSort(this.value)">
+                        <option value="surname-asc" ${matrixSort === 'surname-asc' ? 'selected' : ''}>🔤 Sorted by Surname (A → Z)</option>
+                        <option value="surname-desc" ${matrixSort === 'surname-desc' ? 'selected' : ''}>🔤 Sorted by Surname (Z → A)</option>
+                        <option value="avg-desc" ${matrixSort === 'avg-desc' ? 'selected' : ''}>⭐ Sorted by Average Grade (High → Low)</option>
+                        <option value="avg-asc" ${matrixSort === 'avg-asc' ? 'selected' : ''}>⭐ Sorted by Average Grade (Low → High)</option>
+                        <option value="completed-desc" ${matrixSort === 'completed-desc' ? 'selected' : ''}>🏆 Sorted by Topics Passed</option>
+                    </select>
+                </div>
+
+                <div class="scores-export-group">
+                    <button type="button" class="btn-export-action" onclick="window.printSummaryReport('master-matrix')" title="Print Master Matrix to physical printer">
+                        🖨️ <span>Print</span>
+                    </button>
+                    <button type="button" class="btn-export-action btn-pdf" onclick="window.printSummaryReport('master-matrix')" title="Save Master Matrix as PDF">
+                        📄 <span>PDF</span>
+                    </button>
+                    <button type="button" class="btn-export-action btn-csv" onclick="window.exportMatrixCSV()" title="Download master matrix (.csv) for Excel or Google Sheets">
+                        📊 <span>Spreadsheet (.CSV)</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Full Master Cumulative Matrix Table -->
+            <div class="card" style="margin-top: 1rem; border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-sm);">
+                <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; background: #fafafa; border-bottom: 1px solid var(--color-border); padding: 1rem 1.25rem;">
+                    <div>
+                        <h3 style="margin: 0; font-size: 1.1rem; font-weight: 800; color: var(--color-text);">Master Performance Matrix: All Topics</h3>
+                        <div style="font-size: 0.78rem; color: var(--color-text-muted); margin-top: 2px;">
+                            Shows each student's highest verified quiz score for each curriculum module.
+                        </div>
+                    </div>
+                    <span class="badge badge-primary" style="font-size: 0.8125rem; padding: 0.4rem 0.75rem;">
+                        ${matrixList.length} of ${totalStudents} Student${totalStudents !== 1 ? 's' : ''} Displayed
+                    </span>
+                </div>
+                <div class="card-body" style="padding: 0;">
+                    ${matrixList.length === 0 ? `
+                        <div class="empty-state-full" style="padding: 3rem 1rem;">
+                            <h4>No matching students found</h4>
+                            <p>Try adjusting your search query or sorting options.</p>
+                        </div>
+                    ` : `
+                        <div class="table-wrapper" style="overflow-x: auto;">
+                            <table class="matrix-table">
+                                <thead>
+                                    <tr>
+                                        <th class="student-col">Student Name (Surname First)</th>
+                                        ${topics.map(t => `
+                                            <th title="${escapeHtml(t.title)} (Topic ${t.orderIndex})">T${t.orderIndex}</th>
+                                        `).join('')}
+                                        <th>Passed</th>
+                                        <th>Average Grade</th>
+                                        <th>Curriculum Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${matrixList.map(st => `
+                                        <tr>
+                                            <td class="student-col">
+                                                <strong style="color: var(--color-primary); font-size: 0.875rem;">${escapeHtml(st.lastName)}, ${escapeHtml(st.firstName)}</strong>
+                                                <br><small style="color: var(--color-text-muted);">${escapeHtml(st.username)} • ${escapeHtml(st.email || '')}</small>
+                                            </td>
+                                            ${(st.topicResults || []).map(r => `
+                                                <td>
+                                                    ${r.score !== null ? `
+                                                        <span class="matrix-topic-cell ${r.isPassed ? 'passed' : 'failed'}" title="Topic ${r.orderIndex}: ${r.score}% (${r.isPassed ? 'Passed ✓' : 'Needs Retake ✗'})">
+                                                            ${r.score}%
+                                                        </span>
+                                                    ` : `
+                                                        <span class="matrix-topic-cell unattempted" title="Not attempted yet">—</span>
+                                                    `}
+                                                </td>
+                                            `).join('')}
+                                            <td>
+                                                <strong style="font-size: 0.875rem;">${st.passedCount} / ${st.totalTopics}</strong>
+                                                <div style="font-size: 0.7rem; color: var(--color-text-muted);">${st.completionRate}%</div>
+                                            </td>
+                                            <td>
+                                                <strong style="font-size: 0.95rem; color: ${st.overallAverage >= 75 ? '#059669' : st.overallAverage > 0 ? '#d97706' : '#6b7280'};">
+                                                    ${st.overallAverage}%
+                                                </strong>
+                                            </td>
+                                            <td>
+                                                ${st.isCompleted ? `
+                                                    <span class="quiz-status-badge status-passed">★ Graduated</span>
+                                                ` : st.passedCount > 0 ? `
+                                                    <span class="quiz-status-badge status-available">At Topic ${st.passedCount + 1}</span>
+                                                ` : `
+                                                    <span class="quiz-status-badge status-locked">At Topic 1</span>
+                                                `}
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `}
+                </div>
+            </div>
+        `;
+    }
+
+    function renderStudentMatrixPageUI(subject) {
+        const matrixBox = document.getElementById('matrixPageContent');
+        if (!matrixBox) return;
+
+        const subName = subject ? subject.name : 'Curriculum Course';
+        const subCode = subject ? subject.code : 'CMS';
+        const subTerm = subject ? subject.term : '1st Semester';
+        const subYear = subject ? subject.year : '2024-2025';
+        const topics = (subject && subject.topics) || [];
+        const totalTopics = topics.length;
+
+        // Group student's highest scores by topic
+        const topicScoresMap = {};
+        rawStudentScores.forEach(s => {
+            if (!topicScoresMap[s.topicId] || s.percentage > topicScoresMap[s.topicId].percentage) {
+                topicScoresMap[s.topicId] = s;
+            }
+        });
+
+        const passedTopicsCount = Object.values(topicScoresMap).filter(s => s.passed).length;
+        const completionRate = totalTopics > 0 ? Math.round((passedTopicsCount / totalTopics) * 100) : 0;
+        const scoreValues = Object.values(topicScoresMap).map(s => s.percentage);
+        const avgScore = scoreValues.length > 0 ? Math.round(scoreValues.reduce((a, b) => a + b, 0) / scoreValues.length) : 0;
+        const isGraduated = totalTopics > 0 && passedTopicsCount >= totalTopics;
+
+        matrixBox.innerHTML = `
+            <!-- Whiteboard Item #8 Requirement Banner for Student -->
+            <div class="matrix-hero-banner">
+                <div class="matrix-hero-left">
+                    <span class="matrix-req-badge">Whiteboard Requirement #8</span>
+                    <h2 class="matrix-hero-title">My Cumulative Quiz Summary</h2>
+                    <p class="matrix-hero-desc">
+                        Official academic performance ledger for <strong>${escapeHtml(subCode)}: ${escapeHtml(subName)}</strong> (${escapeHtml(subTerm)}, ${escapeHtml(subYear)}).
+                        Passing score: <strong>75%</strong> on each topic.
+                    </p>
+                </div>
+                <div class="matrix-hero-right">
+                    <div class="matrix-badge-pill">🎓 Student Transcript</div>
+                    <div class="matrix-badge-pill">🖨️ Print • 📄 PDF • 📊 Spreadsheet</div>
+                </div>
+            </div>
+
+            <!-- Student KPI Summary -->
+            <div class="matrix-kpi-grid">
+                <div class="matrix-stat-card">
+                    <div class="matrix-stat-icon" style="background: rgba(37, 99, 235, 0.1); color: #2563eb;">📚</div>
+                    <div class="matrix-stat-body">
+                        <div class="matrix-stat-value">${passedTopicsCount} <span style="font-size: 0.85rem; color: var(--color-text-muted);">/ ${totalTopics}</span></div>
+                        <div class="matrix-stat-label">Modules Passed (${completionRate}%)</div>
+                    </div>
+                </div>
+                <div class="matrix-stat-card">
+                    <div class="matrix-stat-icon" style="background: rgba(16, 185, 129, 0.1); color: #059669;">⭐</div>
+                    <div class="matrix-stat-body">
+                        <div class="matrix-stat-value" style="color: ${avgScore >= 75 ? '#059669' : '#d97706'};">${avgScore}%</div>
+                        <div class="matrix-stat-label">My Cumulative Average</div>
+                    </div>
+                </div>
+                <div class="matrix-stat-card">
+                    <div class="matrix-stat-icon" style="background: rgba(139, 92, 246, 0.1); color: #7c3aed;">🎯</div>
+                    <div class="matrix-stat-body">
+                        <div class="matrix-stat-value" style="font-size: 1.15rem; color: ${isGraduated ? '#059669' : '#2563eb'};">
+                            ${isGraduated ? '★ Mastered All' : `At Topic ${passedTopicsCount + 1}`}
+                        </div>
+                        <div class="matrix-stat-label">Sequential Status</div>
+                    </div>
+                </div>
+                <div class="matrix-stat-card">
+                    <div class="matrix-stat-icon" style="background: rgba(245, 158, 11, 0.1); color: #d97706;">📝</div>
+                    <div class="matrix-stat-body">
+                        <div class="matrix-stat-value">${rawStudentScores.length}</div>
+                        <div class="matrix-stat-label">Total Quiz Attempts</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Student Action Bar -->
+            <div class="scores-controls-row" style="margin-top: 1.5rem;">
+                <div>
+                    <h3 style="margin: 0; font-size: 1.1rem; font-weight: 800;">Topic by Topic Mastery Ledger</h3>
+                    <div style="font-size: 0.78rem; color: var(--color-text-muted);">Sequential unlocking history and grades</div>
+                </div>
+                <div class="scores-export-group">
+                    <button type="button" class="btn-export-action" onclick="window.printSummaryReport('student-transcript')" title="Print transcript">
+                        🖨️ <span>Print</span>
+                    </button>
+                    <button type="button" class="btn-export-action btn-pdf" onclick="window.printSummaryReport('student-transcript')" title="Save as PDF">
+                        📄 <span>PDF</span>
+                    </button>
+                    <button type="button" class="btn-export-action btn-csv" onclick="window.exportStudentTranscriptCSV()" title="Download Spreadsheet (.CSV)">
+                        📊 <span>Spreadsheet (.CSV)</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Student Topics Table -->
+            <div class="card" style="margin-top: 1rem; border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-sm);">
+                <div class="card-body" style="padding: 0;">
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Topic #</th>
+                                    <th>Curriculum Lesson</th>
+                                    <th>Highest Score</th>
+                                    <th>Passing Standard</th>
+                                    <th>Verdict</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${topics.map(t => {
+                                    const bestAttempt = topicScoresMap[t.id];
+                                    const isPassed = bestAttempt && bestAttempt.passed;
+                                    const isAvailable = t.orderIndex <= passedTopicsCount + 1;
+                                    return `
+                                        <tr>
+                                            <td><strong>Topic ${t.orderIndex}</strong></td>
+                                            <td>
+                                                <strong>${escapeHtml(t.title)}</strong>
+                                                ${t.description ? `<br><small style="color: var(--color-text-muted);">${escapeHtml(t.description)}</small>` : ''}
+                                            </td>
+                                            <td>
+                                                ${bestAttempt ? `
+                                                    <strong style="color: ${isPassed ? '#059669' : '#dc2626'}; font-size: 0.95rem;">
+                                                        ${bestAttempt.percentage}% (${bestAttempt.score}/${bestAttempt.totalQuestions})
+                                                    </strong>
+                                                ` : '<span style="color: var(--color-text-muted);">Not Taken Yet</span>'}
+                                            </td>
+                                            <td>75% Passing Mark</td>
+                                            <td>
+                                                ${isPassed ? `
+                                                    <span class="quiz-status-badge status-passed">Passed ✓</span>
+                                                ` : bestAttempt ? `
+                                                    <span class="quiz-status-badge status-failed">Needs Retake ✗</span>
+                                                ` : isAvailable ? `
+                                                    <span class="quiz-status-badge status-available">Unlocked</span>
+                                                ` : `
+                                                    <span class="quiz-status-badge status-locked">🔒 Locked</span>
+                                                `}
+                                            </td>
+                                            <td>
+                                                ${bestAttempt ? `
+                                                    <button type="button" class="btn btn-secondary btn-sm" onclick="window.viewPastResult('${bestAttempt.id}')">Review</button>
+                                                ` : isAvailable ? `
+                                                    <button type="button" class="btn btn-primary btn-sm" onclick="window.navigateTo('quizzes')">Take Quiz</button>
+                                                ` : `
+                                                    <span style="font-size: 0.75rem; color: var(--color-text-muted);">Pass Topic ${t.orderIndex - 1} First</span>
+                                                `}
+                                            </td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         `;
@@ -1922,8 +2366,8 @@
 
         const count = builderQuestions.length;
         if (counter) {
-            counter.textContent = `Questions: ${count} / 30 (Min: 10, Max: 30)`;
-            if (count < 10 || count > 30) {
+            counter.textContent = `Questions: ${count} / 20 (Whiteboard Item 5: 10 min; max 20)`;
+            if (count < 1 || count > 20) {
                 counter.style.color = 'var(--color-error)';
             } else {
                 counter.style.color = '#10b981';
@@ -1936,10 +2380,10 @@
                 <div class="card" style="margin-bottom: 1rem; padding: 1.25rem;" id="builderQCard-${qIndex}">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
                         <span style="font-size: 0.8125rem; font-weight: 700; color: var(--color-primary);">Question #${qIndex + 1}</span>
-                        ${builderQuestions.length > 10 ? `
+                        ${builderQuestions.length > 1 ? `
                             <button type="button" class="btn btn-danger btn-sm" onclick="window.removeBuilderQuestion(${qIndex})" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">
                                 Remove
-                            </button>` : `<span style="font-size: 0.72rem; color: var(--color-text-muted);">(Minimum 10 questions required)</span>`}
+                            </button>` : `<span style="font-size: 0.72rem; color: var(--color-text-muted);">(At least 1 question)</span>`}
                     </div>
 
                     <div class="form-group" style="margin-bottom: 0.75rem;">
@@ -1972,8 +2416,8 @@
     }
 
     window.addBuilderQuestion = function () {
-        if (builderQuestions.length >= 30) {
-            showToast('Maximum 30 questions reached', 'warning');
+        if (builderQuestions.length >= 20) {
+            showToast('Maximum 20 questions reached (Whiteboard Item 5: max 20)', 'warning');
             return;
         }
 
@@ -1993,8 +2437,8 @@
     };
 
     window.removeBuilderQuestion = function (index) {
-        if (builderQuestions.length <= 10) {
-            showToast('Requirement: A quiz must have at least 10 questions', 'warning');
+        if (builderQuestions.length <= 1) {
+            showToast('Quiz must have at least 1 question', 'warning');
             return;
         }
         builderQuestions.splice(index, 1);
@@ -2038,7 +2482,173 @@
         }));
 
         renderBuilderQuestions();
-        showToast('Auto-filled 10 sample questions!', 'success');
+        showToast('Auto-filled 10 sample questions (Whiteboard: max 20)!', 'success');
+    };
+
+    // ============================================
+    // WHITEBOARD ITEM #5: INSERT TEXT QUIZ PARSER
+    // ============================================
+
+    window.openInsertTextQuizModal = function () {
+        const feedback = document.getElementById('insertTextQuizFeedback');
+        if (feedback) feedback.style.display = 'none';
+        openModal('insertTextQuizModal');
+    };
+
+    window.insertSampleQuizText = function () {
+        const input = document.getElementById('insertTextQuizInput');
+        if (!input) return;
+        input.value = `1. What does CMS stand for?
+A. Content Management System
+B. Computer Monitoring Service
+C. Centralized Media Storage
+D. Core Module Structure
+Answer: A
+Explanation: CMS allows non-technical users to build and edit web content.
+
+2. Which open-source CMS uses WordPress hooks, actions, and filters?
+A. WordPress
+B. Drupal
+C. Magento
+D. Joomla
+Answer: A
+Explanation: WordPress core architecture relies on an extensive hook and filter pipeline.
+
+3. What framework does modern Drupal 8/9/10 utilize?
+A. Symfony PHP components
+B. Ruby on Rails
+C. Django
+D. Express JS
+Answer: A
+Explanation: Drupal 8+ transitioned to Symfony components for enterprise PHP architecture.
+
+4. Which CMS platform is designed primarily for hosted e-commerce?
+A. Shopify
+B. Joomla
+C. WordPress Core
+D. phpBB
+Answer: A
+Explanation: Shopify is a dedicated e-commerce SaaS CMS.
+
+5. What is the key advantage of a Headless CMS?
+A. Decoupled frontend presentation from backend content repository
+B. No database is required
+C. Cannot use APIs
+D. Only works on Windows desktop
+Answer: A
+Explanation: Headless CMS delivers content via REST or GraphQL APIs to any frontend framework.`;
+    };
+
+    function parseRawTextQuestions(rawText) {
+        const parsed = [];
+        // Split by question indicators like "1.", "1)", "Question 1:", or double newlines
+        const blocks = rawText.split(/\n\s*(?=(?:(?:Question\s*\d+|Q\d+|\d+)[\.\:\)]|\bQ\d+\b))/i);
+
+        for (let block of blocks) {
+            block = block.trim();
+            if (!block) continue;
+
+            const lines = block.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+            if (lines.length < 2) continue;
+
+            let qText = '';
+            const options = [];
+            let correctAnswer = 'opt_1';
+            let explanation = '';
+
+            for (const line of lines) {
+                // Check for Answer line: "Answer: A" or "Ans: B"
+                const ansMatch = line.match(/^(?:Answer|Ans|Correct(?:\s*Answer)?)\s*[:\-\=]\s*([A-D1-4])/i);
+                if (ansMatch) {
+                    const letter = ansMatch[1].toUpperCase();
+                    if (letter === 'A' || letter === '1') correctAnswer = 'opt_1';
+                    else if (letter === 'B' || letter === '2') correctAnswer = 'opt_2';
+                    else if (letter === 'C' || letter === '3') correctAnswer = 'opt_3';
+                    else if (letter === 'D' || letter === '4') correctAnswer = 'opt_4';
+                    continue;
+                }
+
+                // Check for Explanation line: "Explanation: ..."
+                const expMatch = line.match(/^(?:Explanation|Rationale|Note)\s*[:\-\=]\s*(.+)/i);
+                if (expMatch) {
+                    explanation = expMatch[1].trim();
+                    continue;
+                }
+
+                // Check for Option line: "A. Text", "A) Text", "*B. Text", etc.
+                const optMatch = line.match(/^(?:\*?\s*[\(\[]?([A-D1-4])[\.\)\:\-\]]?\s+)(.+)/i);
+                if (optMatch) {
+                    const optLetter = optMatch[1].toUpperCase();
+                    const optText = optMatch[2].trim();
+                    let optId = 'opt_' + (options.length + 1);
+                    if (optLetter === 'A' || optLetter === '1') optId = 'opt_1';
+                    else if (optLetter === 'B' || optLetter === '2') optId = 'opt_2';
+                    else if (optLetter === 'C' || optLetter === '3') optId = 'opt_3';
+                    else if (optLetter === 'D' || optLetter === '4') optId = 'opt_4';
+
+                    if (line.startsWith('*')) {
+                        correctAnswer = optId;
+                    }
+
+                    options.push({ id: optId, text: optText });
+                    continue;
+                }
+
+                // Otherwise question text
+                if (options.length === 0) {
+                    const clean = line.replace(/^(?:Question\s*\d+|Q\d+|\d+)[\.\:\)]\s*/i, '');
+                    qText = qText ? `${qText} ${clean}` : clean;
+                }
+            }
+
+            if (qText && options.length >= 2) {
+                while (options.length < 4) {
+                    options.push({ id: `opt_${options.length + 1}`, text: `Alternative choice ${options.length + 1}` });
+                }
+                parsed.push({
+                    questionText: qText,
+                    options: options.slice(0, 4),
+                    correctAnswer,
+                    explanation
+                });
+            }
+        }
+
+        return parsed;
+    }
+
+    window.parseAndAddTextQuiz = function () {
+        const input = document.getElementById('insertTextQuizInput');
+        const feedback = document.getElementById('insertTextQuizFeedback');
+        if (!input) return;
+
+        const rawText = input.value.trim();
+        if (!rawText) {
+            showToast('Please paste quiz text into the field', 'warning');
+            return;
+        }
+
+        const parsed = parseRawTextQuestions(rawText);
+        if (parsed.length === 0) {
+            if (feedback) {
+                feedback.style.display = 'block';
+                feedback.style.background = '#fef2f2';
+                feedback.style.border = '1px solid #fca5a5';
+                feedback.style.color = '#991b1b';
+                feedback.innerHTML = '<strong>Parsing Error:</strong> Could not detect questions. Please ensure each question has options (A, B, C, D) and an "Answer: [Letter]" designation.';
+            }
+            return;
+        }
+
+        if (parsed.length > 20) {
+            showToast(`Note: Maximum 20 questions allowed (Whiteboard Item 5: max 20). Keeping first 20 out of ${parsed.length}.`, 'info');
+            parsed.splice(20);
+        }
+
+        builderQuestions = parsed;
+        renderBuilderQuestions();
+        closeModal('insertTextQuizModal');
+        showToast(`Successfully inserted ${parsed.length} questions from text!`, 'success');
     };
 
     window.saveQuizFromBuilder = async function () {
@@ -2054,9 +2664,9 @@
             return;
         }
 
-        // Validate 10 to 30 questions
-        if (builderQuestions.length < 10 || builderQuestions.length > 30) {
-            showToast(`Quiz must have between 10 and 30 questions. Currently: ${builderQuestions.length}`, 'error');
+        // Validate max 20 questions (Whiteboard Item 5: max 20)
+        if (builderQuestions.length < 1 || builderQuestions.length > 20) {
+            showToast(`Quiz can have between 1 and 20 questions (Whiteboard Item 5: max 20). Currently: ${builderQuestions.length}`, 'error');
             return;
         }
 

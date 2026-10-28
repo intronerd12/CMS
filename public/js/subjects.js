@@ -1016,6 +1016,7 @@
             title,
             description,
             presentationKey: presentationKey || null,
+            customFile: customUploadedPresentation ? customUploadedPresentation.fileUrl : null,
             outline,
             summary: summary || null,
             content: content || null,
@@ -1474,6 +1475,11 @@
             statusEl.style.color = 'var(--color-error)';
         }
     }
+
+    window.handleTopicCustomUpload = function (file) {
+        if (!file) return;
+        handleCustomFileUpload({ target: { files: [file] } });
+    };
 
     function hookIntoNavigation() {
         const origNavigateTo = window.navigateTo;

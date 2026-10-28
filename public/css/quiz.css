@@ -1267,4 +1267,176 @@
     margin-bottom: 0.4rem;
 }
 
+/* ===================================================
+   WHITEBOARD ITEM #8: CUMULATIVE MATRIX PAGE STYLES
+   =================================================== */
+
+.matrix-hero-banner {
+    background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #3b82f6 100%);
+    color: #ffffff;
+    border-radius: 12px;
+    padding: 1.5rem 1.75rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    box-shadow: 0 4px 14px rgba(30, 58, 138, 0.25);
+}
+
+.matrix-hero-left {
+    flex: 1;
+    min-width: 280px;
+}
+
+.matrix-req-badge {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(4px);
+    color: #ffffff;
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 0.25rem 0.6rem;
+    border-radius: 9999px;
+    margin-bottom: 0.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.matrix-hero-title {
+    font-size: 1.45rem;
+    font-weight: 800;
+    margin: 0 0 0.4rem 0;
+    color: #ffffff;
+    letter-spacing: -0.01em;
+}
+
+.matrix-hero-desc {
+    margin: 0;
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.9);
+    line-height: 1.5;
+    max-width: 650px;
+}
+
+.matrix-hero-right {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: flex-end;
+}
+
+.matrix-badge-pill {
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    padding: 0.35rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #ffffff;
+    white-space: nowrap;
+}
+
+/* KPI Analytics Grid */
+.matrix-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.matrix-stat-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 1.15rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.matrix-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.matrix-stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.matrix-stat-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.matrix-stat-value {
+    font-size: 1.45rem;
+    font-weight: 800;
+    color: var(--color-text);
+    line-height: 1.2;
+}
+
+.matrix-stat-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-top: 0.2rem;
+}
+
+/* Repeat Topic Banner for Failed Quiz (Item 5) */
+.repeat-topic-banner {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    margin: 1rem 0;
+    color: #991b1b;
+}
+
+.repeat-topic-banner-icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+}
+
+.repeat-topic-banner-text {
+    flex: 1;
+}
+
+.repeat-topic-banner-title {
+    font-weight: 800;
+    font-size: 0.95rem;
+    margin-bottom: 0.2rem;
+    color: #b91c1c;
+}
+
+.repeat-topic-banner-desc {
+    font-size: 0.8125rem;
+    margin: 0;
+    color: #7f1d1d;
+}
+
+/* Insert Text Quiz Modal Styles (Item 5) */
+#insertTextQuizModal textarea {
+    font-family: var(--font-family-mono, monospace);
+    font-size: 0.85rem;
+    line-height: 1.45;
+}
+
+
 

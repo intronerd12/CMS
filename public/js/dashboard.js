@@ -121,7 +121,8 @@ function navigateTo(pageName) {
         subjects: { title: 'Subjects', subtitle: 'Manage your subjects and courses' },
         topics: { title: 'Topics & Lessons', subtitle: 'Content and learning materials' },
         quizzes: { title: 'Quizzes', subtitle: 'Assessments and evaluations' },
-        scores: { title: 'Scores & Summary', subtitle: 'View performance reports' },
+        scores: { title: 'Scores & Summary', subtitle: 'View topic performance reports (Whiteboard Item 6)' },
+        matrix: { title: 'Summary of ALL Quiz Scores per Student', subtitle: 'Cumulative Performance Matrix (Whiteboard Item 8)' },
         'quiz-result': { title: 'Quiz Assessment Results', subtitle: 'Official evaluation report and certification' },
         users: { title: 'User Management', subtitle: 'Manage registered users' }
     };
@@ -149,6 +150,10 @@ function navigateTo(pageName) {
     } else if (pageName === 'scores') {
         if (typeof window.loadScoresPage === 'function') {
             window.loadScoresPage();
+        }
+    } else if (pageName === 'matrix') {
+        if (typeof window.loadMatrixPage === 'function') {
+            window.loadMatrixPage();
         }
     } else if (pageName === 'quiz-result') {
         if (typeof window.loadQuizResultPage === 'function') {

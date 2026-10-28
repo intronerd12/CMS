@@ -75,14 +75,23 @@
             </div>
 
             <div class="nav-section">
-                <span class="nav-section-title">Reports</span>
+                <span class="nav-section-title">Reports & Evaluation</span>
                 <a href="#scores" class="nav-item" data-page="scores">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="18" y1="20" x2="18" y2="10"/>
                         <line x1="12" y1="20" x2="12" y2="4"/>
                         <line x1="6" y1="20" x2="6" y2="14"/>
                     </svg>
-                    <span>Scores & Summary</span>
+                    <span>Scores & Summary (Item 6)</span>
+                </a>
+                <a href="#matrix" class="nav-item" data-page="matrix">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                        <line x1="3" y1="9" x2="21" y2="9"/>
+                        <line x1="9" y1="21" x2="9" y2="9"/>
+                        <line x1="15" y1="21" x2="15" y2="9"/>
+                    </svg>
+                    <span>Quiz Summary (Item 8)</span>
                 </a>
             </div>
         </nav>
@@ -532,6 +541,33 @@
                     <!-- Populated by JS: Student Transcript or Faculty Gradebook -->
                 </div>
             </div>
+
+            <!-- ==================== SUMMARY OF ALL QUIZ SCORES PER STUDENT (WHITEBOARD ITEM #8) ==================== -->
+            <div class="page" id="page-matrix">
+                <div class="classroom-toolbar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <label for="matrixSubjectSelect" style="font-weight: 700; font-size: 0.875rem; color: var(--color-text);">Course Subject:</label>
+                        <select id="matrixSubjectSelect" class="form-control" style="min-width: 260px; font-weight: 600;">
+                            <!-- Populated by JS -->
+                        </select>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="window.printSummaryReport('master-matrix')" title="Print Master Matrix to physical printer">
+                            🖨️ <span>Print</span>
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="window.printSummaryReport('master-matrix')" title="Save Master Matrix as PDF">
+                            📄 <span>PDF</span>
+                        </button>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="window.exportMatrixCSV()" title="Download spreadsheet (.csv) for Excel or Google Sheets">
+                            📊 <span>Spreadsheet (.CSV)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="matrixPageContent">
+                    <!-- Populated by quiz.js loadMatrixPage() -->
+                </div>
+            </div>
         </div>
     </main>
 
@@ -673,31 +709,58 @@
                         </label>
                     </div>
 
-                    <div class="form-group">
-                        <label for="topicPresentationSelect" class="form-label">Attach PowerPoint Presentation (from Library)</label>
-                        <select id="topicPresentationSelect" class="filter-select" style="width: 100%;">
-                            <!-- Populated by JS -->
-                        </select>
+                    <!-- Whiteboard Requirement #4: Topic 1 (Repeat 4 for all topics) -->
+                    <!-- 1. Upload Presentation -->
+                    <div class="form-group" style="background: #f8fafc; padding: var(--space-4); border-radius: var(--radius-md); border: 1px solid var(--color-border-light); margin-top: var(--space-3);">
+                        <label class="form-label" style="margin-bottom: 0.25rem;">
+                            <strong style="color: var(--color-text-primary);">📤 Upload Presentation from Computer (Item 4)</strong>
+                            <div style="font-size: var(--font-size-xs); color: var(--color-text-muted); font-weight: normal;">
+                                Upload your PowerPoint presentation file (.pptx, .ppt) or choose from the built-in library.
+                            </div>
+                        </label>
+                        <div style="display: flex; gap: 0.75rem; align-items: center; margin-top: 0.5rem; flex-wrap: wrap;">
+                            <input type="file" id="topicFileInput" accept=".pptx,.ppt,.pdf" style="display: none;" onchange="window.handleTopicCustomUpload(this.files[0])">
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('topicFileInput').click()" style="display: flex; align-items: center; gap: 0.5rem;">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                    <polyline points="17 8 12 3 7 8"/>
+                                    <line x1="12" y1="3" x2="12" y2="15"/>
+                                </svg>
+                                <span>Choose Presentation (.pptx)</span>
+                            </button>
+                            <span id="topicFileUploadStatus" style="font-size: 0.8125rem; color: var(--color-text-muted);">No custom file chosen</span>
+                        </div>
+                        <div id="topicPresentationPreviewBox" style="display: none; margin-top: 0.75rem; padding: 0.75rem; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: var(--radius-md); align-items: center; gap: 0.75rem;"></div>
+
+                        <div style="margin-top: 0.75rem; border-top: 1px dashed var(--color-border); padding-top: 0.75rem;">
+                            <label for="topicPresentationSelect" class="form-label" style="font-size: 0.8125rem;">Or Attach from Presentation Library:</label>
+                            <select id="topicPresentationSelect" class="filter-select" style="width: 100%;">
+                                <!-- Populated by JS -->
+                            </select>
+                        </div>
                     </div>
 
+                    <!-- 2. Make Your Own Inside -->
                     <div class="form-group" style="margin-top: var(--space-3); padding: var(--space-3); background: #eff6ff; border: 1px dashed #3b82f6; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: space-between;">
                         <div>
-                            <strong style="color: #1e40af; font-size: 0.875rem;">In-System Interactive Slides</strong>
-                            <div style="font-size: 0.75rem; color: #4b5563;">Create customized presentation slides with bullet points and themes directly inside the system.</div>
+                            <strong style="color: #1e40af; font-size: 0.875rem;">✨ Make Your Own Presentation Inside (Item 4)</strong>
+                            <div style="font-size: 0.75rem; color: #4b5563;">Create interactive slide decks with custom headings, bullet points, and themes inside the system.</div>
                         </div>
                         <button type="button" class="btn btn-primary btn-sm" onclick="launchInSystemSlideCreatorFromModal()" style="font-size: 0.75rem; white-space: nowrap;">
-                            ✨ Make Your Own Inside
+                            ✨ Make Inside
                         </button>
                     </div>
 
+                    <!-- 3. Insert Text -->
                     <div class="form-group">
-                        <label for="topicSummaryInput" class="form-label">Topic Summary / Key Takeaways *</label>
-                        <textarea id="topicSummaryInput" class="form-input" rows="2" placeholder="Summary of fundamental principles and core competencies for this topic..."></textarea>
+                        <label for="topicContentInput" class="form-label">✍️ Insert Text Notes / Lecture Content (Item 4)</label>
+                        <textarea id="topicContentInput" class="form-input" rows="3" placeholder="Insert lecture notes, reading material, study guides, or documentation links..."></textarea>
                     </div>
 
+                    <!-- 4. Summary -->
                     <div class="form-group">
-                        <label for="topicContentInput" class="form-label">Lesson Content (Insert Text Notes / Study Guide)</label>
-                        <textarea id="topicContentInput" class="form-input" rows="3" placeholder="Insert text, lecture notes, documentation links, or reading material..."></textarea>
+                        <label for="topicSummaryInput" class="form-label">📌 Topic Summary / Key Takeaways (Item 4) *</label>
+                        <textarea id="topicSummaryInput" class="form-input" rows="2" placeholder="Summary of fundamental principles and core competencies for this topic..."></textarea>
                     </div>
 
                     <div class="form-group">
@@ -878,7 +941,7 @@
     <div id="quizModal" class="modal-overlay">
         <div class="modal-container" style="max-width: 760px; max-height: 90vh; display: flex; flex-direction: column;">
             <div class="modal-header">
-                <h3 id="quizModalTitle">Create Topic Quiz (10 Min • Max 30 Multiple Choice)</h3>
+                <h3 id="quizModalTitle">Create Topic Quiz (10 Min • Max 20 Questions - Item 5)</h3>
                 <button type="button" class="modal-close-btn" onclick="closeModal('quizModal')">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="18" y1="6" x2="6" y2="18"/>
@@ -902,36 +965,38 @@
 
                 <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1.25rem;">
                     <div class="form-group" style="margin-bottom: 0;">
-                        <label for="quizPassingScoreInput">Passing Score Threshold (%)</label>
+                        <label for="quizPassingScoreInput">Passing Score Threshold (%) - Item 5: 75%</label>
                         <select id="quizPassingScoreInput" class="form-control" style="font-weight: 700;">
                             <option value="50">50% Minimum Pass</option>
                             <option value="60">60% Minimum Pass</option>
                             <option value="70">70% Standard Pass</option>
-                            <option value="75" selected>75% Standard College Pass (Recommended)</option>
+                            <option value="75" selected>75% Standard College Pass (Whiteboard Required: 75%)</option>
                             <option value="80">80% Mastery Pass</option>
                             <option value="90">90% Honors Mastery Pass</option>
                         </select>
                     </div>
 
                     <div class="form-group" style="margin-bottom: 0;">
-                        <label for="quizTimeLimitInput">Time Limit (Minutes)</label>
+                        <label for="quizTimeLimitInput">Time Limit (Minutes) - Item 5: 10 Min</label>
                         <select id="quizTimeLimitInput" class="form-control" style="font-weight: 700;">
-                            <option value="10" selected>10 Minutes (Standard Requirement)</option>
+                            <option value="5">5 Minutes</option>
+                            <option value="10" selected>10 Minutes (Whiteboard Item 5 Requirement)</option>
                             <option value="15">15 Minutes</option>
                             <option value="20">20 Minutes</option>
-                            <option value="25">25 Minutes</option>
-                            <option value="30">30 Minutes</option>
                         </select>
                     </div>
                 </div>
 
                 <!-- Questions Builder Header -->
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--color-border);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--color-border); flex-wrap: wrap; gap: 0.5rem;">
                     <div>
                         <strong style="font-size: 0.95rem;">Quiz Questions (Multiple Choice)</strong>
-                        <div id="builderQuestionCounter" style="font-size: 0.78rem; font-weight: 700;">Questions: 10 / 30 (Min: 10, Max: 30)</div>
+                        <div id="builderQuestionCounter" style="font-size: 0.78rem; font-weight: 700; color: var(--color-primary);">Questions: 10 / 20 (Whiteboard: 10 min; max 20)</div>
                     </div>
-                    <div style="display: flex; gap: 0.5rem;">
+                    <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="window.openInsertTextQuizModal()" title="Insert / paste text quiz from clipboard (Item 5)">
+                            📝 Insert Text Quiz
+                        </button>
                         <button type="button" class="btn btn-secondary btn-sm" onclick="window.autoFillTopicQuestions()" title="Auto-fill sample questions for this topic">
                             ⚡ Auto-Fill 10 Qs
                         </button>
@@ -1080,11 +1145,65 @@
         </div>
     </div>
 
+    <!-- ==================== 12. INSERT TEXT QUIZ MODAL (WHITEBOARD ITEM #5) ==================== -->
+    <div id="insertTextQuizModal" class="modal-overlay">
+        <div class="modal-container" style="max-width: 680px; max-height: 90vh; display: flex; flex-direction: column;">
+            <div class="modal-header">
+                <div>
+                    <h3 style="margin: 0;">📝 Insert Text Quiz (Item 5)</h3>
+                    <div style="font-size: 0.75rem; color: var(--color-text-muted);">Paste raw text questions from your syllabus, Word document, or notes</div>
+                </div>
+                <button type="button" class="modal-close-btn" onclick="closeModal('insertTextQuizModal')">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body" style="overflow-y: auto; flex: 1;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                    <span style="font-size: 0.8125rem; font-weight: 600; color: var(--color-text-secondary);">
+                        Supported: Questions with A/B/C/D choices and designated answer (max 20 questions)
+                    </span>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="window.insertSampleQuizText()" style="font-size: 0.75rem;">
+                        📋 Load Sample Format
+                    </button>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 0.75rem;">
+                    <textarea id="insertTextQuizInput" class="form-input" rows="12" style="font-family: var(--code-font, monospace); font-size: 0.8125rem; line-height: 1.5;" placeholder="1. What is WordPress primarily known as?
+A. Content Management System
+B. Video Editor
+C. Web Browser
+D. Operating System
+Answer: A
+Explanation: WordPress is the world's most popular open-source CMS.
+
+2. Which CMS is written in PHP and built on Symfony?
+A. Drupal
+B. Wix
+C. Squarespace
+D. Webflow
+Answer: A
+Explanation: Drupal 8+ uses Symfony components."></textarea>
+                </div>
+
+                <div id="insertTextQuizFeedback" style="display: none; padding: 0.75rem; border-radius: var(--radius-md); font-size: 0.8125rem; margin-top: 0.5rem;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('insertTextQuizModal')">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="window.parseAndAddTextQuiz()">
+                    ✨ Parse & Insert Into Quiz
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Notifications Container -->
     <div id="toastContainer" class="toast-container"></div>
 
-    <script src="/js/dashboard.js"></script>
     <script src="/js/subjects.js"></script>
     <script src="/js/quiz.js"></script>
+    <script src="/js/dashboard.js"></script>
 </body>
 </html>
