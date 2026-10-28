@@ -977,9 +977,22 @@
         }
 
         const fileStatus = document.getElementById('topicFileUploadStatus');
-        if (fileStatus) fileStatus.style.display = 'none';
+        if (topic.customFile) {
+            customUploadedPresentation = {
+                fileUrl: topic.customFile,
+                filename: topic.customFile.split('/').pop(),
+                originalname: topic.customFile.split('/').pop()
+            };
+            if (fileStatus) {
+                fileStatus.style.display = 'inline-block';
+                fileStatus.textContent = 'Attached file: ' + customUploadedPresentation.originalname;
+                fileStatus.style.color = 'var(--color-primary)';
+            }
+        } else {
+            customUploadedPresentation = null;
+            if (fileStatus) fileStatus.style.display = 'none';
+        }
 
-        customUploadedPresentation = null;
         updateTopicPresentationPreview();
         openModal('topicModal');
     };
@@ -1554,6 +1567,17 @@
         if (!key) {
             if (!customUploadedPresentation) {
                 box.style.display = 'none';
+            } else {
+                box.style.display = 'flex';
+                box.innerHTML = `
+                    <div style="font-size: 2rem;">📊</div>
+                    <div>
+                        <strong>Custom Presentation Attached: ${escapeHtml(customUploadedPresentation.originalname || 'Presentation')}</strong>
+                        <div style="font-size: var(--font-size-xs); color: var(--color-text-secondary); margin-top: 2px;">
+                            ${escapeHtml(customUploadedPresentation.fileUrl)}
+                        </div>
+                    </div>
+                `;
             }
             return;
         }

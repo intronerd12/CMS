@@ -47,10 +47,8 @@ function isStaffUser(req) {
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use('/uploads/custom', express.static(customUploadsDir));
 app.use(express.static(path.join(__dirname, 'public')));
-if (isServerless) {
-    app.use('/uploads/custom', express.static(customUploadsDir));
-}
 
 // ==================== AUTH ROUTES ====================
 
@@ -370,7 +368,7 @@ app.post('/api/subjects/:id/topics', (req, res) => {
             return res.status(404).json({ error: 'Subject not found' });
         }
 
-        const { title, description, presentationKey, outline, isPublished } = req.body;
+        const { title, description, presentationKey, outline, isPublished, customFile, slidesContent, summary, content } = req.body;
         if (!title || !title.trim()) {
             return res.status(400).json({ error: 'Topic title is required' });
         }
@@ -381,10 +379,12 @@ app.post('/api/subjects/:id/topics', (req, res) => {
             title: title.trim(),
             description: description ? description.trim() : null,
             presentationKey: presentationKey ? presentationKey.trim().toLowerCase() : null,
+            customFile: customFile ? customFile.trim() : null,
+            slidesContent: slidesContent ? (typeof slidesContent === 'string' ? slidesContent : JSON.stringify(slidesContent)) : null,
             outline: Array.isArray(outline) ? outline.join('\n') : (outline ? outline.trim() : null),
             isPublished: isPublished !== false && isPublished !== 0 && isPublished !== '0',
-            summary: req.body.summary ? req.body.summary.trim() : null,
-            content: req.body.content ? req.body.content.trim() : null
+            summary: summary ? summary.trim() : null,
+            content: content ? content.trim() : null
         };
 
         db.createTopic(newTopic);
@@ -405,7 +405,7 @@ app.put('/api/topics/:id', (req, res) => {
             return res.status(404).json({ error: 'Topic not found' });
         }
 
-        const { title, description, presentationKey, outline, isPublished, summary, content } = req.body;
+        const { title, description, presentationKey, outline, isPublished, summary, content, customFile, slidesContent } = req.body;
         if (!title || !title.trim()) {
             return res.status(400).json({ error: 'Topic title is required' });
         }
@@ -413,9 +413,11 @@ app.put('/api/topics/:id', (req, res) => {
         db.updateTopic({
             id,
             title: title.trim(),
-            description: description ? description.trim() : null,
-            presentationKey: presentationKey ? presentationKey.trim().toLowerCase() : null,
-            outline: Array.isArray(outline) ? outline.join('\n') : (outline ? outline.trim() : null),
+            description: description !== undefined ? (description ? description.trim() : null) : current.description,
+            presentationKey: presentationKey !== undefined ? (presentationKey ? presentationKey.trim().toLowerCase() : null) : current.presentationKey,
+            customFile: customFile !== undefined ? (customFile ? customFile.trim() : null) : current.customFile,
+            slidesContent: slidesContent !== undefined ? slidesContent : current.slidesContent,
+            outline: outline !== undefined ? (Array.isArray(outline) ? outline.join('\n') : (outline ? outline.trim() : null)) : current.outline,
             isPublished: isPublished !== undefined ? (isPublished !== false && isPublished !== 0 && isPublished !== '0') : current.isPublished,
             summary: summary !== undefined ? (summary ? summary.trim() : null) : current.summary,
             content: content !== undefined ? (content ? content.trim() : null) : current.content,

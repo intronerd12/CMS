@@ -457,22 +457,46 @@ function enrichTopic(topic) {
         questionCount = countRow ? countRow.c : 0;
     }
 
+    const hasCustomFile = !!topic.customFile;
+    const customSourceName = hasCustomFile ? topic.customFile.split('/').pop() : `${topic.title}.pptx`;
+
+    const finalPresentation = deck ? {
+        key: deck.key,
+        title: deck.title,
+        category: deck.category,
+        accent: deck.accent,
+        slideCount: deck.slideCount,
+        cover: deck.cover,
+        slides: deck.slides,
+        sourceUrl: topic.customFile || deck.sourceUrl,
+        sourceName: hasCustomFile ? customSourceName : deck.sourceName
+    } : (hasCustomFile || (customSlides && customSlides.length > 0) ? {
+        key: 'custom',
+        title: topic.title,
+        category: hasCustomFile ? 'Uploaded Presentation' : 'In-System Slides',
+        accent: '#3b82f6',
+        slideCount: (customSlides && customSlides.length) ? customSlides.length : 1,
+        cover: '/uploads/presentations/placeholder.webp',
+        slides: (customSlides && customSlides.length > 0) ? customSlides : [{
+            slideNumber: 1,
+            title: topic.title,
+            bullets: [
+                `Presentation file attached: ${customSourceName}`,
+                topic.summary || 'Review the attached presentation deck and syllabus notes.',
+                topic.description || 'Topic presentation deck ready for study.'
+            ],
+            notes: topic.content || 'Uploaded course material'
+        }],
+        sourceUrl: topic.customFile || null,
+        sourceName: customSourceName
+    } : null);
+
     return {
         ...topic,
         customSlides,
         hasQuiz: !!quiz,
         quiz: quiz ? { ...quiz, questionCount } : null,
-        presentation: deck ? {
-            key: deck.key,
-            title: deck.title,
-            category: deck.category,
-            accent: deck.accent,
-            slideCount: deck.slideCount,
-            cover: deck.cover,
-            slides: deck.slides,
-            sourceUrl: deck.sourceUrl,
-            sourceName: deck.sourceName
-        } : null
+        presentation: finalPresentation
     };
 }
 
@@ -688,10 +712,12 @@ module.exports = {
         return stmtUpdateTopic.run({
             id: topicData.id,
             title: topicData.title,
-            description: topicData.description || null,
-            presentationKey: topicData.presentationKey || null,
-            outline: topicData.outline || null,
-            slidesContent: topicData.slidesContent ? (typeof topicData.slidesContent === 'string' ? topicData.slidesContent : JSON.stringify(topicData.slidesContent)) : null,
+            description: topicData.description !== undefined ? topicData.description : (current ? current.description : null),
+            presentationKey: topicData.presentationKey !== undefined ? topicData.presentationKey : (current ? current.presentationKey : null),
+            outline: topicData.outline !== undefined ? topicData.outline : (current ? current.outline : null),
+            slidesContent: topicData.slidesContent !== undefined 
+                ? (typeof topicData.slidesContent === 'string' ? topicData.slidesContent : JSON.stringify(topicData.slidesContent)) 
+                : (current ? current.slidesContent : null),
             customFile: topicData.customFile !== undefined ? topicData.customFile : (current ? current.customFile : null),
             isPublished,
             summary: topicData.summary !== undefined ? topicData.summary : (current ? current.summary : null),
@@ -1104,5 +1130,7 @@ module.exports = {
     getTotalScoresCount: () => {
         const row = stmtGetTotalScoresCount.get();
         return row ? row.count : 0;
-    }
+    },
+    deleteUser: (id) => db.prepare('DELETE FROM users WHERE id = ?').run(id),
+    raw: db
 };
