@@ -14,6 +14,21 @@ const isServerless = Boolean(
 );
 
 function resolveDatabasePath() {
+    if (process.env.DATABASE_PATH) {
+        const customDir = path.dirname(process.env.DATABASE_PATH);
+        if (!fs.existsSync(customDir)) {
+            fs.mkdirSync(customDir, { recursive: true });
+        }
+        return process.env.DATABASE_PATH;
+    }
+
+    if (process.env.DATA_DIR) {
+        if (!fs.existsSync(process.env.DATA_DIR)) {
+            fs.mkdirSync(process.env.DATA_DIR, { recursive: true });
+        }
+        return path.join(process.env.DATA_DIR, 'lms.db');
+    }
+
     if (isServerless) {
         const tmpDbPath = path.join('/tmp', 'lms.db');
         const bundledDbPath = path.join(__dirname, 'data', 'lms.db');

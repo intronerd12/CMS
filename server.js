@@ -9,13 +9,16 @@ const db = require('./database');
 const presentations = require('./presentations');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
+const HOST = process.env.HOST || '0.0.0.0';
 
-// Custom uploads directory (serverless safe)
+// Custom uploads directory (Render & Serverless safe)
 const isServerless = db.isServerless;
-const customUploadsDir = isServerless
-    ? path.join('/tmp', 'uploads', 'custom')
-    : path.join(__dirname, 'public', 'uploads', 'custom');
+const customUploadsDir = process.env.UPLOADS_DIR || (
+    isServerless
+        ? path.join('/tmp', 'uploads', 'custom')
+        : path.join(__dirname, 'public', 'uploads', 'custom')
+);
 
 try {
     if (!fs.existsSync(customUploadsDir)) {
@@ -1041,8 +1044,8 @@ module.exports = app;
 
 // Start Server locally if run directly
 if (require.main === module) {
-    app.listen(PORT, () => {
-        console.log(`LMS Server running at http://127.0.0.1:${PORT}`);
+    app.listen(PORT, HOST, () => {
+        console.log(`LMS Server running at http://${HOST}:${PORT}`);
         console.log(`Database: SQLite (${db.DB_PATH})`);
     });
 }

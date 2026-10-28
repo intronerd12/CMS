@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: lms-cms
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/subjects
+    envVars:
+      - key: NODE_ENV
+        value: production
