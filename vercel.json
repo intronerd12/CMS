@@ -1,14 +1,26 @@
 {
   "version": 2,
-  "functions": {
-    "api/index.js": {
-      "includeFiles": "data/**,public/**,*.pptx"
-    }
-  },
+  "cleanUrls": true,
   "rewrites": [
     {
-      "source": "/(.*)",
-      "destination": "/api/index.js"
+      "source": "/api/:path*",
+      "destination": "https://lms-0ot9.onrender.com/api/:path*"
+    },
+    {
+      "source": "/uploads/:path*",
+      "destination": "https://lms-0ot9.onrender.com/uploads/:path*"
+    },
+    {
+      "source": "/login",
+      "destination": "/login.html"
+    },
+    {
+      "source": "/register",
+      "destination": "/register.html"
+    },
+    {
+      "source": "/dashboard",
+      "destination": "/dashboard.html"
     }
   ]
 }

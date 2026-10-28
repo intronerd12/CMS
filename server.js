@@ -48,10 +48,25 @@ function isStaffUser(req) {
 }
 
 // Middleware
-app.use(cors());
+app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-user-role', 'x-requested-with']
+}));
 app.use(express.json());
 app.use('/uploads/custom', express.static(customUploadsDir));
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Health check endpoint for Render & Vercel connectivity
+app.get('/api/health', (req, res) => {
+    res.json({
+        status: 'ok',
+        service: 'LMS Backend (Render)',
+        database: 'SQLite',
+        dbPath: db.DB_PATH,
+        timestamp: new Date().toISOString()
+    });
+});
 
 // ==================== AUTH ROUTES ====================
 

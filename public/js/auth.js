@@ -25,6 +25,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Pre-warm backend connection (wakes Render server if idle)
+    try {
+        fetch(`${API_BASE}/api/health`).catch(() => {});
+    } catch (e) {}
+
     // Check if user is already logged in
     const currentUser = sessionStorage.getItem('currentUser');
     if (currentUser) {
