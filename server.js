@@ -674,6 +674,10 @@ function handleSaveTopicSlides(req, res) {
             ? (presentationKey ? String(presentationKey).trim() : null)
             : (slides.length > 0 ? 'custom' : topic.presentationKey);
 
+        const resolvedCustomFile = customFile !== undefined
+            ? (typeof customFile === 'object' && customFile ? (customFile.fileUrl || customFile.fileName || null) : customFile)
+            : topic.customFile;
+
         db.updateTopic({
             id,
             title: topic.title,
@@ -681,7 +685,7 @@ function handleSaveTopicSlides(req, res) {
             presentationKey: resolvedKey,
             outline: outline !== undefined ? outline : topic.outline,
             slidesContent: slides.length > 0 ? JSON.stringify(slides) : null,
-            customFile: customFile !== undefined ? customFile : topic.customFile,
+            customFile: resolvedCustomFile,
             summary: summary !== undefined ? summary : topic.summary,
             content: content !== undefined ? content : topic.content,
             isPublished: topic.isPublished
@@ -812,10 +816,18 @@ app.post('/api/quizzes', (req, res) => {
             }
         }
 
-        // Check if topic already has a quiz
+        // Check if topic already has a quiz (Upsert: update existing quiz if present)
         const existing = db.getQuizByTopicId(topicId);
         if (existing) {
-            return res.status(400).json({ error: 'A quiz already exists for this topic. Please edit the existing quiz.' });
+            const updatedQuiz = db.updateQuiz({
+                id: existing.id,
+                title: title.trim(),
+                description: description ? description.trim() : null,
+                timeLimitMinutes: Number(timeLimitMinutes) || 10,
+                passingScorePercent: Number(passingScorePercent) || 75.0,
+                shuffleChoices: shuffleChoices !== false
+            }, questions);
+            return res.status(200).json({ message: 'Quiz updated successfully', quiz: updatedQuiz });
         }
 
         const newQuiz = db.createQuiz({
@@ -1069,6 +1081,12 @@ app.get('/api/quizzes/:id/take', (req, res) => {
             if (isFaculty) {
                 quizData.isFacultyPreview = true;
             } else {
+                if (!db.isStudentEnrolled(studentId, quizData.quiz.subjectId)) {
+                    return res.status(403).json({
+                        error: 'You must join this class with a Class Code first before taking its quizzes.',
+                        notEnrolled: true
+                    });
+                }
                 const topic = db.getTopicById(quizData.quiz.topicId);
                 if (topic && topic.orderIndex > 1) {
                     const progress = db.getStudentTopicProgress(studentId, quizData.quiz.subjectId);

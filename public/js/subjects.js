@@ -880,7 +880,7 @@
                                     <span>Clear Deck</span>
                                 </button>
                             ` : ''}
-                            <button class="btn-deck-action" onclick="window.openCreateQuizModal('${topic.id}')" title="Open Quiz Studio (Create, Edit, or Delete Topic Assessment)" style="background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; font-weight: 700;">
+                            <button class="btn-deck-action" onclick="${topic.quiz ? `window.openEditQuizModal('${topic.quiz.id}')` : `window.openCreateQuizModal('${topic.id}')`}" title="Open Quiz Studio (Create, Edit, or Delete Topic Assessment)" style="background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; font-weight: 700;">
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
                                     <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
@@ -1002,7 +1002,7 @@
             return `
                 <div class="toc-seq-item ${isLocked ? 'locked' : ''}" data-topic-id="${topic.id}">
                     <span class="toc-seq-num" style="${isLocked ? 'color: #9ca3af;' : ''}">
-                        ${isLocked ? '🔒' : String(i + 1).padStart(2, '0')}
+                        ${isLocked ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>' : String(i + 1).padStart(2, '0')}
                     </span>
                     <img src="${coverUrl}" alt="${escapeHtml(topic.title)}" class="toc-seq-thumb" 
                          style="${isLocked ? 'filter: grayscale(85%) opacity(0.7);' : ''}"
@@ -1020,7 +1020,10 @@
                                 ${isPassed ? `
                                     <span class="status-badge published" style="font-size: 0.6875rem; padding: 0.15rem 0.5rem;">✓ Passed</span>
                                 ` : isLocked ? `
-                                    <span class="status-badge draft" style="font-size: 0.6875rem; padding: 0.15rem 0.5rem; background:#f3f4f6; color:#6b7280; border: 1px solid #e5e7eb;">🔒 Locked</span>
+                                    <span class="status-badge draft" style="font-size: 0.6875rem; padding: 0.15rem 0.5rem; background:#f3f4f6; color:#6b7280; border: 1px solid #e5e7eb; display:inline-flex; align-items:center; gap:3px;">
+                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                        <span>Locked</span>
+                                    </span>
                                 ` : `
                                     <span class="status-badge" style="font-size: 0.6875rem; padding: 0.15rem 0.5rem; background:#eff6ff; color:#1d4ed8; border: 1px solid rgba(59, 130, 246, 0.3);">Available</span>
                                 `}
@@ -1032,10 +1035,11 @@
                             ${escapeHtml(topic.description || '')}
                         </div>
                     </div>
-                    <div style="display: flex; gap: var(--space-2); align-items: center;">
+                    <div style="display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap;">
                         ${isLocked ? `
                             <button class="btn-deck-action" onclick="window.showTopicLockModal(${i + 1})" style="padding: 0.35rem 0.65rem; background: #f3f4f6; color: #6b7280; border: 1px dashed #d1d5db;">
-                                🔒 Locked
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                <span>Locked</span>
                             </button>
                         ` : `
                             <button class="btn-deck-action btn-open-slides" onclick="openTopicSlides('${topic.id}')" style="padding: 0.35rem 0.65rem;">
@@ -1053,6 +1057,12 @@
                             </a>
                         ` : ''}
                         ${isStaff ? `
+                            <button class="btn-deck-action" onclick="window.openSlideCreatorModal('${topic.id}')" style="padding: 0.3rem 0.55rem; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe;">
+                                Slide Studio
+                            </button>
+                            <button class="btn-deck-action" onclick="${topic.quiz ? `window.openEditQuizModal('${topic.quiz.id}')` : `window.openCreateQuizModal('${topic.id}')`}" style="padding: 0.3rem 0.55rem; background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0;">
+                                ${topic.quiz ? 'Edit Quiz' : '+ Quiz'}
+                            </button>
                             <button class="btn-toggle-upload ${isUploaded ? 'hide-btn' : 'upload-btn'}" 
                                     onclick="toggleTopicPublish('${topic.id}', ${!isUploaded})" style="padding: 0.3rem 0.6rem;">
                                 ${isUploaded ? 'Hide' : 'Upload'}

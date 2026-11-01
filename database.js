@@ -524,9 +524,12 @@ function enrichTopic(topic) {
         questionCount = countRow ? countRow.c : 0;
     }
 
-    const hasCustomFile = !!topic.customFile;
+    const normalizedCustomFile = typeof topic.customFile === 'string'
+        ? topic.customFile
+        : (topic.customFile && typeof topic.customFile === 'object' ? (topic.customFile.fileUrl || topic.customFile.fileName || null) : null);
+    const hasCustomFile = !!normalizedCustomFile;
     const hasCustomSlides = customSlides.length > 0;
-    const customSourceName = hasCustomFile ? topic.customFile.split('/').pop() : `${topic.title}.pptx`;
+    const customSourceName = hasCustomFile ? String(normalizedCustomFile).split('/').pop() : `${topic.title}.pptx`;
 
     let finalPresentation = null;
     if (isExplicitCustomMode && (hasCustomSlides || hasCustomFile)) {
@@ -885,6 +888,9 @@ module.exports = {
         const now = new Date().toISOString();
         const order = topicData.orderIndex !== undefined ? topicData.orderIndex : (stmtGetMaxTopicOrder.get(topicData.subjectId).m + 1);
         const isPublished = topicData.isPublished !== undefined ? (topicData.isPublished ? 1 : 0) : 1;
+        const normalizedFile = typeof topicData.customFile === 'object' && topicData.customFile
+            ? (topicData.customFile.fileUrl || topicData.customFile.fileName || null)
+            : (topicData.customFile || null);
         return stmtInsertTopic.run({
             id: topicData.id || uuidv4(),
             subjectId: topicData.subjectId,
@@ -894,7 +900,7 @@ module.exports = {
             presentationKey: topicData.presentationKey || null,
             outline: topicData.outline || null,
             slidesContent: topicData.slidesContent ? (typeof topicData.slidesContent === 'string' ? topicData.slidesContent : JSON.stringify(topicData.slidesContent)) : null,
-            customFile: topicData.customFile || null,
+            customFile: normalizedFile,
             isPublished,
             summary: topicData.summary || null,
             content: topicData.content || null,
@@ -906,6 +912,10 @@ module.exports = {
         const isPublished = topicData.isPublished !== undefined 
             ? (topicData.isPublished ? 1 : 0) 
             : (current ? current.isPublished : 1);
+        const rawFile = topicData.customFile !== undefined ? topicData.customFile : (current ? current.customFile : null);
+        const normalizedFile = typeof rawFile === 'object' && rawFile
+            ? (rawFile.fileUrl || rawFile.fileName || null)
+            : (rawFile || null);
         return stmtUpdateTopic.run({
             id: topicData.id,
             title: topicData.title,
@@ -913,9 +923,9 @@ module.exports = {
             presentationKey: topicData.presentationKey !== undefined ? topicData.presentationKey : (current ? current.presentationKey : null),
             outline: topicData.outline !== undefined ? topicData.outline : (current ? current.outline : null),
             slidesContent: topicData.slidesContent !== undefined 
-                ? (typeof topicData.slidesContent === 'string' ? topicData.slidesContent : JSON.stringify(topicData.slidesContent)) 
+                ? (topicData.slidesContent === null ? null : (typeof topicData.slidesContent === 'string' ? topicData.slidesContent : JSON.stringify(topicData.slidesContent))) 
                 : (current ? current.slidesContent : null),
-            customFile: topicData.customFile !== undefined ? topicData.customFile : (current ? current.customFile : null),
+            customFile: normalizedFile,
             isPublished,
             summary: topicData.summary !== undefined ? topicData.summary : (current ? current.summary : null),
             content: topicData.content !== undefined ? topicData.content : (current ? current.content : null),

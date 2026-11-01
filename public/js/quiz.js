@@ -2657,7 +2657,7 @@
 
         // If the selected topic already has a quiz, open it in Edit mode so CRUD is seamless
         const existingQuiz = currentQuizzes.find(q => q.topicId === targetTopicId);
-        if (existingQuiz && !topicId) {
+        if (existingQuiz) {
             return window.openEditQuizModal(existingQuiz.id);
         }
 
@@ -3006,7 +3006,7 @@
             const subEl = document.getElementById('quizInspectSubtitle');
             const bodyEl = document.getElementById('quizInspectBody');
             const editBtn = document.getElementById('quizInspectEditBtn');
-            const previewBtn = document.getElementById('quizInspectPreviewBtn');
+            const previewBtn = document.getElementById('quizInspectPreviewBtn') || document.getElementById('quizInspectSimBtn');
 
             if (titleEl) titleEl.textContent = q.title || 'Quiz Specification & Answer Key';
             if (subEl) {
@@ -3404,6 +3404,11 @@ Explanation: Headless CMS delivers content via REST or GraphQL APIs to any front
             const topics = (currentSubject && currentSubject.topics) || [];
             const currentTopicVal = document.getElementById('quizModalTopicId')?.value;
             const targetTopicId = currentTopicVal || (topics[0] ? topics[0].id : '');
+            const existingForTopic = currentQuizzes.find(q => q.topicId === targetTopicId);
+            editingQuizId = existingForTopic ? existingForTopic.id : null;
+            const deleteBtn = document.getElementById('quizModalDeleteBtn');
+            if (deleteBtn) deleteBtn.style.display = editingQuizId ? 'inline-flex' : 'none';
+
             populateQuizModalTopicDropdown(targetTopicId);
             if (document.getElementById('quizModalTopicId')) {
                 document.getElementById('quizModalTopicId').value = targetTopicId;
@@ -3472,37 +3477,42 @@ Explanation: Headless CMS delivers content via REST or GraphQL APIs to any front
         await ensureSubjectContextLoaded(topicId);
         const topic = currentSubject && currentSubject.topics ? currentSubject.topics.find(t => t.id === topicId) : null;
 
+        let serverTopic = null;
+        let serverSlides = null;
         let serverPresentation = null;
         try {
             const res = await fetch(`/api/topics/${topicId}/slides`);
             if (res.ok) {
                 const data = await res.json();
-                serverPresentation = data.presentation;
+                serverTopic = data.topic || null;
+                serverSlides = Array.isArray(data.slides) ? data.slides : null;
+                serverPresentation = data.presentation || null;
             }
         } catch (e) {
             console.warn('Could not fetch topic presentation metadata:', e);
         }
 
-        const topicTitle = topic ? topic.title : (serverPresentation ? serverPresentation.topicTitle : 'Topic Overview');
+        const resolvedTopic = serverTopic || topic;
+        const topicTitle = resolvedTopic ? resolvedTopic.title : (serverPresentation ? serverPresentation.title : 'Topic Overview');
         const titleEl = document.getElementById('slideCreatorTopicTitle');
-        const subEl = document.getElementById('slideCreatorTopicSubtitle');
+        const subEl = document.getElementById('slideCreatorTopicSubtitle') || document.getElementById('slideCreatorSubtitle');
         if (titleEl) titleEl.textContent = `Presentation Studio — ${topicTitle}`;
         if (subEl) {
             subEl.textContent = `Create, preview, reorder, upload .PPTX/.PDF, or customize interactive slides for ${topicTitle}`;
         }
 
-        const customSlides = (serverPresentation && Array.isArray(serverPresentation.customSlides) && serverPresentation.customSlides.length > 0)
-            ? serverPresentation.customSlides
-            : (topic && Array.isArray(topic.customSlides) && topic.customSlides.length > 0 ? topic.customSlides : null);
+        const customSlides = (serverSlides && serverSlides.length > 0)
+            ? serverSlides
+            : (resolvedTopic && Array.isArray(resolvedTopic.customSlides) && resolvedTopic.customSlides.length > 0 ? resolvedTopic.customSlides : null);
 
-        activeSlideCustomFile = (serverPresentation && serverPresentation.customFile)
-            ? serverPresentation.customFile
-            : (topic && topic.customFile ? topic.customFile : null);
+        activeSlideCustomFile = (resolvedTopic && resolvedTopic.customFile)
+            ? resolvedTopic.customFile
+            : (serverPresentation && serverPresentation.sourceUrl && serverPresentation.isCustom ? serverPresentation.sourceUrl : null);
 
         const deleteDeckBtn = document.getElementById('studioDeleteDeckBtn');
         if (deleteDeckBtn) {
-            const hasCustom = Boolean((customSlides && customSlides.length > 0) || activeSlideCustomFile);
-            deleteDeckBtn.style.display = hasCustom ? 'inline-flex' : 'none';
+            const hasDeck = Boolean((customSlides && customSlides.length > 0) || activeSlideCustomFile || (serverPresentation && serverPresentation.slideCount > 0));
+            deleteDeckBtn.style.display = hasDeck ? 'inline-flex' : 'none';
         }
 
         if (customSlides && customSlides.length > 0) {
@@ -3622,7 +3632,10 @@ Explanation: Headless CMS delivers content via REST or GraphQL APIs to any front
         }
 
         if (typeof window.renderCustomSlideStageHtml === 'function') {
-            stage.innerHTML = window.renderCustomSlideStageHtml(slide, activeSlideIndex, slideBuilderSlides.length);
+            stage.innerHTML = `
+                <div class="slide-html-card theme-${slide.theme || 'indigo'} layout-${slide.layout || 'bullets'}">
+                    ${window.renderCustomSlideStageHtml(slide, activeSlideIndex, slideBuilderSlides.length)}
+                </div>`;
         } else {
             stage.innerHTML = `
                 <div style="padding: 1.5rem; background: #1e293b; color: #fff; border-radius: 12px;">
@@ -3664,6 +3677,12 @@ Explanation: Headless CMS delivers content via REST or GraphQL APIs to any front
             ? 'Right Column Bullet Points (One per line):'
             : (currentLayout === 'callout' ? 'Highlighted Callout Quote / Takeaway:' : 'Technical Code Snippet / CLI Commands:');
 
+        const attachedFileName = activeSlideCustomFile
+            ? (typeof activeSlideCustomFile === 'string'
+                ? activeSlideCustomFile.split('/').pop()
+                : (activeSlideCustomFile.fileName || activeSlideCustomFile.originalname || 'presentation.pptx'))
+            : '';
+
         const fileAttachmentHtml = activeSlideCustomFile ? `
             <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; background: #ecfdf5; border: 1px solid #6ee7b7; padding: 0.65rem 0.9rem; border-radius: 10px; margin-bottom: 0.9rem;">
                 <div style="display: flex; align-items: center; gap: 0.55rem;">
@@ -3672,7 +3691,7 @@ Explanation: Headless CMS delivers content via REST or GraphQL APIs to any front
                         <polyline points="14 2 14 8 20 8"/>
                     </svg>
                     <div>
-                        <div style="font-size: 0.8rem; font-weight: 800; color: #065f46;">Attached Presentation File: ${escapeHtml(activeSlideCustomFile.fileName)}</div>
+                        <div style="font-size: 0.8rem; font-weight: 800; color: #065f46;">Attached Presentation File: ${escapeHtml(attachedFileName)}</div>
                         <div style="font-size: 0.72rem; color: #047857;">Students can download this file alongside the interactive slide deck.</div>
                     </div>
                 </div>
@@ -3889,19 +3908,24 @@ Explanation: Headless CMS delivers content via REST or GraphQL APIs to any front
             return;
         }
 
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            activeSlideCustomFile = {
-                fileName: file.name,
-                fileType: file.type || `application/${ext}`,
-                fileSize: file.size,
-                fileData: e.target.result,
-                uploadedAt: new Date().toISOString()
-            };
-            renderSlideStudio();
-            showToast(`Attached "${file.name}" to this topic presentation! Click Save & Publish Deck to persist.`, 'success');
-        };
-        reader.readAsDataURL(file);
+        const formData = new FormData();
+        formData.append('file', file);
+
+        fetch('/api/topics/upload-presentation', {
+            method: 'POST',
+            body: formData
+        })
+            .then(async (res) => {
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Failed to upload presentation file');
+                activeSlideCustomFile = data.fileUrl;
+                renderSlideStudio();
+                showToast(`Uploaded & attached "${file.name}"! Click Save & Publish Deck to persist.`, 'success');
+            })
+            .catch((err) => {
+                console.error('Studio presentation upload error:', err);
+                showToast(err.message || 'Failed to upload presentation file', 'error');
+            });
     };
 
     window.removeStudioAttachedFile = function () {
