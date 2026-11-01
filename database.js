@@ -161,10 +161,22 @@ db.exec(`
         FOREIGN KEY (studentId) REFERENCES users(id) ON DELETE CASCADE
     );
 
+    CREATE TABLE IF NOT EXISTS class_enrollments (
+        id TEXT PRIMARY KEY,
+        subjectId TEXT NOT NULL,
+        studentId TEXT NOT NULL,
+        enrolledAt TEXT NOT NULL,
+        UNIQUE(subjectId, studentId),
+        FOREIGN KEY (subjectId) REFERENCES subjects(id) ON DELETE CASCADE,
+        FOREIGN KEY (studentId) REFERENCES users(id) ON DELETE CASCADE
+    );
+
     CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
     CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
     CREATE INDEX IF NOT EXISTS idx_subjects_code ON subjects(code);
     CREATE INDEX IF NOT EXISTS idx_topics_subject ON topics(subjectId);
+    CREATE INDEX IF NOT EXISTS idx_enrollments_subject ON class_enrollments(subjectId);
+    CREATE INDEX IF NOT EXISTS idx_enrollments_student ON class_enrollments(studentId);
 `);
 
 // ==================== COLUMN MIGRATIONS ====================
@@ -179,6 +191,7 @@ function ensureColumn(table, column, definition) {
 
 ensureColumn('subjects', 'description', 'TEXT');
 ensureColumn('subjects', 'updatedAt', 'TEXT');
+ensureColumn('subjects', 'joinCode', 'TEXT');
 ensureColumn('topics', 'presentationKey', 'TEXT');
 ensureColumn('topics', 'outline', 'TEXT');
 ensureColumn('topics', 'slidesContent', 'TEXT');
@@ -197,6 +210,7 @@ ensureColumn('scores', 'timeSpentSeconds', 'INTEGER DEFAULT 0');
 
 // Create indexes on migrated columns
 db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_subjects_joincode ON subjects(joinCode);
     CREATE INDEX IF NOT EXISTS idx_quizzes_topic ON quizzes(topicId);
     CREATE INDEX IF NOT EXISTS idx_quiz_questions_quiz ON quiz_questions(quizId);
     CREATE INDEX IF NOT EXISTS idx_scores_student ON scores(studentId);
@@ -213,6 +227,26 @@ function shuffleArray(arr) {
         [copy[i], copy[j]] = [copy[j], copy[i]];
     }
     return copy;
+}
+
+function generateUniqueJoinCode(preferredCode = null) {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    if (preferredCode) {
+        const normalized = String(preferredCode).trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+        const existing = db.prepare('SELECT id FROM subjects WHERE UPPER(joinCode) = ?').get(normalized);
+        if (!existing && normalized.length >= 5) {
+            return normalized;
+        }
+    }
+    for (let attempt = 0; attempt < 50; attempt++) {
+        let code = '';
+        for (let i = 0; i < 6; i++) {
+            code += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        const existing = db.prepare('SELECT id FROM subjects WHERE UPPER(joinCode) = ?').get(code);
+        if (!existing) return code;
+    }
+    return 'CMS' + Math.floor(100 + Math.random() * 900);
 }
 
 // ==================== SEED COURSE & 14 TOPICS + QUIZZES ====================
@@ -442,6 +476,20 @@ function seedAndMigrate() {
 
     // 4. Seed 14 topics & quizzes
     seedFull14TopicsAndQuizzes();
+
+    // 5. Backfill joinCode for any subjects missing one
+    try {
+        const subjectsWithoutCode = db.prepare("SELECT id, code FROM subjects WHERE joinCode IS NULL OR joinCode = ''").all();
+        const updateJoinCodeStmt = db.prepare("UPDATE subjects SET joinCode = ? WHERE id = ?");
+        subjectsWithoutCode.forEach(s => {
+            const preferred = (s.code && s.code.toUpperCase().replace(/[^A-Z0-9]/g, '') === 'IT315') ? 'CMS315' : null;
+            const newCode = generateUniqueJoinCode(preferred);
+            updateJoinCodeStmt.run(newCode, s.id);
+            console.log(`[SQLite] Assigned Class Join Code ${newCode} to subject ${s.code}`);
+        });
+    } catch (err) {
+        console.error('[SQLite] Error backfilling join codes:', err.message);
+    }
 }
 
 seedAndMigrate();
@@ -451,14 +499,18 @@ seedAndMigrate();
 function enrichTopic(topic) {
     if (!topic) return topic;
 
-    // Deck from uploaded presentations
-    const deck = topic.presentationKey ? presentations.getPresentation(topic.presentationKey) : null;
+    // Deck from uploaded presentations (if presentationKey is a library deck key)
+    const isExplicitCustomMode = topic.presentationKey === 'custom';
+    const deck = (topic.presentationKey && !isExplicitCustomMode)
+        ? presentations.getPresentation(topic.presentationKey)
+        : null;
 
-    // Custom slides created by faculty
+    // Custom slides created by faculty in Slide Studio
     let customSlides = [];
     if (topic.slidesContent) {
         try {
             customSlides = JSON.parse(topic.slidesContent);
+            if (!Array.isArray(customSlides)) customSlides = [];
         } catch (e) {
             customSlides = [];
         }
@@ -473,38 +525,74 @@ function enrichTopic(topic) {
     }
 
     const hasCustomFile = !!topic.customFile;
+    const hasCustomSlides = customSlides.length > 0;
     const customSourceName = hasCustomFile ? topic.customFile.split('/').pop() : `${topic.title}.pptx`;
 
-    const finalPresentation = deck ? {
-        key: deck.key,
-        title: deck.title,
-        category: deck.category,
-        accent: deck.accent,
-        slideCount: deck.slideCount,
-        cover: deck.cover,
-        slides: deck.slides,
-        sourceUrl: topic.customFile || deck.sourceUrl,
-        sourceName: hasCustomFile ? customSourceName : deck.sourceName
-    } : (hasCustomFile || (customSlides && customSlides.length > 0) ? {
-        key: 'custom',
-        title: topic.title,
-        category: hasCustomFile ? 'Uploaded Presentation' : 'In-System Slides',
-        accent: '#3b82f6',
-        slideCount: (customSlides && customSlides.length) ? customSlides.length : 1,
-        cover: '/uploads/presentations/placeholder.webp',
-        slides: (customSlides && customSlides.length > 0) ? customSlides : [{
-            slideNumber: 1,
+    let finalPresentation = null;
+    if (isExplicitCustomMode && (hasCustomSlides || hasCustomFile)) {
+        finalPresentation = {
+            key: 'custom',
+            isCustom: true,
             title: topic.title,
-            bullets: [
-                `Presentation file attached: ${customSourceName}`,
-                topic.summary || 'Review the attached presentation deck and syllabus notes.',
-                topic.description || 'Topic presentation deck ready for study.'
-            ],
-            notes: topic.content || 'Uploaded course material'
-        }],
-        sourceUrl: topic.customFile || null,
-        sourceName: customSourceName
-    } : null);
+            category: hasCustomFile ? 'Uploaded Presentation' : 'Interactive Studio Slides',
+            accent: '#4f46e5',
+            slideCount: hasCustomSlides ? customSlides.length : 1,
+            cover: '/uploads/presentations/placeholder.webp',
+            slides: hasCustomSlides ? customSlides : [{
+                slideNumber: 1,
+                title: topic.title,
+                subtitle: 'Uploaded Presentation Deck',
+                layout: 'bullets',
+                theme: 'indigo',
+                bullets: [
+                    `Presentation file attached: ${customSourceName}`,
+                    topic.summary || 'Review the attached presentation deck and syllabus notes.',
+                    topic.description || 'Topic presentation deck ready for study.'
+                ],
+                notes: topic.content || 'Uploaded course material'
+            }],
+            sourceUrl: topic.customFile || null,
+            sourceName: customSourceName
+        };
+    } else if (deck) {
+        finalPresentation = {
+            key: deck.key,
+            isCustom: false,
+            title: deck.title,
+            category: deck.category,
+            accent: deck.accent,
+            slideCount: deck.slideCount,
+            cover: deck.cover,
+            slides: deck.slides,
+            sourceUrl: topic.customFile || deck.sourceUrl,
+            sourceName: hasCustomFile ? customSourceName : deck.sourceName
+        };
+    } else if (hasCustomFile || hasCustomSlides) {
+        finalPresentation = {
+            key: 'custom',
+            isCustom: true,
+            title: topic.title,
+            category: hasCustomFile ? 'Uploaded Presentation' : 'Interactive Studio Slides',
+            accent: '#4f46e5',
+            slideCount: hasCustomSlides ? customSlides.length : 1,
+            cover: '/uploads/presentations/placeholder.webp',
+            slides: hasCustomSlides ? customSlides : [{
+                slideNumber: 1,
+                title: topic.title,
+                subtitle: 'Uploaded Presentation Deck',
+                layout: 'bullets',
+                theme: 'indigo',
+                bullets: [
+                    `Presentation file attached: ${customSourceName}`,
+                    topic.summary || 'Review the attached presentation deck and syllabus notes.',
+                    topic.description || 'Topic presentation deck ready for study.'
+                ],
+                notes: topic.content || 'Uploaded course material'
+            }],
+            sourceUrl: topic.customFile || null,
+            sourceName: customSourceName
+        };
+    }
 
     return {
         ...topic,
@@ -528,17 +616,42 @@ const stmtInsertUser = db.prepare(`
 
 const stmtGetAllSubjects = db.prepare('SELECT * FROM subjects ORDER BY createdAt DESC');
 const stmtGetSubjectById = db.prepare('SELECT * FROM subjects WHERE id = ?');
+const stmtGetSubjectByJoinCode = db.prepare('SELECT * FROM subjects WHERE UPPER(joinCode) = UPPER(?)');
 const stmtGetSubjectByCode = db.prepare('SELECT * FROM subjects WHERE code = ? COLLATE NOCASE AND term = ? AND year = ?');
 const stmtInsertSubject = db.prepare(`
-    INSERT INTO subjects (id, name, code, term, year, description, createdBy, createdAt, updatedAt)
-    VALUES (@id, @name, @code, @term, @year, @description, @createdBy, @createdAt, @createdAt)
+    INSERT INTO subjects (id, name, code, term, year, description, joinCode, createdBy, createdAt, updatedAt)
+    VALUES (@id, @name, @code, @term, @year, @description, @joinCode, @createdBy, @createdAt, @createdAt)
 `);
 const stmtUpdateSubject = db.prepare(`
     UPDATE subjects SET name = @name, code = @code, term = @term, year = @year,
         description = @description, updatedAt = @updatedAt
     WHERE id = @id
 `);
+const stmtUpdateSubjectJoinCode = db.prepare('UPDATE subjects SET joinCode = ?, updatedAt = ? WHERE id = ?');
 const stmtDeleteSubject = db.prepare('DELETE FROM subjects WHERE id = ?');
+
+// Class Enrollment Statements
+const stmtCountEnrolledStudents = db.prepare('SELECT COUNT(*) AS count FROM class_enrollments WHERE subjectId = ?');
+const stmtIsStudentEnrolled = db.prepare('SELECT 1 FROM class_enrollments WHERE subjectId = ? AND studentId = ?');
+const stmtInsertEnrollment = db.prepare(`
+    INSERT OR IGNORE INTO class_enrollments (id, subjectId, studentId, enrolledAt)
+    VALUES (@id, @subjectId, @studentId, @enrolledAt)
+`);
+const stmtDeleteEnrollment = db.prepare('DELETE FROM class_enrollments WHERE subjectId = ? AND studentId = ?');
+const stmtGetEnrolledStudents = db.prepare(`
+    SELECT u.id, u.username, u.email, u.firstName, u.lastName, ce.enrolledAt
+    FROM class_enrollments ce
+    JOIN users u ON ce.studentId = u.id
+    WHERE ce.subjectId = ? AND u.role = 'student' AND u.isActive = 1
+    ORDER BY u.lastName ASC, u.firstName ASC
+`);
+const stmtGetSubjectsForStudent = db.prepare(`
+    SELECT s.*, ce.enrolledAt
+    FROM class_enrollments ce
+    JOIN subjects s ON ce.subjectId = s.id
+    WHERE ce.studentId = ?
+    ORDER BY ce.enrolledAt DESC, s.createdAt DESC
+`);
 
 const stmtGetTopicsBySubjectAll = db.prepare('SELECT * FROM topics WHERE subjectId = ? ORDER BY orderIndex ASC, createdAt ASC');
 const stmtGetTopicsBySubjectPublished = db.prepare('SELECT * FROM topics WHERE subjectId = ? AND isPublished = 1 ORDER BY orderIndex ASC, createdAt ASC');
@@ -648,23 +761,43 @@ module.exports = {
     getAllSubjects: (includeUnpublished = true) => {
         const subjects = stmtGetAllSubjects.all();
         const topicStmt = includeUnpublished ? stmtGetTopicsBySubjectAll : stmtGetTopicsBySubjectPublished;
-        return subjects.map(s => ({
-            ...s,
-            topics: topicStmt.all(s.id).map(enrichTopic)
-        }));
+        return subjects.map(s => {
+            const enrolledRow = stmtCountEnrolledStudents.get(s.id);
+            return {
+                ...s,
+                enrolledCount: enrolledRow ? enrolledRow.count : 0,
+                topics: topicStmt.all(s.id).map(enrichTopic)
+            };
+        });
+    },
+    getSubjectsForStudent: (studentId) => {
+        if (!studentId) return [];
+        const subjects = stmtGetSubjectsForStudent.all(studentId);
+        return subjects.map(s => {
+            const enrolledRow = stmtCountEnrolledStudents.get(s.id);
+            return {
+                ...s,
+                isEnrolled: true,
+                enrolledCount: enrolledRow ? enrolledRow.count : 0,
+                topics: stmtGetTopicsBySubjectPublished.all(s.id).map(enrichTopic)
+            };
+        });
     },
     getSubjectById: (id, includeUnpublished = true) => {
         const s = stmtGetSubjectById.get(id);
         if (!s) return null;
         const topicStmt = includeUnpublished ? stmtGetTopicsBySubjectAll : stmtGetTopicsBySubjectPublished;
+        const enrolledRow = stmtCountEnrolledStudents.get(s.id);
         return {
             ...s,
+            enrolledCount: enrolledRow ? enrolledRow.count : 0,
             topics: topicStmt.all(s.id).map(enrichTopic)
         };
     },
     findDuplicateSubject: (code, term, year) => stmtGetSubjectByCode.get(code, term, year),
     createSubject: (subjectData) => {
         const now = new Date().toISOString();
+        const joinCode = generateUniqueJoinCode(subjectData.joinCode || null);
         return stmtInsertSubject.run({
             id: subjectData.id || uuidv4(),
             name: subjectData.name,
@@ -672,6 +805,7 @@ module.exports = {
             term: subjectData.term,
             year: subjectData.year,
             description: subjectData.description || null,
+            joinCode,
             createdBy: subjectData.createdBy || null,
             createdAt: subjectData.createdAt || now
         });
@@ -686,6 +820,54 @@ module.exports = {
             description: subjectData.description || null,
             updatedAt: subjectData.updatedAt || new Date().toISOString()
         });
+    },
+    regenerateSubjectJoinCode: (subjectId) => {
+        const newCode = generateUniqueJoinCode();
+        stmtUpdateSubjectJoinCode.run(newCode, new Date().toISOString(), subjectId);
+        return newCode;
+    },
+    joinSubjectByCode: (studentId, rawCode) => {
+        if (!studentId || !rawCode) {
+            throw new Error('Student ID and Class Code are required.');
+        }
+        const cleanCode = String(rawCode).trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+        if (!cleanCode) {
+            throw new Error('Please enter a valid Class Code.');
+        }
+        const subject = stmtGetSubjectByJoinCode.get(cleanCode);
+        if (!subject) {
+            throw new Error('Invalid Class Code. Please check the code from your instructor and try again.');
+        }
+        const alreadyEnrolled = stmtIsStudentEnrolled.get(subject.id, studentId);
+        if (alreadyEnrolled) {
+            return {
+                alreadyEnrolled: true,
+                subject: module.exports.getSubjectById(subject.id, false)
+            };
+        }
+        stmtInsertEnrollment.run({
+            id: uuidv4(),
+            subjectId: subject.id,
+            studentId,
+            enrolledAt: new Date().toISOString()
+        });
+        return {
+            alreadyEnrolled: false,
+            subject: module.exports.getSubjectById(subject.id, false)
+        };
+    },
+    leaveSubject: (studentId, subjectId) => {
+        return stmtDeleteEnrollment.run(subjectId, studentId);
+    },
+    removeStudentFromSubject: (subjectId, studentId) => {
+        return stmtDeleteEnrollment.run(subjectId, studentId);
+    },
+    isStudentEnrolled: (studentId, subjectId) => {
+        if (!studentId || !subjectId) return false;
+        return !!stmtIsStudentEnrolled.get(subjectId, studentId);
+    },
+    getEnrolledStudents: (subjectId) => {
+        return stmtGetEnrolledStudents.all(subjectId);
     },
     deleteSubject: (id) => stmtDeleteSubject.run(id),
 
@@ -742,6 +924,24 @@ module.exports = {
     },
     toggleTopicPublish: (id, isPublished) => {
         return stmtToggleTopicPublish.run(isPublished ? 1 : 0, new Date().toISOString(), id);
+    },
+    deleteTopicPresentation: (topicId) => {
+        const current = stmtGetTopicById.get(topicId);
+        if (!current) return null;
+        stmtUpdateTopic.run({
+            id: topicId,
+            title: current.title,
+            description: current.description,
+            presentationKey: null,
+            outline: current.outline,
+            slidesContent: null,
+            customFile: null,
+            isPublished: current.isPublished,
+            summary: current.summary,
+            content: current.content,
+            updatedAt: new Date().toISOString()
+        });
+        return module.exports.getTopicById(topicId);
     },
     deleteTopic: (id) => {
         const topic = stmtGetTopicById.get(id);
@@ -1077,7 +1277,7 @@ module.exports = {
     },
     getClassScoresMatrix: (subjectId) => {
         const topics = stmtGetTopicsBySubjectPublished.all(subjectId).map(enrichTopic);
-        const students = db.prepare("SELECT id, username, email, firstName, lastName FROM users WHERE role = 'student' AND isActive = 1 ORDER BY lastName ASC, firstName ASC").all();
+        const students = stmtGetEnrolledStudents.all(subjectId);
         const allScores = stmtGetAllScoresForSubject.all(subjectId);
 
         const matrix = students.map(student => {

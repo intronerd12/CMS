@@ -44,6 +44,17 @@
         return 'student';
     }
 
+    function getCurrentUserId() {
+        if (typeof currentUser !== 'undefined' && currentUser && currentUser.id) {
+            return currentUser.id;
+        }
+        const stored = sessionStorage.getItem('currentUser');
+        if (stored) {
+            try { return JSON.parse(stored).id || ''; } catch (e) {}
+        }
+        return '';
+    }
+
     function isTeacherOrAdmin() {
         const r = getUserRole();
         return r === 'faculty';
@@ -76,8 +87,13 @@
     async function fetchSubjects() {
         try {
             const role = getUserRole();
-            const res = await fetch(`/api/subjects?role=${encodeURIComponent(role)}`, {
-                headers: { 'x-user-role': role }
+            const userId = getCurrentUserId();
+            const studentParam = (!isTeacherOrAdmin() && userId) ? `&studentId=${encodeURIComponent(userId)}` : '';
+            const res = await fetch(`/api/subjects?role=${encodeURIComponent(role)}${studentParam}`, {
+                headers: {
+                    'x-user-role': role,
+                    'x-user-id': userId
+                }
             });
             if (!res.ok) throw new Error('Failed to fetch subjects');
             const data = await res.json();
@@ -92,19 +108,34 @@
     async function fetchSubjectDetails(id) {
         try {
             const role = getUserRole();
-            const res = await fetch(`/api/subjects/${id}?role=${encodeURIComponent(role)}`, {
-                headers: { 'x-user-role': role }
+            const userId = getCurrentUserId();
+            const studentParam = (!isTeacherOrAdmin() && userId) ? `&studentId=${encodeURIComponent(userId)}` : '';
+            const res = await fetch(`/api/subjects/${id}?role=${encodeURIComponent(role)}${studentParam}`, {
+                headers: {
+                    'x-user-role': role,
+                    'x-user-id': userId
+                }
             });
-            if (!res.ok) throw new Error('Failed to fetch subject');
+            if (!res.ok) {
+                if (res.status === 403) {
+                    currentSubject = null;
+                    return null;
+                }
+                throw new Error('Failed to fetch subject');
+            }
             const data = await res.json();
             currentSubject = data.subject;
 
             // If user is a student, fetch progression status for all topics
             if (!isTeacherOrAdmin()) {
-                const u = (typeof currentUser !== 'undefined' && currentUser) ? currentUser : JSON.parse(sessionStorage.getItem('currentUser') || '{}');
-                if (u && u.id) {
+                if (userId) {
                     try {
-                        const progRes = await fetch(`/api/subjects/${id}/student-progress/${u.id}`);
+                        const progRes = await fetch(`/api/subjects/${id}/student-progress/${userId}`, {
+                            headers: {
+                                'x-user-role': role,
+                                'x-user-id': userId
+                            }
+                        });
                         if (progRes.ok) {
                             const progData = await progRes.json();
                             if (currentSubject && currentSubject.topics && progData.topics) {
@@ -160,18 +191,39 @@
             countBadge.textContent = `${filtered.length} Subject${filtered.length !== 1 ? 's' : ''}`;
         }
 
+        const isStaff = isTeacherOrAdmin();
+
         if (filtered.length === 0) {
             if (grid) grid.style.display = 'none';
             if (document.getElementById('subjectsTableWrapper')) {
                 document.getElementById('subjectsTableWrapper').style.display = 'none';
             }
-            if (emptyState) emptyState.style.display = 'block';
+            if (emptyState) {
+                emptyState.style.display = 'block';
+                if (!isStaff && subjectsData.length === 0) {
+                    emptyState.innerHTML = `
+                        <div style="width: 64px; height: 64px; border-radius: 16px; background: rgba(79, 70, 229, 0.1); color: #4f46e5; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem auto;">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+                            </svg>
+                        </div>
+                        <p style="font-size: 1.15rem; font-weight: 800; color: #0f172a; margin-bottom: 0.35rem;">No Classes Joined Yet</p>
+                        <span style="display: block; max-width: 440px; margin: 0 auto 1.25rem auto; color: #64748b; font-size: 0.9rem; line-height: 1.5;">
+                            Students are not automatically enrolled in courses. Ask your faculty instructor for the <strong>Class Join Code</strong> and enter it below to join your class.
+                        </span>
+                        <button type="button" class="btn-primary-action" onclick="window.openJoinClassModal()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+                            </svg>
+                            <span>Join Class with Code</span>
+                        </button>
+                    `;
+                }
+            }
             return;
         }
 
         if (emptyState) emptyState.style.display = 'none';
-
-        const isStaff = isTeacherOrAdmin();
 
         // Render Cards Grid
         if (grid) {
@@ -223,12 +275,47 @@
                                                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
                                             </svg>
                                         </button>
-                                    ` : ''}
+                                    ` : `
+                                        <button class="card-menu-btn" onclick="window.confirmLeaveSubject('${subject.id}', '${escapeHtml(subject.name)}')" title="Leave Class" style="color: var(--color-error);">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                                                <polyline points="16 17 21 12 16 7"/>
+                                                <line x1="21" y1="12" x2="9" y2="12"/>
+                                            </svg>
+                                        </button>
+                                    `}
                                 </div>
                             </div>
 
                             <h3 class="subject-card-title">${escapeHtml(subject.name)}</h3>
                             <p class="subject-card-desc">${escapeHtml(subject.description || 'Comprehensive curriculum covering core principles, hands-on demonstrations, and assessments.')}</p>
+
+                            ${isStaff ? `
+                                <div class="subject-join-code-strip">
+                                    <div class="subject-join-code-info">
+                                        <span class="subject-join-code-label">Class Code</span>
+                                        <span class="subject-join-code-val">${escapeHtml(subject.joinCode || 'CMS315')}</span>
+                                    </div>
+                                    <div class="subject-join-code-btns">
+                                        <button type="button" class="btn-code-mini" onclick="window.copyClassJoinCode('${escapeHtml(subject.joinCode || 'CMS315')}')" title="Copy Class Code">
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                            <span>Copy</span>
+                                        </button>
+                                        <button type="button" class="btn-code-mini roster" onclick="window.openClassRosterModal('${subject.id}')" title="View Class Code & Enrolled Students">
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                                            <span>${subject.enrolledCount || 0} Enrolled</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            ` : `
+                                <div class="subject-join-code-strip student-enrolled-strip">
+                                    <span style="display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.76rem; font-weight: 700; color: #059669;">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                                        Enrolled via Class Code
+                                    </span>
+                                    <span style="font-size: 0.72rem; color: #64748b; font-weight: 600;">${topicsCount} Topics Unlocked Sequentially</span>
+                                </div>
+                            `}
 
                             <!-- Presentation Decks Preview Stack -->
                             <div class="deck-stack-preview">
@@ -451,13 +538,33 @@
     };
 
     window.loadTopicsPage = async function (preferredSubjectId) {
-        if (subjectsData.length === 0) {
-            await fetchSubjects();
-        }
+        await fetchSubjects();
 
         const subjectId = preferredSubjectId || currentSubjectId || (subjectsData[0] ? subjectsData[0].id : null);
+        const tocEmpty = document.getElementById('tocEmptyState');
         if (!subjectId) {
-            document.getElementById('tocEmptyState').style.display = 'block';
+            if (tocEmpty) {
+                tocEmpty.style.display = 'block';
+                if (!isTeacherOrAdmin()) {
+                    tocEmpty.innerHTML = `
+                        <div style="width: 64px; height: 64px; border-radius: 16px; background: rgba(79, 70, 229, 0.1); color: #4f46e5; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem auto;">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+                            </svg>
+                        </div>
+                        <p style="font-size: 1.15rem; font-weight: 800; color: #0f172a; margin-bottom: 0.35rem;">Join a Class to View Course Lessons</p>
+                        <span style="display: block; max-width: 440px; margin: 0 auto 1.25rem auto; color: #64748b; font-size: 0.9rem; line-height: 1.5;">
+                            Enter the <strong>Class Join Code</strong> from your instructor to enroll in a course and unlock its Table of Contents, presentations, and quizzes.
+                        </span>
+                        <button type="button" class="btn-primary-action" onclick="window.openJoinClassModal()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+                            </svg>
+                            <span>Join Class with Code</span>
+                        </button>
+                    `;
+                }
+            }
             document.getElementById('tocContentWrapper').style.display = 'none';
             return;
         }
@@ -497,7 +604,7 @@
         document.getElementById('tocMetricTopics').textContent = topics.length;
         document.getElementById('tocMetricSlides').textContent = totalSlides;
 
-        // Student Banner notice if any topics are withheld/drafted by instructor
+        // Classroom Banner (Student notice or Faculty Class Code & Roster bar)
         let studentBanner = document.getElementById('tocStudentBanner');
         if (!studentBanner) {
             studentBanner = document.createElement('div');
@@ -511,16 +618,43 @@
         if (!isStaff) {
             studentBanner.className = 'student-notice-banner';
             studentBanner.style.display = 'flex';
+            studentBanner.style.justifyContent = 'space-between';
+            studentBanner.style.flexWrap = 'wrap';
             studentBanner.innerHTML = `
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="10"/>
-                    <line x1="12" y1="16" x2="12" y2="12"/>
-                    <line x1="12" y1="8" x2="12.01" y2="8"/>
-                </svg>
-                <span>Showing <strong>${publishedCount} released lesson${publishedCount !== 1 ? 's' : ''}</strong> uploaded by your instructor for this course.</span>
+                <div style="display: inline-flex; align-items: center; gap: 0.55rem;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="16" x2="12" y2="12"/>
+                        <line x1="12" y1="8" x2="12.01" y2="8"/>
+                    </svg>
+                    <span>Showing <strong>${publishedCount} released lesson${publishedCount !== 1 ? 's' : ''}</strong> uploaded by your instructor for this course.</span>
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="window.openJoinClassModal()" style="font-size: 0.76rem; padding: 0.25rem 0.65rem;">
+                    + Join Another Class
+                </button>
             `;
         } else {
-            studentBanner.style.display = 'none';
+            studentBanner.className = 'faculty-classroom-code-bar';
+            studentBanner.style.display = 'flex';
+            studentBanner.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                    <span class="faculty-code-pill-tag">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+                        Class Join Code: <strong>${escapeHtml(currentSubject.joinCode || 'CMS315')}</strong>
+                    </span>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="window.copyClassJoinCode('${escapeHtml(currentSubject.joinCode || 'CMS315')}')">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                        <span>Copy Code</span>
+                    </button>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="window.openClassRosterModal('${currentSubject.id}')">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                        <span>Class Roster (${currentSubject.enrolledCount || 0} Students)</span>
+                    </button>
+                </div>
+                <div style="font-size: 0.78rem; color: #475569; font-weight: 500;">
+                    Share this code with students so they can enroll in <strong>${escapeHtml(currentSubject.code)}</strong>
+                </div>
+            `;
         }
 
         // Populate Subject Switcher in TOC
@@ -732,23 +866,34 @@
                         ` : ''}
 
                         ${isStaff ? `
-                            <button class="btn-deck-action" onclick="window.openSlideCreatorModal('${topic.id}')" title="Create or edit interactive presentation slides" style="background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe;">
+                            <button class="btn-deck-action" onclick="window.openSlideCreatorModal('${topic.id}')" title="Open Presentation Studio (Create, Edit, Reorder, or Delete Slides)" style="background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-weight: 700;">
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M12 20h9"/>
-                                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                                    <line x1="8" y1="21" x2="16" y2="21"/>
+                                    <line x1="12" y1="17" x2="12" y2="21"/>
                                 </svg>
-                                <span>+ Slides</span>
+                                <span>Slide Studio</span>
                             </button>
-                            <button class="btn-deck-action" onclick="window.openCreateQuizModal('${topic.id}')" title="Create or edit multiple choice quiz (10-30 questions)" style="background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0;">
+                            ${(slideCount > 0 || topic.customFile || (topic.customSlides && topic.customSlides.length > 0)) ? `
+                                <button class="btn-deck-action" onclick="window.confirmDeleteTopicPresentation('${topic.id}', '${escapeHtml(topic.title)}')" title="Remove presentation deck from this topic" style="background: #fef2f2; color: #dc2626; border: 1px solid #fecaca;">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                    <span>Clear Deck</span>
+                                </button>
+                            ` : ''}
+                            <button class="btn-deck-action" onclick="window.openCreateQuizModal('${topic.id}')" title="Open Quiz Studio (Create, Edit, or Delete Topic Assessment)" style="background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; font-weight: 700;">
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <circle cx="12" cy="12" r="10"/>
-                                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
-                                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+                                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+                                    <path d="M9 14l2 2 4-4"/>
                                 </svg>
-                                <span>+ Quiz</span>
+                                <span>${topic.quiz ? 'Edit Quiz' : '+ Create Quiz'}</span>
                             </button>
                             ${topic.quiz ? `
-                                <button class="btn-deck-action" onclick="if(window.previewQuiz) window.previewQuiz('${topic.quiz.id}')" title="Preview multiple choice quiz for this topic" style="background: #fef3c7; color: #92400e; border: 1px solid #fde68a;">
+                                <button class="btn-deck-action" onclick="if(window.inspectQuizAnswerKey) window.inspectQuizAnswerKey('${topic.quiz.id}')" title="Read / Inspect Quiz Questions & Answer Key" style="background: #f5f3ff; color: #5b21b6; border: 1px solid #ddd6fe;">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                    <span>Answer Key</span>
+                                </button>
+                                <button class="btn-deck-action" onclick="if(window.previewQuiz) window.previewQuiz('${topic.quiz.id}')" title="Preview multiple choice quiz as a student" style="background: #fef3c7; color: #92400e; border: 1px solid #fde68a;">
                                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                                     <span>Preview</span>
                                 </button>
@@ -1137,6 +1282,98 @@
     // INTERACTIVE SLIDE THEATER / VIEWER
     // ============================================
 
+    window.renderCustomSlideStageHtml = function (slide, idx, total) {
+        if (!slide) return '';
+        const layout = slide.layout || 'bullets';
+        const bullets = Array.isArray(slide.bullets) ? slide.bullets : [];
+        const secondary = slide.secondaryContent || '';
+        const subtitle = slide.subtitle || '';
+        const numLabel = `Slide ${(idx || 0) + 1}${total ? ` / ${total}` : ''}`;
+
+        let bodyHtml = '';
+        if (layout === 'title') {
+            bodyHtml = `
+                <div class="slide-layout-title-stage">
+                    <div class="slide-kicker-pill">${escapeHtml(subtitle || 'Course Presentation Module')}</div>
+                    <h2 class="slide-cover-big-title">${escapeHtml(slide.title || 'Untitled Slide')}</h2>
+                    ${bullets.length > 0 ? `<p class="slide-cover-lead">${escapeHtml(bullets[0])}</p>` : ''}
+                    ${bullets.length > 1 ? `
+                        <div class="slide-cover-tags">
+                            ${bullets.slice(1).map(b => `<span class="slide-cover-tag">${escapeHtml(b)}</span>`).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        } else if (layout === 'two-column') {
+            const col2Lines = secondary
+                ? secondary.split('\n').map(s => s.trim()).filter(Boolean)
+                : bullets.slice(Math.ceil(bullets.length / 2));
+            const col1Lines = secondary
+                ? bullets
+                : bullets.slice(0, Math.ceil(bullets.length / 2));
+            bodyHtml = `
+                <h3 class="slide-html-title">${escapeHtml(slide.title || 'Untitled Slide')}</h3>
+                ${subtitle ? `<div class="slide-html-subtitle">${escapeHtml(subtitle)}</div>` : ''}
+                <div class="slide-two-col-grid">
+                    <div class="slide-col-box">
+                        <div class="slide-col-header">Key Concepts</div>
+                        <ul class="slide-html-bullets">
+                            ${col1Lines.map(b => `<li>${escapeHtml(b)}</li>`).join('')}
+                        </ul>
+                    </div>
+                    <div class="slide-col-box">
+                        <div class="slide-col-header">Comparison & Details</div>
+                        <ul class="slide-html-bullets">
+                            ${col2Lines.map(b => `<li>${escapeHtml(b)}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>
+            `;
+        } else if (layout === 'callout') {
+            bodyHtml = `
+                <h3 class="slide-html-title">${escapeHtml(slide.title || 'Untitled Slide')}</h3>
+                ${subtitle ? `<div class="slide-html-subtitle">${escapeHtml(subtitle)}</div>` : ''}
+                <div class="slide-callout-hero">
+                    <div class="slide-callout-quote">${escapeHtml(secondary || bullets[0] || slide.title)}</div>
+                </div>
+                ${bullets.length > 0 ? `
+                    <ul class="slide-html-bullets" style="margin-top: 1.25rem;">
+                        ${bullets.map(b => `<li>${escapeHtml(b)}</li>`).join('')}
+                    </ul>
+                ` : ''}
+            `;
+        } else if (layout === 'code') {
+            bodyHtml = `
+                <h3 class="slide-html-title">${escapeHtml(slide.title || 'Untitled Slide')}</h3>
+                ${subtitle ? `<div class="slide-html-subtitle">${escapeHtml(subtitle)}</div>` : ''}
+                <div class="slide-two-col-grid">
+                    <div>
+                        <ul class="slide-html-bullets">
+                            ${bullets.map(b => `<li>${escapeHtml(b)}</li>`).join('')}
+                        </ul>
+                    </div>
+                    <pre class="slide-code-block"><code>${escapeHtml(secondary || '// Example configuration or snippet\nconst cms = {\n  platform: "Enterprise LMS",\n  status: "Active"\n};')}</code></pre>
+                </div>
+            `;
+        } else {
+            bodyHtml = `
+                <h3 class="slide-html-title">${escapeHtml(slide.title || 'Untitled Slide')}</h3>
+                ${subtitle ? `<div class="slide-html-subtitle">${escapeHtml(subtitle)}</div>` : ''}
+                <ul class="slide-html-bullets">
+                    ${bullets.map(b => `<li>${escapeHtml(b)}</li>`).join('')}
+                </ul>
+            `;
+        }
+
+        return `
+            <div class="slide-stage-top-meta">
+                <span class="slide-stage-num-pill">${numLabel}</span>
+                <span class="slide-stage-layout-pill">${escapeHtml(layout.toUpperCase())}</span>
+            </div>
+            ${bodyHtml}
+        `;
+    };
+
     window.openTopicSlides = function (topicId) {
         if (!currentSubject || !currentSubject.topics) return;
         const topic = currentSubject.topics.find(t => t.id === topicId);
@@ -1152,7 +1389,7 @@
         let isCustom = false;
         if (topic.presentation && Array.isArray(topic.presentation.slides) && topic.presentation.slides.length > 0) {
             slides = topic.presentation.slides;
-            isCustom = false;
+            isCustom = Boolean(topic.presentation.isCustom || topic.presentation.key === 'custom' || typeof slides[0] === 'object');
         } else if (Array.isArray(topic.customSlides) && topic.customSlides.length > 0) {
             slides = topic.customSlides;
             isCustom = true;
@@ -1174,7 +1411,15 @@
 
         // Title and meta
         document.getElementById('viewerTopicTitle').textContent = topic.title;
-        document.getElementById('viewerDeckCategory').textContent = isCustom ? 'In-System Slides' : (topic.presentation?.category || 'Presentation');
+        document.getElementById('viewerDeckCategory').textContent = isCustom
+            ? 'Interactive Studio Slides'
+            : (topic.presentation?.category || 'Presentation');
+
+        // Faculty Edit in Studio button inside Viewer
+        const editStudioBtn = document.getElementById('viewerEditStudioBtn');
+        if (editStudioBtn) {
+            editStudioBtn.style.display = isTeacherOrAdmin() ? 'inline-flex' : 'none';
+        }
 
         // Download link
         const downloadBtn = document.getElementById('viewerDownloadBtn');
@@ -1199,23 +1444,13 @@
             }
         }
 
-        // Render notes drawer
-        const outlineItems = topic.outline ? topic.outline.split('\n').filter(Boolean) : [];
-        document.getElementById('viewerNotesContent').innerHTML = `
-            <h4 style="font-size: var(--font-size-base); font-weight:700; margin-bottom: var(--space-3); color:#fff;">${escapeHtml(topic.title)} Syllabus</h4>
-            <p style="font-size: var(--font-size-sm); color: rgba(255,255,255,0.7); margin-bottom: var(--space-4);">${escapeHtml(topic.description || '')}</p>
-            <h5 style="font-size: var(--font-size-xs); text-transform:uppercase; color: var(--color-primary-accent); margin-bottom: var(--space-2);">Agenda Points</h5>
-            <ul style="list-style: disc; padding-left: var(--space-4); font-size: var(--font-size-sm); color: rgba(255,255,255,0.85); line-height: 1.6;">
-                ${outlineItems.map(item => `<li>${escapeHtml(item)}</li>`).join('')}
-            </ul>
-        `;
-
         // Render Filmstrip
         const filmstrip = document.getElementById('viewerFilmstrip');
         if (isCustom) {
             filmstrip.innerHTML = slides.map((s, i) => `
-                <div class="filmstrip-thumb ${i === 0 ? 'active' : ''}" style="width: 72px; height: 42px; background: #1e293b; color: #fff; font-size: 0.72rem; display: flex; align-items: center; justify-content: center; font-weight: 700; cursor: pointer; border-radius: 4px;" onclick="window.jumpToSlide(${i})" data-index="${i}">
-                    Slide ${i + 1}
+                <div class="filmstrip-thumb ${i === 0 ? 'active' : ''}" style="min-width: 96px; height: 46px; padding: 0 8px; background: #1e293b; color: #fff; font-size: 0.7rem; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; font-weight: 700; cursor: pointer; border-radius: 6px; overflow: hidden;" onclick="window.jumpToSlide(${i})" data-index="${i}">
+                    <span style="color: #818cf8; font-size: 0.62rem;">SLIDE ${i + 1}</span>
+                    <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">${escapeHtml(s.title || `Slide ${i + 1}`)}</span>
                 </div>
             `).join('');
         } else {
@@ -1227,6 +1462,15 @@
 
         renderCurrentSlide();
         document.addEventListener('keydown', handleViewerKeydown);
+    };
+
+    window.editCurrentViewerSlidesInStudio = function () {
+        if (!slideViewer.topic) return;
+        const topicId = slideViewer.topic.id;
+        window.closeSlideViewer();
+        if (typeof window.openSlideCreatorModal === 'function') {
+            window.openSlideCreatorModal(topicId);
+        }
     };
 
     window.launchQuizFromViewer = function () {
@@ -1292,20 +1536,34 @@
 
         const img = document.getElementById('viewerSlideImage');
         const customContainer = document.getElementById('viewerCustomSlideContent');
+        const topic = slideViewer.topic || {};
+        const outlineItems = topic.outline ? topic.outline.split('\n').filter(Boolean) : [];
 
         if (slideViewer.isCustom) {
             if (img) img.style.display = 'none';
             if (customContainer) {
                 customContainer.style.display = 'block';
-                const slide = slideViewer.slides[current];
-                customContainer.className = `slide-html-card theme-${slide.theme || 'indigo'}`;
-                customContainer.innerHTML = `
-                    <h3 class="slide-html-title">${escapeHtml(slide.title)}</h3>
-                    <div class="slide-html-subtitle">${escapeHtml(slide.subtitle || '')}</div>
-                    <ul class="slide-html-bullets">
-                        ${(slide.bullets || []).map(b => `<li>${escapeHtml(b)}</li>`).join('')}
-                    </ul>
-                `;
+                const slide = slideViewer.slides[current] || {};
+                customContainer.className = `slide-html-card theme-${slide.theme || 'indigo'} layout-${slide.layout || 'bullets'}`;
+                customContainer.innerHTML = window.renderCustomSlideStageHtml(slide, current, total);
+
+                const notesEl = document.getElementById('viewerNotesContent');
+                if (notesEl) {
+                    notesEl.innerHTML = `
+                        ${slide.notes ? `
+                            <div style="background: rgba(99, 102, 241, 0.2); border: 1px solid rgba(129, 140, 248, 0.4); border-radius: 10px; padding: 0.85rem; margin-bottom: 1rem;">
+                                <div style="font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: #a5b4fc; margin-bottom: 0.3rem;">Slide ${current + 1} Speaker Notes</div>
+                                <div style="font-size: 0.85rem; color: #fff; line-height: 1.55;">${escapeHtml(slide.notes)}</div>
+                            </div>
+                        ` : ''}
+                        <h4 style="font-size: var(--font-size-base); font-weight:700; margin-bottom: var(--space-3); color:#fff;">${escapeHtml(topic.title || '')} Syllabus</h4>
+                        <p style="font-size: var(--font-size-sm); color: rgba(255,255,255,0.7); margin-bottom: var(--space-4);">${escapeHtml(topic.description || '')}</p>
+                        <h5 style="font-size: var(--font-size-xs); text-transform:uppercase; color: var(--color-primary-accent); margin-bottom: var(--space-2);">Agenda Points</h5>
+                        <ul style="list-style: disc; padding-left: var(--space-4); font-size: var(--font-size-sm); color: rgba(255,255,255,0.85); line-height: 1.6;">
+                            ${outlineItems.map(item => `<li>${escapeHtml(item)}</li>`).join('')}
+                        </ul>
+                    `;
+                }
             }
         } else {
             if (customContainer) customContainer.style.display = 'none';
@@ -1314,6 +1572,17 @@
                 img.style.opacity = '0.4';
                 img.src = slideViewer.slides[current];
                 img.onload = () => { img.style.opacity = '1'; };
+            }
+            const notesEl = document.getElementById('viewerNotesContent');
+            if (notesEl) {
+                notesEl.innerHTML = `
+                    <h4 style="font-size: var(--font-size-base); font-weight:700; margin-bottom: var(--space-3); color:#fff;">${escapeHtml(topic.title || '')} Syllabus</h4>
+                    <p style="font-size: var(--font-size-sm); color: rgba(255,255,255,0.7); margin-bottom: var(--space-4);">${escapeHtml(topic.description || '')}</p>
+                    <h5 style="font-size: var(--font-size-xs); text-transform:uppercase; color: var(--color-primary-accent); margin-bottom: var(--space-2);">Agenda Points</h5>
+                    <ul style="list-style: disc; padding-left: var(--space-4); font-size: var(--font-size-sm); color: rgba(255,255,255,0.85); line-height: 1.6;">
+                        ${outlineItems.map(item => `<li>${escapeHtml(item)}</li>`).join('')}
+                    </ul>
+                `;
             }
         }
 
@@ -1682,5 +1951,291 @@
         div.textContent = str;
         return div.innerHTML;
     }
+
+    // ============================================
+    // CLASS JOIN CODE, ROSTER & PRESENTATION DELETE (GOOGLE CLASSROOM / MS TEAMS STYLE)
+    // ============================================
+
+    let activeRosterSubjectId = null;
+    let activeRosterJoinCode = '';
+
+    window.openJoinClassModal = function () {
+        const input = document.getElementById('joinClassCodeInput');
+        const errBox = document.getElementById('joinClassErrorBox');
+        if (input) input.value = '';
+        if (errBox) {
+            errBox.style.display = 'none';
+            errBox.textContent = '';
+        }
+        openModal('joinClassModal');
+        setTimeout(() => {
+            if (input) input.focus();
+        }, 120);
+    };
+
+    async function performJoinClassByCode(rawCode, errorEl) {
+        const studentId = getCurrentUserId();
+        if (!studentId) {
+            showToast('Please sign in to join a class.', 'error');
+            return false;
+        }
+        const cleanCode = String(rawCode || '').trim().toUpperCase();
+        if (!cleanCode) {
+            if (errorEl) {
+                errorEl.textContent = 'Please enter a Class Code.';
+                errorEl.style.display = 'block';
+            }
+            return false;
+        }
+
+        try {
+            const res = await fetch('/api/classes/join', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ studentId, joinCode: cleanCode })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                if (errorEl) {
+                    errorEl.textContent = data.error || 'Invalid Class Code.';
+                    errorEl.style.display = 'block';
+                } else {
+                    showToast(data.error || 'Invalid Class Code.', 'error');
+                }
+                return false;
+            }
+
+            showToast(data.message || 'Successfully joined class!', 'success');
+            closeModal('joinClassModal');
+
+            await fetchSubjects();
+            if (data.subject && data.subject.id) {
+                currentSubjectId = data.subject.id;
+                await fetchSubjectDetails(currentSubjectId);
+            }
+            renderSubjects();
+            renderTOC();
+
+            if (typeof window.loadDashboardData === 'function') {
+                window.loadDashboardData();
+            }
+            if (typeof window.loadQuizzesPage === 'function' && document.getElementById('page-quizzes')?.classList.contains('active')) {
+                window.loadQuizzesPage();
+            }
+            return true;
+        } catch (err) {
+            if (errorEl) {
+                errorEl.textContent = err.message || 'Error joining class.';
+                errorEl.style.display = 'block';
+            } else {
+                showToast(err.message || 'Error joining class.', 'error');
+            }
+            return false;
+        }
+    }
+
+    window.handleJoinClassSubmit = async function (e) {
+        if (e) e.preventDefault();
+        const input = document.getElementById('joinClassCodeInput');
+        const errBox = document.getElementById('joinClassErrorBox');
+        await performJoinClassByCode(input ? input.value : '', errBox);
+    };
+
+    window.handleInlineDashboardJoin = async function (e) {
+        if (e) e.preventDefault();
+        const input = document.getElementById('dashboardInlineJoinCodeInput');
+        const ok = await performJoinClassByCode(input ? input.value : '', null);
+        if (ok && input) input.value = '';
+    };
+
+    window.confirmLeaveSubject = async function (subjectId, subjectName) {
+        if (!confirm(`Are you sure you want to leave "${subjectName}"? You will need the Class Join Code to re-enroll later.`)) {
+            return;
+        }
+        try {
+            const studentId = getCurrentUserId();
+            const res = await fetch(`/api/subjects/${subjectId}/leave`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ studentId })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Could not leave class');
+            showToast(data.message || 'Left class', 'info');
+
+            if (currentSubjectId === subjectId) {
+                currentSubjectId = null;
+                currentSubject = null;
+            }
+            await fetchSubjects();
+            renderSubjects();
+            renderTOC();
+            if (typeof window.loadDashboardData === 'function') {
+                window.loadDashboardData();
+            }
+        } catch (err) {
+            showToast(err.message, 'error');
+        }
+    };
+
+    window.copyClassJoinCode = function (code) {
+        const clean = String(code || '').trim();
+        if (!clean) return;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(clean).then(() => {
+                showToast(`Class Code "${clean}" copied to clipboard!`, 'success');
+            }).catch(() => {
+                showToast(`Class Code: ${clean}`, 'info');
+            });
+        } else {
+            showToast(`Class Code: ${clean}`, 'info');
+        }
+    };
+
+    window.openClassRosterModal = async function (subjectId) {
+        const targetId = subjectId || currentSubjectId || (subjectsData[0] ? subjectsData[0].id : null);
+        if (!targetId) return;
+        activeRosterSubjectId = targetId;
+
+        openModal('classRosterModal');
+        const listEl = document.getElementById('rosterModalStudentList');
+        if (listEl) {
+            listEl.innerHTML = `<div style="padding: 1.5rem; text-align: center; color: #64748b;">Loading class roster...</div>`;
+        }
+
+        await loadActiveClassRoster(targetId);
+    };
+
+    async function loadActiveClassRoster(subjectId) {
+        try {
+            const res = await fetch(`/api/subjects/${subjectId}/students`);
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Failed to load class roster');
+
+            activeRosterJoinCode = data.joinCode || 'CMS315';
+            const titleEl = document.getElementById('rosterModalSubjectTitle');
+            const codeEl = document.getElementById('rosterModalJoinCodeDisplay');
+            const badgeEl = document.getElementById('rosterModalStudentCountBadge');
+            const listEl = document.getElementById('rosterModalStudentList');
+
+            if (titleEl) titleEl.textContent = `${data.subjectCode} — ${data.subjectName}`;
+            if (codeEl) codeEl.textContent = activeRosterJoinCode;
+            if (badgeEl) badgeEl.textContent = `${data.enrolledCount || 0} Student${data.enrolledCount === 1 ? '' : 's'}`;
+
+            if (listEl) {
+                const students = data.students || [];
+                if (students.length === 0) {
+                    listEl.innerHTML = `
+                        <div style="padding: 2rem 1.25rem; text-align: center; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 12px; color: #64748b;">
+                            <div style="font-weight: 700; color: #334155; margin-bottom: 0.25rem;">No Students Enrolled Yet</div>
+                            <div style="font-size: 0.82rem;">Share the Class Code <strong>${escapeHtml(activeRosterJoinCode)}</strong> with your students so they can join this class.</div>
+                        </div>
+                    `;
+                } else {
+                    listEl.innerHTML = `
+                        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                            ${students.map((st, idx) => `
+                                <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px;">
+                                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                        <div style="width: 34px; height: 34px; border-radius: 50%; background: #eef2ff; color: #4f46e5; font-weight: 800; font-size: 0.85rem; display: flex; align-items: center; justify-content: center;">
+                                            ${escapeHtml((st.firstName || 'S').charAt(0).toUpperCase())}
+                                        </div>
+                                        <div>
+                                            <div style="font-weight: 700; color: #0f172a; font-size: 0.9rem;">${idx + 1}. ${escapeHtml(st.lastName)}, ${escapeHtml(st.firstName)}</div>
+                                            <div style="font-size: 0.76rem; color: #64748b;">@${escapeHtml(st.username)} • ${escapeHtml(st.email)}</div>
+                                        </div>
+                                    </div>
+                                    <button type="button" class="btn btn-secondary btn-sm" style="color: #dc2626; border-color: #fecaca; background: #fef2f2;" onclick="window.removeStudentFromRoster('${subjectId}', '${st.id}', '${escapeHtml(st.firstName + ' ' + st.lastName)}')">
+                                        Remove
+                                    </button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+            }
+        } catch (err) {
+            showToast(err.message, 'error');
+        }
+    }
+
+    window.copyActiveRosterCode = function () {
+        window.copyClassJoinCode(activeRosterJoinCode);
+    };
+
+    window.regenerateActiveRosterCode = async function () {
+        if (!activeRosterSubjectId) return;
+        if (!confirm('Generate a new Class Join Code? The previous code will no longer work for new students.')) return;
+        try {
+            const res = await fetch(`/api/subjects/${activeRosterSubjectId}/regenerate-code`, { method: 'POST' });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Failed to regenerate code');
+
+            activeRosterJoinCode = data.joinCode;
+            const codeEl = document.getElementById('rosterModalJoinCodeDisplay');
+            if (codeEl) codeEl.textContent = activeRosterJoinCode;
+            showToast(data.message || `New Class Code: ${activeRosterJoinCode}`, 'success');
+
+            await fetchSubjects();
+            if (currentSubjectId === activeRosterSubjectId) {
+                await fetchSubjectDetails(currentSubjectId);
+            }
+            renderSubjects();
+            renderTOC();
+            if (typeof window.loadDashboardData === 'function') {
+                window.loadDashboardData();
+            }
+        } catch (err) {
+            showToast(err.message, 'error');
+        }
+    };
+
+    window.removeStudentFromRoster = async function (subjectId, studentId, studentName) {
+        if (!confirm(`Remove ${studentName} from this class?`)) return;
+        try {
+            const res = await fetch(`/api/subjects/${subjectId}/students/${studentId}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Failed to remove student');
+            showToast(data.message || 'Student removed', 'info');
+            await loadActiveClassRoster(subjectId);
+            await fetchSubjects();
+            if (currentSubjectId === subjectId) {
+                await fetchSubjectDetails(currentSubjectId);
+            }
+            renderSubjects();
+            renderTOC();
+            if (typeof window.loadDashboardData === 'function') {
+                window.loadDashboardData();
+            }
+        } catch (err) {
+            showToast(err.message, 'error');
+        }
+    };
+
+    window.confirmDeleteTopicPresentation = async function (topicId, topicTitle) {
+        if (!confirm(`Remove the presentation deck & slides from "${topicTitle}"? You can create or attach a new presentation at any time.`)) {
+            return;
+        }
+        try {
+            const res = await fetch(`/api/topics/${topicId}/slides`, { method: 'DELETE' });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Failed to remove presentation');
+            showToast(data.message || 'Presentation removed from topic', 'success');
+            if (currentSubject && currentSubject.id) {
+                await fetchSubjectDetails(currentSubject.id);
+                renderTOC();
+            }
+        } catch (err) {
+            showToast(err.message, 'error');
+        }
+    };
+
+    window.refreshCurrentSubjectAfterSave = async function () {
+        await fetchSubjects();
+        if (currentSubjectId) {
+            await fetchSubjectDetails(currentSubjectId);
+            renderTOC();
+        }
+    };
 
 })();

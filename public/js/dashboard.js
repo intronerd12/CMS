@@ -56,10 +56,20 @@ function initializeDashboard() {
         }
     }
 
-    // Show faculty actions
+    // Show role-specific actions
     if (currentUser.role === 'faculty') {
         document.querySelectorAll('.faculty-only').forEach(el => {
             el.style.display = 'flex';
+        });
+        document.querySelectorAll('.student-only').forEach(el => {
+            el.style.display = 'none';
+        });
+    } else {
+        document.querySelectorAll('.faculty-only').forEach(el => {
+            el.style.display = 'none';
+        });
+        document.querySelectorAll('.student-only').forEach(el => {
+            el.style.display = 'inline-flex';
         });
     }
 
@@ -135,7 +145,9 @@ function navigateTo(pageName) {
     window.location.hash = pageName;
 
     // Load page-specific data
-    if (pageName === 'subjects') {
+    if (pageName === 'dashboard') {
+        loadDashboardData();
+    } else if (pageName === 'subjects') {
         if (typeof window.loadSubjectsPage === 'function') {
             window.loadSubjectsPage();
         }
@@ -225,45 +237,167 @@ function setupLogout() {
 async function loadDashboardData() {
     try {
         const role = currentUser ? (currentUser.role || 'student') : 'student';
-        // Load subjects count with role-based topic filtering
-        const subjectsRes = await fetch(`${API_BASE}/api/subjects?role=${encodeURIComponent(role)}`, {
-            headers: { 'x-user-role': role }
+        const studentIdParam = (role !== 'faculty' && currentUser && currentUser.id)
+            ? `&studentId=${encodeURIComponent(currentUser.id)}`
+            : '';
+
+        // Load subjects visible to this user (for students: only joined classes!)
+        const subjectsRes = await fetch(`${API_BASE}/api/subjects?role=${encodeURIComponent(role)}${studentIdParam}`, {
+            headers: {
+                'x-user-role': role,
+                'x-user-id': currentUser ? currentUser.id : ''
+            }
         });
         const subjectsData = await subjectsRes.json();
-        document.getElementById('statSubjects').textContent = subjectsData.subjects ? subjectsData.subjects.length : 0;
+        const subjectsList = subjectsData.subjects || [];
+        document.getElementById('statSubjects').textContent = subjectsList.length;
 
-        // Count topics across all subjects visible to this role
+        // Count topics across visible subjects
         let totalTopics = 0;
-        if (subjectsData.subjects) {
-            subjectsData.subjects.forEach(s => {
-                totalTopics += (s.topics ? s.topics.length : 0);
-            });
-        }
+        subjectsList.forEach(s => {
+            totalTopics += (s.topics ? s.topics.length : 0);
+        });
         document.getElementById('statTopics').textContent = totalTopics;
 
-        // Fetch stats
-        const statsRes = await fetch(`${API_BASE}/api/stats`);
+        // Render Class Join Code & Enrollment Banner on Dashboard
+        renderDashboardEnrollmentBanner(subjectsList, role);
+
+        // Fetch stats & scores
+        const statsRes = await fetch(`${API_BASE}/api/stats?role=${encodeURIComponent(role)}${studentIdParam}`, {
+            headers: {
+                'x-user-role': role,
+                'x-user-id': currentUser ? currentUser.id : ''
+            }
+        });
         if (statsRes.ok) {
             const stats = await statsRes.json();
             const statQuizzesEl = document.getElementById('statQuizzes');
-            if (statQuizzesEl) {
-                if (role === 'student' && currentUser && currentUser.id) {
-                    const scRes = await fetch(`${API_BASE}/api/scores/student/${currentUser.id}`);
-                    if (scRes.ok) {
-                        const scData = await scRes.json();
-                        statQuizzesEl.textContent = scData.scores ? scData.scores.filter(s => s.passed === 1).length : 0;
-                    } else {
-                        statQuizzesEl.textContent = stats.totalQuizzes || 0;
+            const statAvgScoreEl = document.getElementById('statAvgScore');
+            if (role === 'student' && currentUser && currentUser.id) {
+                const scRes = await fetch(`${API_BASE}/api/scores/student/${currentUser.id}`);
+                if (scRes.ok) {
+                    const scData = await scRes.json();
+                    const scores = scData.scores || [];
+                    if (statQuizzesEl) {
+                        statQuizzesEl.textContent = scores.filter(s => s.passed === 1).length;
                     }
-                } else {
-                    statQuizzesEl.textContent = stats.totalQuizzes || 0;
+                    if (statAvgScoreEl) {
+                        if (scores.length > 0) {
+                            const avg = Math.round(scores.reduce((acc, s) => acc + Number(s.percentage || 0), 0) / scores.length);
+                            statAvgScoreEl.textContent = `${avg}%`;
+                        } else {
+                            statAvgScoreEl.textContent = '—';
+                        }
+                    }
                 }
+            } else {
+                if (statQuizzesEl) statQuizzesEl.textContent = stats.totalQuizzes || 0;
             }
         }
     } catch (error) {
         console.error('Error loading dashboard data:', error);
     }
 }
+
+function renderDashboardEnrollmentBanner(subjects, role) {
+    const container = document.getElementById('dashboardClassEnrollmentBanner');
+    if (!container) return;
+
+    if (role === 'faculty') {
+        if (!subjects || subjects.length === 0) {
+            container.innerHTML = '';
+            return;
+        }
+        container.innerHTML = `
+            <div class="class-code-hub-card faculty-hub">
+                <div class="class-code-hub-left">
+                    <div class="class-code-hub-badge">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+                        <span>Classroom Enrollment Codes</span>
+                    </div>
+                    <h3>Share Class Code with Students</h3>
+                    <p>Students cannot access your classes automatically. Share the unique Class Join Code below (just like Google Classroom & MS Teams) so students can enroll.</p>
+                </div>
+                <div class="class-code-hub-list">
+                    ${subjects.map(s => `
+                        <div class="class-code-pill-card">
+                            <div class="class-code-pill-meta">
+                                <span class="class-code-pill-course">${s.code} — ${s.name}</span>
+                                <span class="class-code-pill-roster">${s.enrolledCount || 0} Student${(s.enrolledCount === 1) ? '' : 's'} Enrolled</span>
+                            </div>
+                            <div class="class-code-pill-actions">
+                                <span class="class-code-mono" title="Class Join Code">${s.joinCode || 'CMS315'}</span>
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="window.copyClassJoinCode('${s.joinCode || 'CMS315'}')" title="Copy Class Code">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                    <span>Copy</span>
+                                </button>
+                                <button type="button" class="btn btn-primary btn-sm" onclick="window.openClassRosterModal('${s.id}')">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                                    <span>Code & Roster</span>
+                                </button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    } else {
+        if (!subjects || subjects.length === 0) {
+            container.innerHTML = `
+                <div class="class-code-hub-card student-empty-hub">
+                    <div class="class-code-hub-left">
+                        <div class="class-code-hub-badge">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+                            <span>Class Enrollment Required</span>
+                        </div>
+                        <h3>Join Your Instructor's Class with a Code</h3>
+                        <p>You are not enrolled in any classes yet. Enter the 6-character Class Code provided by your faculty instructor to unlock your course subjects, presentations, and quizzes.</p>
+                    </div>
+                    <form class="class-code-inline-form" onsubmit="window.handleInlineDashboardJoin(event)">
+                        <input
+                            type="text"
+                            id="dashboardInlineJoinCodeInput"
+                            class="class-code-inline-input"
+                            placeholder="Enter Code (e.g. CMS315)"
+                            maxlength="12"
+                            required
+                            autocomplete="off"
+                        >
+                        <button type="submit" class="btn btn-primary">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                            <span>Join Class</span>
+                        </button>
+                    </form>
+                </div>
+            `;
+        } else {
+            container.innerHTML = `
+                <div class="class-code-hub-card student-enrolled-hub">
+                    <div class="class-code-hub-left">
+                        <div class="class-code-hub-badge">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                            <span>Enrolled Classroom${subjects.length > 1 ? 's' : ''} (${subjects.length})</span>
+                        </div>
+                        <h3>Your Active Course Classrooms</h3>
+                        <p>You are enrolled in ${subjects.map(s => `<strong>${s.code} — ${s.name}</strong>`).join(', ')}. Have another class code from an instructor?</p>
+                    </div>
+                    <div style="display: flex; gap: 0.65rem; align-items: center; flex-wrap: wrap;">
+                        <button type="button" class="btn btn-secondary" onclick="navigateTo('topics')">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                            <span>Open Course Lessons</span>
+                        </button>
+                        <button type="button" class="btn btn-primary" onclick="window.openJoinClassModal()">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            <span>Join Another Class</span>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+    }
+}
+
+window.loadDashboardData = loadDashboardData;
 
 // ==================== HELPERS ====================
 

@@ -134,6 +134,12 @@
                 </div>
             </div>
             <div class="topbar-right">
+                <button type="button" class="btn-primary-action student-only" id="topbarJoinClassBtn" onclick="window.openJoinClassModal()" style="display: none;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+                    </svg>
+                    <span>Join Class</span>
+                </button>
                 <div class="portal-badge" id="portalBadge">
                     <span class="portal-dot"></span>
                     <span class="portal-text" id="portalText">Portal</span>
@@ -201,6 +207,9 @@
                     </div>
                 </div>
 
+                <!-- Class Code & Enrollment Hub Banner (Google Classroom / MS Teams style) -->
+                <div id="dashboardClassEnrollmentBanner" style="margin-bottom: 1.5rem;"></div>
+
                 <div class="dashboard-grid">
                     <div class="card">
                         <div class="card-header">
@@ -223,6 +232,12 @@
                         </div>
                         <div class="card-body">
                             <div class="quick-actions">
+                                <button class="quick-action-btn student-only" onclick="window.openJoinClassModal()" style="display:none; border-color: rgba(79, 70, 229, 0.35); background: linear-gradient(135deg, rgba(79, 70, 229, 0.08), rgba(37, 99, 235, 0.04));">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+                                    </svg>
+                                    <span>Join Class with Code</span>
+                                </button>
                                 <button class="quick-action-btn" onclick="navigateTo('subjects')">
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
@@ -308,6 +323,12 @@
                                 </svg>
                             </button>
                         </div>
+                        <button class="btn-primary-action student-only" id="subjectsJoinClassBtn" onclick="window.openJoinClassModal()" style="display: none;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+                            </svg>
+                            <span>Join Class with Code</span>
+                        </button>
                         <button class="btn-primary-action faculty-only" onclick="openCreateSubjectModal()">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                                 <line x1="12" y1="5" x2="12" y2="19"/>
@@ -880,6 +901,13 @@
 
             <!-- Header Actions -->
             <div class="viewer-actions">
+                <button type="button" id="viewerEditStudioBtn" class="viewer-btn faculty-only" style="background: rgba(99, 102, 241, 0.25); border-color: rgba(129, 140, 248, 0.5); color: #fff; font-weight: 700; display: none;" onclick="window.editCurrentViewerSlidesInStudio()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
+                    <span>Edit in Studio</span>
+                </button>
                 <a id="viewerDownloadBtn" href="#" download class="viewer-btn" title="Download original PPTX file">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -993,11 +1021,23 @@
         </div>
     </div>
 
-    <!-- ==================== 7. FACULTY QUIZ BUILDER MODAL ==================== -->
+    <!-- ==================== 7. FACULTY QUIZ STUDIO MODAL (FULL CRUD) ==================== -->
     <div id="quizModal" class="modal-overlay">
-        <div class="modal-container" style="max-width: 760px; max-height: 90vh; display: flex; flex-direction: column;">
-            <div class="modal-header">
-                <h3 id="quizModalTitle">Create Topic Quiz (10 Min • Max 20 Questions - Item 5)</h3>
+        <div class="modal-container" style="max-width: 920px; width: 95vw; max-height: 92vh; display: flex; flex-direction: column;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%); border-bottom: 1px solid #dbeafe;">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <div style="width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, #2563eb, #4f46e5); color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+                            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+                            <path d="M9 14l2 2 4-4"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 id="quizModalTitle" style="margin: 0; font-size: 1.15rem; font-weight: 800; color: #0f172a;">Quiz Studio — Create Topic Assessment</h3>
+                        <div style="font-size: 0.76rem; color: #475569; font-weight: 500;">Full CRUD Assessment Builder • Randomized Choices & Sequential Topic Gatekeeper</div>
+                    </div>
+                </div>
                 <button type="button" class="modal-close-btn" onclick="closeModal('quizModal')">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="18" y1="6" x2="6" y2="18"/>
@@ -1005,70 +1045,136 @@
                     </svg>
                 </button>
             </div>
-            <div class="modal-body" style="overflow-y: auto; flex: 1;">
+            <div class="modal-body" style="overflow-y: auto; flex: 1; padding: 1.25rem 1.5rem;">
                 <input type="hidden" id="quizModalTopicId">
                 <input type="hidden" id="quizModalSubjectId">
 
-                <div class="form-group">
-                    <label for="quizTitleInput">Quiz Title</label>
-                    <input type="text" id="quizTitleInput" class="form-control" placeholder="e.g., Topic 1: CMS Fundamentals Quiz" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="quizDescInput">Description / Instructions</label>
-                    <input type="text" id="quizDescInput" class="form-control" placeholder="Instructions for students...">
-                </div>
-
-                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1.25rem;">
+                <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 1rem; margin-bottom: 1rem;">
                     <div class="form-group" style="margin-bottom: 0;">
-                        <label for="quizPassingScoreInput">Passing Score Threshold (%) - Item 5: 75%</label>
+                        <label for="quizModalTopicSelect" style="font-weight: 700; color: #1e293b;">Target Lesson / Topic <span style="color:#ef4444">*</span></label>
+                        <select id="quizModalTopicSelect" class="form-control" style="font-weight: 600;" onchange="window.handleQuizModalTopicChange(this.value)">
+                            <option value="">Select a Topic...</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="quizTitleInput" style="font-weight: 700; color: #1e293b;">Assessment Title <span style="color:#ef4444">*</span></label>
+                        <input type="text" id="quizTitleInput" class="form-control" placeholder="e.g., Topic 1: CMS Fundamentals Quiz" required>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1.4fr 0.8fr 0.8fr; gap: 1rem; margin-bottom: 1.25rem;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="quizDescInput">Instructions / Assessment Notes</label>
+                        <input type="text" id="quizDescInput" class="form-control" placeholder="Instructions for students taking this assessment...">
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="quizPassingScoreInput">Passing Score (%)</label>
                         <select id="quizPassingScoreInput" class="form-control" style="font-weight: 700;">
                             <option value="50">50% Minimum Pass</option>
                             <option value="60">60% Minimum Pass</option>
                             <option value="70">70% Standard Pass</option>
-                            <option value="75" selected>75% Standard College Pass (Whiteboard Required: 75%)</option>
+                            <option value="75" selected>75% Standard College Pass</option>
                             <option value="80">80% Mastery Pass</option>
                             <option value="90">90% Honors Mastery Pass</option>
                         </select>
                     </div>
 
                     <div class="form-group" style="margin-bottom: 0;">
-                        <label for="quizTimeLimitInput">Time Limit (Minutes) - Item 5: 10 Min</label>
+                        <label for="quizTimeLimitInput">Time Limit</label>
                         <select id="quizTimeLimitInput" class="form-control" style="font-weight: 700;">
                             <option value="5">5 Minutes</option>
-                            <option value="10" selected>10 Minutes (Whiteboard Item 5 Requirement)</option>
+                            <option value="10" selected>10 Minutes (Standard)</option>
                             <option value="15">15 Minutes</option>
                             <option value="20">20 Minutes</option>
+                            <option value="30">30 Minutes</option>
                         </select>
                     </div>
                 </div>
 
-                <!-- Questions Builder Header -->
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--color-border); flex-wrap: wrap; gap: 0.5rem;">
-                    <div>
-                        <strong style="font-size: 0.95rem;">Quiz Questions (Multiple Choice)</strong>
-                        <div id="builderQuestionCounter" style="font-size: 0.78rem; font-weight: 700; color: var(--color-primary);">Questions: 10 / 20 (Whiteboard: 10 min; max 20)</div>
+                <!-- Questions Builder Toolbar -->
+                <div class="quiz-studio-toolbar">
+                    <div class="quiz-studio-toolbar-left">
+                        <strong style="font-size: 0.95rem; color: #0f172a;">Question Bank (Multiple Choice)</strong>
+                        <div id="builderQuestionCounter" style="font-size: 0.78rem; font-weight: 700; color: var(--color-primary);">Questions: 10 / 20</div>
                     </div>
-                    <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
-                        <button type="button" class="btn btn-secondary btn-sm" onclick="window.openInsertTextQuizModal()" title="Insert / paste text quiz from clipboard (Item 5)">
-                            📝 Insert Text Quiz
+                    <div class="quiz-studio-toolbar-actions">
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="window.openInsertTextQuizModal()" title="Paste questions from text or syllabus">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                            <span>Insert Text</span>
                         </button>
-                        <button type="button" class="btn btn-secondary btn-sm" onclick="window.autoFillTopicQuestions()" title="Auto-fill sample questions for this topic">
-                            ⚡ Auto-Fill 10 Qs
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="window.exportBuilderQuizJson()" title="Export current questions as JSON">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            <span>Export JSON</span>
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="window.autoFillTopicQuestions()" title="Generate topic-aligned questions">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                            <span>Auto-Fill 10 Qs</span>
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="window.clearAllBuilderQuestions()" title="Clear all questions and start with 1 blank question" style="color: #dc2626;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                            <span>Clear</span>
                         </button>
                         <button type="button" class="btn btn-primary btn-sm" onclick="window.addBuilderQuestion()">
-                            + Add Question
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            <span>Add Question</span>
                         </button>
                     </div>
                 </div>
+
+                <!-- Question Jump Navigator Pills -->
+                <div id="builderQuestionNavPills" class="builder-q-nav-pills"></div>
 
                 <!-- Questions List Container -->
                 <div id="builderQuestionsList"></div>
             </div>
 
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="closeModal('quizModal')">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="window.saveQuizFromBuilder()">Save Quiz Assessment</button>
+            <div class="modal-footer" style="justify-content: space-between;">
+                <div>
+                    <button type="button" id="quizModalDeleteBtn" class="btn btn-secondary" style="display: none; color: #dc2626; border-color: #fecaca; background: #fef2f2;" onclick="window.deleteQuizFromBuilderModal()">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        <span>Delete Quiz</span>
+                    </button>
+                </div>
+                <div style="display: flex; gap: 0.6rem;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('quizModal')">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="window.saveQuizFromBuilder()">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        <span>Save Quiz Assessment</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 7B. FACULTY QUIZ INSPECTOR / ANSWER KEY MODAL (READ CRUD) ==================== -->
+    <div id="quizInspectModal" class="modal-overlay">
+        <div class="modal-container" style="max-width: 820px; width: 94vw; max-height: 90vh; display: flex; flex-direction: column;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);">
+                <div>
+                    <h3 id="quizInspectTitle" style="margin: 0; font-size: 1.15rem; font-weight: 800;">Quiz Answer Key & Specification</h3>
+                    <div id="quizInspectSubtitle" style="font-size: 0.78rem; color: #475569; margin-top: 0.15rem;">Complete question bank, options, and verified answer key</div>
+                </div>
+                <button type="button" class="modal-close-btn" onclick="closeModal('quizInspectModal')">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div id="quizInspectBody" class="modal-body" style="overflow-y: auto; flex: 1; padding: 1.25rem 1.5rem; background: #f8fafc;"></div>
+            <div class="modal-footer" style="justify-content: space-between;">
+                <button type="button" class="btn btn-secondary" id="quizInspectSimBtn">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                    <span>Simulate Student Test</span>
+                </button>
+                <div style="display: flex; gap: 0.6rem;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('quizInspectModal')">Close</button>
+                    <button type="button" class="btn btn-primary" id="quizInspectEditBtn">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        <span>Edit in Quiz Studio</span>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -1172,31 +1278,190 @@
         </div>
     </div>
 
-    <!-- ==================== 11. IN-SYSTEM SLIDE CREATOR MODAL (FACULTY) ==================== -->
+    <!-- ==================== 11. PROFESSIONAL PRESENTATION SLIDE STUDIO MODAL (FACULTY FULL CRUD) ==================== -->
     <div id="slideCreatorModal" class="modal-overlay">
-        <div class="modal-container" style="max-width: 760px; max-height: 90vh; display: flex; flex-direction: column;">
-            <div class="modal-header">
-                <div>
-                    <h3 id="slideCreatorTopicTitle">Presentation Slides Creator</h3>
-                    <div style="font-size: 0.75rem; color: var(--color-text-muted);">Author interactive PowerPoint-style slides directly in the LMS</div>
+        <div class="modal-container slide-studio-modal-container">
+            <div class="modal-header slide-studio-header">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <div style="width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, #4f46e5, #7c3aed); color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                            <line x1="8" y1="21" x2="16" y2="21"/>
+                            <line x1="12" y1="17" x2="12" y2="21"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 id="slideCreatorTopicTitle" style="margin: 0; font-size: 1.12rem; font-weight: 800; color: #0f172a;">Presentation Studio</h3>
+                        <div id="slideCreatorSubtitle" style="font-size: 0.76rem; color: #475569; font-weight: 500;">Full CRUD Slide Authoring • Live 16:9 Stage Preview, Layouts, Speaker Notes & PPTX Attachment</div>
+                    </div>
                 </div>
-                <button type="button" class="modal-close-btn" onclick="closeModal('slideCreatorModal')">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="file" id="studioPptxFileInput" accept=".ppt,.pptx,.pdf" style="display: none;" onchange="window.handleStudioPptxUpload(this.files[0])">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('studioPptxFileInput').click()" title="Attach or Replace .PPTX / .PDF Presentation File">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        <span id="studioPptxBtnLabel">Attach .PPTX</span>
+                    </button>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="window.generateSlidesFromSyllabus()" title="Auto-generate slides from Topic Outline">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                        <span>Generate from Syllabus</span>
+                    </button>
+                    <button type="button" class="modal-close-btn" onclick="closeModal('slideCreatorModal')">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="slide-studio-body">
+                <!-- Left Pane: Filmstrip Navigator -->
+                <div class="slide-studio-sidebar">
+                    <div class="slide-studio-sidebar-header">
+                        <span id="slideStudioCountBadge" style="font-size: 0.78rem; font-weight: 800; color: #334155; text-transform: uppercase; letter-spacing: 0.04em;">Slides (1)</span>
+                        <button type="button" class="btn btn-primary btn-sm" style="padding: 0.3rem 0.65rem; font-size: 0.75rem;" onclick="window.addSlideItem()">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            <span>New Slide</span>
+                        </button>
+                    </div>
+                    <div id="slideStudioFilmstrip" class="slide-studio-filmstrip"></div>
+                </div>
+
+                <!-- Right Pane: Live 16:9 Stage Preview + Slide Inspector Editor -->
+                <div class="slide-studio-main">
+                    <!-- Live Stage Preview -->
+                    <div class="slide-studio-stage-wrap">
+                        <div class="slide-studio-stage-header">
+                            <span style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #64748b;">Live 16:9 Slide Stage Preview</span>
+                            <span id="studioAttachedFileBadge" style="display: none; font-size: 0.72rem; font-weight: 600; color: #059669; background: #ecfdf5; border: 1px solid #a7f3d0; padding: 0.15rem 0.55rem; border-radius: 999px;"></span>
+                        </div>
+                        <div id="slideStudioLiveStage" class="slide-studio-live-stage"></div>
+                    </div>
+
+                    <!-- Active Slide Editor Controls -->
+                    <div id="slideBuilderList" class="slide-studio-editor-panel"></div>
+                </div>
+            </div>
+
+            <div class="modal-footer" style="justify-content: space-between;">
+                <div>
+                    <button type="button" class="btn btn-secondary" style="color: #dc2626; border-color: #fecaca; background: #fef2f2;" onclick="window.deleteTopicPresentationFromStudio()">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        <span>Delete Presentation</span>
+                    </button>
+                </div>
+                <div style="display: flex; gap: 0.6rem;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('slideCreatorModal')">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="window.savePresentationSlides()">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        <span>Save Presentation Deck</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 13. STUDENT JOIN CLASS BY CODE MODAL (GOOGLE CLASSROOM / MS TEAMS STYLE) ==================== -->
+    <div id="joinClassModal" class="modal-overlay">
+        <div class="modal-container" style="max-width: 480px;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%); border-bottom: 1px solid #e0e7ff;">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <div style="width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, #2563eb, #4f46e5); color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 style="margin: 0; font-size: 1.12rem; font-weight: 800; color: #0f172a;">Join Class with Code</h3>
+                        <div style="font-size: 0.76rem; color: #475569;">Enter the Class Code shared by your instructor</div>
+                    </div>
+                </div>
+                <button type="button" class="modal-close-btn" onclick="closeModal('joinClassModal')">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="18" y1="6" x2="6" y2="18"/>
                         <line x1="6" y1="6" x2="18" y2="18"/>
                     </svg>
                 </button>
             </div>
-            <div class="modal-body" style="overflow-y: auto; flex: 1;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                    <span style="font-size: 0.875rem; font-weight: 700;">Slides in this Topic Presentation</span>
-                    <button type="button" class="btn btn-secondary btn-sm" onclick="window.addSlideItem()">+ Add Slide</button>
+            <form id="joinClassForm" onsubmit="window.handleJoinClassSubmit(event)">
+                <div class="modal-body">
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1rem; margin-bottom: 1.25rem;">
+                        <div style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin-bottom: 0.25rem;">Class Code</div>
+                        <p style="font-size: 0.84rem; color: #334155; margin: 0 0 0.85rem 0; line-height: 1.45;">
+                            Ask your teacher for the 6-character Class Code, then enter it below to access course lessons, presentations, and quizzes.
+                        </p>
+                        <input
+                            type="text"
+                            id="joinClassCodeInput"
+                            class="form-control"
+                            placeholder="e.g. CMS315"
+                            maxlength="12"
+                            required
+                            autocomplete="off"
+                            style="font-size: 1.35rem; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; text-align: center; height: 54px; border: 2px solid #cbd5e1; border-radius: 10px; color: #1e293b;"
+                        >
+                        <div id="joinClassErrorBox" style="display: none; margin-top: 0.65rem; font-size: 0.8rem; font-weight: 600; color: #dc2626; text-align: center;"></div>
+                    </div>
+                    <div style="font-size: 0.78rem; color: #64748b; line-height: 1.5; padding: 0 0.25rem;">
+                        <strong style="color: #334155;">To sign in with a class code:</strong>
+                        <ul style="margin: 0.35rem 0 0 1.1rem; padding: 0;">
+                            <li>Use an authorized student account</li>
+                            <li>Use a 5–7 character alphanumeric code with no spaces or symbols</li>
+                        </ul>
+                    </div>
                 </div>
-                <div id="slideBuilderList" class="slide-builder-list"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('joinClassModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="joinClassSubmitBtn">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        <span>Join Class</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==================== 14. FACULTY CLASS CODE & ENROLLED ROSTER MODAL ==================== -->
+    <div id="classRosterModal" class="modal-overlay">
+        <div class="modal-container" style="max-width: 680px; width: 94vw; max-height: 88vh; display: flex; flex-direction: column;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); color: #fff;">
+                <div>
+                    <h3 id="rosterModalSubjectTitle" style="margin: 0; font-size: 1.15rem; font-weight: 800; color: #fff;">Class Join Code & Enrolled Roster</h3>
+                    <div style="font-size: 0.78rem; color: #c7d2fe;">Share this code with your students so they can join your class</div>
+                </div>
+                <button type="button" class="modal-close-btn" onclick="closeModal('classRosterModal')" style="color: #fff;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body" style="overflow-y: auto; flex: 1; padding: 1.5rem;">
+                <!-- Projector-Friendly Class Code Hero Card -->
+                <div style="background: linear-gradient(135deg, #eef2ff 0%, #eff6ff 100%); border: 2px dashed #818cf8; border-radius: 16px; padding: 1.5rem; text-align: center; margin-bottom: 1.5rem;">
+                    <div style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: #4f46e5; margin-bottom: 0.35rem;">Official Class Join Code</div>
+                    <div id="rosterModalJoinCodeDisplay" style="font-size: 3rem; font-weight: 900; letter-spacing: 0.2em; color: #1e1b4b; font-family: var(--font-mono, monospace); line-height: 1.1; margin: 0.35rem 0 1rem 0; user-select: all;">CMS315</div>
+                    <div style="display: flex; justify-content: center; gap: 0.6rem; flex-wrap: wrap;">
+                        <button type="button" class="btn btn-primary btn-sm" onclick="window.copyActiveRosterCode()">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            <span>Copy Class Code</span>
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="window.regenerateActiveRosterCode()">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                            <span>Reset / Generate New Code</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Enrolled Students List -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                    <h4 style="margin: 0; font-size: 0.95rem; font-weight: 800; color: #0f172a;">Enrolled Students</h4>
+                    <span id="rosterModalStudentCountBadge" class="badge badge-primary">0 Students</span>
+                </div>
+                <div id="rosterModalStudentList"></div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="closeModal('slideCreatorModal')">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="window.savePresentationSlides()">Save Presentation Slides</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('classRosterModal')">Done</button>
             </div>
         </div>
     </div>

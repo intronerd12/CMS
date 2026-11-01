@@ -27,6 +27,8 @@
     // Slide Creator State
     let slideBuilderSlides = [];
     let activeSlideTopicId = null;
+    let activeSlideIndex = 0;
+    let activeSlideCustomFile = null;
 
     // Helpers
     function getCurrentUser() {
@@ -115,25 +117,63 @@
         try {
             const user = getCurrentUser();
             if (!user) return;
+            const isFaculty = isFacultyUser();
 
-            // Fetch subjects
-            const res = await fetch(`/api/subjects?role=${encodeURIComponent(user.role || 'student')}`, {
-                headers: { 'x-user-role': user.role || 'student' }
+            // Fetch subjects (scoped to joined classes for students)
+            const res = await fetch(`/api/subjects?role=${encodeURIComponent(user.role || 'student')}&studentId=${encodeURIComponent(user.id || '')}`, {
+                headers: {
+                    'x-user-role': user.role || 'student',
+                    'x-user-id': user.id || ''
+                }
             });
             const data = await res.json();
             const subjects = data.subjects || [];
 
+            const quizSubSelect = document.getElementById('quizSubjectSelect');
+            const facultyBar = document.getElementById('quizzesFacultyActions');
+            if (facultyBar) {
+                facultyBar.style.display = isFaculty ? 'flex' : 'none';
+            }
+
             if (subjects.length === 0) {
-                document.getElementById('quizzesContainer').innerHTML = `
-                    <div class="empty-state-full">
-                        <h3>No Subjects Available</h3>
-                        <p>No courses have been created yet.</p>
-                    </div>`;
+                if (quizSubSelect) {
+                    quizSubSelect.innerHTML = `<option value="">${isFaculty ? 'No Subjects Created' : 'No Classes Joined Yet'}</option>`;
+                }
+                const headerContainer = document.getElementById('classroomHeaderBanner');
+                if (headerContainer) headerContainer.innerHTML = '';
+
+                const grid = document.getElementById('quizzesGrid');
+                if (grid) {
+                    grid.innerHTML = isFaculty ? `
+                        <div class="empty-state-full" style="grid-column: 1 / -1;">
+                            <h3>No Subjects Available</h3>
+                            <p>Create a course subject first before building topic quizzes.</p>
+                        </div>` : `
+                        <div class="empty-state-full" style="grid-column: 1 / -1; max-width: 560px; margin: 1.5rem auto; background: #fff; border: 1.5px dashed #cbd5e1; border-radius: 16px; padding: 2.75rem 2rem; text-align: center;">
+                            <div style="width: 56px; height: 56px; border-radius: 14px; background: linear-gradient(135deg, #fff7ed, #ffedd5); color: #ea580c; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem;">
+                                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                                </svg>
+                            </div>
+                            <h3 style="font-size: 1.15rem; font-weight: 800; color: #0f172a; margin-bottom: 0.4rem;">Join a Class to Access Quizzes</h3>
+                            <p style="color: #64748b; font-size: 0.875rem; margin-bottom: 1.25rem;">
+                                Enter the <strong>Class Join Code</strong> provided by your instructor to enroll in the classroom and unlock topic assessments.
+                            </p>
+                            <button type="button" class="btn btn-primary" onclick="window.openJoinClassModal()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+                                    <polyline points="10 17 15 12 10 7"/>
+                                    <line x1="15" y1="12" x2="3" y2="12"/>
+                                </svg>
+                                <span>Enter Class Join Code</span>
+                            </button>
+                        </div>`;
+                }
                 return;
             }
 
             // Populate subject selector
-            const quizSubSelect = document.getElementById('quizSubjectSelect');
             if (quizSubSelect) {
                 quizSubSelect.innerHTML = subjects.map(s => `
                     <option value="${s.id}" ${s.id === currentSubjectId ? 'selected' : ''}>${s.code} - ${s.name}</option>
@@ -143,12 +183,6 @@
                     currentSubjectId = subjects[0].id;
                 }
                 quizSubSelect.value = currentSubjectId;
-            }
-
-            // Render faculty controls
-            const facultyBar = document.getElementById('quizzesFacultyActions');
-            if (facultyBar) {
-                facultyBar.style.display = isFacultyUser() ? 'flex' : 'none';
             }
 
             await loadQuizzesForSubject(currentSubjectId);
@@ -164,9 +198,15 @@
             const isFaculty = isFacultyUser();
 
             // Fetch subject details
-            const subRes = await fetch(`/api/subjects/${subjectId}?role=${encodeURIComponent(user.role || 'student')}`, {
-                headers: { 'x-user-role': user.role || 'student' }
+            const subRes = await fetch(`/api/subjects/${subjectId}?role=${encodeURIComponent(user.role || 'student')}&studentId=${encodeURIComponent(user.id || '')}`, {
+                headers: {
+                    'x-user-role': user.role || 'student',
+                    'x-user-id': user.id || ''
+                }
             });
+            if (!subRes.ok) {
+                return;
+            }
             const subData = await subRes.json();
             currentSubject = subData.subject;
 
@@ -210,21 +250,33 @@
                     <div class="classroom-progress-track">
                         <div class="classroom-progress-fill" style="width: ${p.percentage}%;"></div>
                     </div>
-                    <div style="font-size: 0.75rem; color: rgba(255,255,255,0.8); margin-top: 0.4rem;">
+                    <div style="font-size: 0.75rem; color: rgba(255,255,255,0.85); margin-top: 0.4rem;">
                         ${p.percentage === 100 
-                            ? '🎉 Congratulations! You have successfully mastered and unlocked all 14 topics!' 
+                            ? 'Congratulations! You have mastered and unlocked all 14 curriculum topics.' 
                             : 'Pass each topic\'s quiz to unlock the next lesson in sequence.'}
                     </div>
                 </div>`;
         } else if (isFaculty) {
+            const joinCode = subject.joinCode || 'CMS315';
+            const enrolledCount = Number(subject.enrolledCount || 0);
             progressHtml = `
                 <div class="classroom-progress-card">
-                    <div class="classroom-progress-header">
-                        <span>Faculty Instructor Mode</span>
-                        <span>14 Modules Syllabus</span>
+                    <div class="classroom-progress-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+                        <span>Faculty Instructor Studio • ${subject.topics ? subject.topics.length : 14} Modules</span>
+                        <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                            <span style="background: rgba(255,255,255,0.18); padding: 0.25rem 0.65rem; border-radius: 6px; font-family: monospace; font-weight: 800; letter-spacing: 0.08em; border: 1px solid rgba(255,255,255,0.28);">
+                                Class Code: ${escapeHtml(joinCode)}
+                            </span>
+                            <button type="button" class="btn btn-sm" style="background: rgba(255,255,255,0.2); color: #fff; border: 1px solid rgba(255,255,255,0.3); padding: 0.2rem 0.55rem; font-size: 0.72rem;" onclick="window.copyClassJoinCode('${escapeHtml(joinCode)}')">
+                                Copy Code
+                            </button>
+                            <button type="button" class="btn btn-sm" style="background: #fff; color: #1e293b; border: none; padding: 0.2rem 0.65rem; font-size: 0.72rem; font-weight: 700;" onclick="window.openClassRosterModal('${subject.id}')">
+                                Class Roster (${enrolledCount})
+                            </button>
+                        </div>
                     </div>
-                    <div style="font-size: 0.8125rem; color: rgba(255,255,255,0.9);">
-                        Manage PowerPoint presentations, custom slides, and quizzes (10-30 MC questions). Shuffled choices anti-cheating enabled.
+                    <div style="font-size: 0.8125rem; color: rgba(255,255,255,0.92); margin-top: 0.35rem;">
+                        Full CRUD enabled: Create, inspect, edit, and delete Topic Presentations (Slide Studio / .PPTX) and Assessments (Quiz Studio).
                     </div>
                 </div>`;
         }
@@ -292,7 +344,15 @@
             // Status Badge
             let badgeClass = 'status-locked';
             let badgeText = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align: -1px; margin-right: 3px;"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Locked';
-            if (isPassed) {
+            if (isFaculty) {
+                if (quiz) {
+                    badgeClass = 'status-passed';
+                    badgeText = `Published (${quiz.questionCount || 10} Qs)`;
+                } else {
+                    badgeClass = 'status-locked';
+                    badgeText = 'No Quiz Yet';
+                }
+            } else if (isPassed) {
                 badgeClass = 'status-passed';
                 badgeText = `✓ Passed (${bestScore}%)`;
             } else if (status === 'failed_retry') {
@@ -313,8 +373,15 @@
             if (isFaculty) {
                 if (quiz) {
                     actionsHtml = `
-                        <button type="button" class="btn btn-secondary btn-sm" onclick="window.previewQuiz('${quiz.id}')" title="Preview Student Experience">Preview</button>
-                        <button type="button" class="btn btn-primary btn-sm" onclick="window.openEditQuizModal('${quiz.id}')" title="Edit Questions">Edit (${quiz.questionCount || 10} Qs)</button>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="window.inspectQuizAnswerKey('${quiz.id}')" title="Read / View Questions & Answer Key">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                            <span>Answer Key</span>
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="window.previewQuiz('${quiz.id}')" title="Preview Student Quiz Taker">Preview</button>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="window.openEditQuizModal('${quiz.id}')" title="Update / Edit Quiz in Studio">Edit (${quiz.questionCount || 10} Qs)</button>
                         <button type="button" class="btn btn-danger btn-sm" onclick="window.deleteQuizConfirm('${quiz.id}')" title="Delete Quiz" style="padding: 0.4rem 0.6rem;">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="3 6 5 6 21 6"/>
@@ -1000,18 +1067,48 @@
 
         // Populate subject dropdown for scores
         try {
-            const subRes = await fetch(`/api/subjects?role=${encodeURIComponent(user.role || 'student')}`, {
-                headers: { 'x-user-role': user.role || 'student' }
+            const subRes = await fetch(`/api/subjects?role=${encodeURIComponent(user.role || 'student')}&studentId=${encodeURIComponent(user.id || '')}`, {
+                headers: {
+                    'x-user-role': user.role || 'student',
+                    'x-user-id': user.id || ''
+                }
             });
             const subData = await subRes.json();
             const subjects = subData.subjects || [];
 
             const selectEl = document.getElementById('scoresSubjectSelect');
+            if (subjects.length === 0) {
+                if (selectEl) {
+                    selectEl.innerHTML = `<option value="">${isFaculty ? 'No Subjects Created' : 'No Classes Joined Yet'}</option>`;
+                }
+                if (!isFaculty) {
+                    container.innerHTML = `
+                        <div class="empty-state-full" style="max-width: 560px; margin: 1.5rem auto; background: #fff; border: 1.5px dashed #cbd5e1; border-radius: 16px; padding: 2.75rem 2rem; text-align: center;">
+                            <div style="width: 56px; height: 56px; border-radius: 14px; background: linear-gradient(135deg, #fff7ed, #ffedd5); color: #ea580c; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem;">
+                                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                                </svg>
+                            </div>
+                            <h3 style="font-size: 1.15rem; font-weight: 800; color: #0f172a; margin-bottom: 0.4rem;">Join a Class to View Your Scores</h3>
+                            <p style="color: #64748b; font-size: 0.875rem; margin-bottom: 1.25rem;">
+                                Enter your instructor's <strong>Class Join Code</strong> to enroll in a class and track your quiz transcript.
+                            </p>
+                            <button type="button" class="btn btn-primary" onclick="window.openJoinClassModal()">
+                                <span>Enter Class Join Code</span>
+                            </button>
+                        </div>`;
+                    return;
+                }
+            }
+
             if (selectEl && subjects.length > 0) {
                 selectEl.innerHTML = subjects.map(s => `
                     <option value="${s.id}" ${s.id === currentSubjectId ? 'selected' : ''}>${s.code} - ${s.name}</option>
                 `).join('');
-                if (!currentSubjectId) currentSubjectId = subjects[0].id;
+                if (!currentSubjectId || !subjects.some(s => s.id === currentSubjectId)) {
+                    currentSubjectId = subjects[0].id;
+                }
                 selectEl.value = currentSubjectId;
             }
 
@@ -1549,24 +1646,55 @@
     window.loadMatrixPage = async function () {
         const user = getCurrentUser();
         if (!user) return;
+        const isFaculty = isFacultyUser();
 
         const container = document.getElementById('matrixPageContent');
         if (!container) return;
 
         try {
             // Populate subject dropdown for matrix
-            const subRes = await fetch(`/api/subjects?role=${encodeURIComponent(user.role || 'student')}`, {
-                headers: { 'x-user-role': user.role || 'student' }
+            const subRes = await fetch(`/api/subjects?role=${encodeURIComponent(user.role || 'student')}&studentId=${encodeURIComponent(user.id || '')}`, {
+                headers: {
+                    'x-user-role': user.role || 'student',
+                    'x-user-id': user.id || ''
+                }
             });
             const subData = await subRes.json();
             const subjects = subData.subjects || [];
 
             const selectEl = document.getElementById('matrixSubjectSelect');
+            if (subjects.length === 0) {
+                if (selectEl) {
+                    selectEl.innerHTML = `<option value="">${isFaculty ? 'No Subjects Created' : 'No Classes Joined Yet'}</option>`;
+                }
+                if (!isFaculty) {
+                    container.innerHTML = `
+                        <div class="empty-state-full" style="max-width: 560px; margin: 1.5rem auto; background: #fff; border: 1.5px dashed #cbd5e1; border-radius: 16px; padding: 2.75rem 2rem; text-align: center;">
+                            <div style="width: 56px; height: 56px; border-radius: 14px; background: linear-gradient(135deg, #fff7ed, #ffedd5); color: #ea580c; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem;">
+                                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                                </svg>
+                            </div>
+                            <h3 style="font-size: 1.15rem; font-weight: 800; color: #0f172a; margin-bottom: 0.4rem;">Join a Class to View Your Performance Matrix</h3>
+                            <p style="color: #64748b; font-size: 0.875rem; margin-bottom: 1.25rem;">
+                                Enter your instructor's <strong>Class Join Code</strong> to enroll in a class and view your 14-topic progress matrix.
+                            </p>
+                            <button type="button" class="btn btn-primary" onclick="window.openJoinClassModal()">
+                                <span>Enter Class Join Code</span>
+                            </button>
+                        </div>`;
+                    return;
+                }
+            }
+
             if (selectEl && subjects.length > 0) {
                 selectEl.innerHTML = subjects.map(s => `
                     <option value="${s.id}" ${s.id === currentSubjectId ? 'selected' : ''}>${s.code} - ${s.name} (${s.term || s.year || ''})</option>
                 `).join('');
-                if (!currentSubjectId) currentSubjectId = subjects[0].id;
+                if (!currentSubjectId || !subjects.some(s => s.id === currentSubjectId)) {
+                    currentSubjectId = subjects[0].id;
+                }
                 selectEl.value = currentSubjectId;
             }
 
@@ -1601,7 +1729,7 @@
             } else {
                 const [scoresRes, subRes] = await Promise.all([
                     fetch(`/api/scores/student/${user.id}`),
-                    fetch(`/api/subjects/${subjectId}`)
+                    fetch(`/api/subjects/${subjectId}?role=student&studentId=${encodeURIComponent(user.id || '')}`)
                 ]);
                 const scoresData = await scoresRes.json();
                 const subData = await subRes.json();
@@ -2455,24 +2583,101 @@
     };
 
     // ============================================
-    // FACULTY QUIZ CREATOR & UPLOADER
-    // Requirements: 10 min, 30 max questions, Multiple choice
+    // FACULTY QUIZ STUDIO & UPLOADER (FULL CRUD)
+    // Requirements: 10 min, max 20 questions, Multiple choice
     // Passing score: 50%, 60%, 75%, 80%, 90%
     // ============================================
 
-    window.openCreateQuizModal = function (topicId) {
-        editingQuizId = null;
-        const topic = currentSubject ? currentSubject.topics.find(t => t.id === topicId) : null;
+    async function ensureSubjectContextLoaded(topicId) {
+        try {
+            if (!currentSubject || !Array.isArray(currentSubject.topics) || (topicId && !currentSubject.topics.some(t => t.id === topicId))) {
+                const subRes = await fetch('/api/subjects?role=faculty', {
+                    headers: { 'x-user-role': 'faculty' }
+                });
+                const subData = await subRes.json();
+                const allSubjects = subData.subjects || [];
+                if (allSubjects.length > 0) {
+                    let matched = null;
+                    if (topicId) {
+                        matched = allSubjects.find(s => (s.topics || []).some(t => t.id === topicId));
+                    }
+                    if (!matched && currentSubjectId) {
+                        matched = allSubjects.find(s => s.id === currentSubjectId);
+                    }
+                    currentSubject = matched || allSubjects[0];
+                    currentSubjectId = currentSubject.id;
+                }
+            }
+            if (currentSubjectId) {
+                const qRes = await fetch(`/api/subjects/${currentSubjectId}/quizzes`);
+                if (qRes.ok) {
+                    const qData = await qRes.json();
+                    currentQuizzes = qData.quizzes || [];
+                }
+            }
+        } catch (err) {
+            console.warn('Could not preload subject context:', err);
+        }
+    }
 
-        document.getElementById('quizModalTitle').textContent = `Create Topic Quiz - ${topic ? topic.title : ''}`;
-        document.getElementById('quizModalTopicId').value = topicId;
-        document.getElementById('quizModalSubjectId').value = currentSubjectId;
+    function populateQuizModalTopicDropdown(selectedTopicId) {
+        const selectEl = document.getElementById('quizModalTopicSelect');
+        if (!selectEl || !currentSubject || !Array.isArray(currentSubject.topics)) return;
+
+        selectEl.innerHTML = currentSubject.topics.map(t => {
+            const hasQuiz = currentQuizzes.some(q => q.topicId === t.id) || Boolean(t.quiz);
+            return `<option value="${t.id}" ${t.id === selectedTopicId ? 'selected' : ''}>Topic #${t.orderIndex}: ${escapeHtml(t.title)} ${hasQuiz ? '(Has Quiz)' : '(No Quiz Yet)'}</option>`;
+        }).join('');
+        if (selectedTopicId) {
+            selectEl.value = selectedTopicId;
+        }
+    }
+
+    window.handleQuizModalTopicChange = async function (newTopicId) {
+        if (!newTopicId) return;
+        document.getElementById('quizModalTopicId').value = newTopicId;
+
+        const existingQuiz = currentQuizzes.find(q => q.topicId === newTopicId);
+        if (existingQuiz) {
+            await window.openEditQuizModal(existingQuiz.id);
+        } else {
+            await window.openCreateQuizModal(newTopicId);
+        }
+    };
+
+    window.openCreateQuizModal = async function (topicId) {
+        await ensureSubjectContextLoaded(topicId);
+
+        const topics = (currentSubject && currentSubject.topics) || [];
+        let targetTopicId = topicId;
+        if (!targetTopicId && topics.length > 0) {
+            const firstWithoutQuiz = topics.find(t => !currentQuizzes.some(q => q.topicId === t.id));
+            targetTopicId = firstWithoutQuiz ? firstWithoutQuiz.id : topics[0].id;
+        }
+
+        // If the selected topic already has a quiz, open it in Edit mode so CRUD is seamless
+        const existingQuiz = currentQuizzes.find(q => q.topicId === targetTopicId);
+        if (existingQuiz && !topicId) {
+            return window.openEditQuizModal(existingQuiz.id);
+        }
+
+        editingQuizId = existingQuiz ? existingQuiz.id : null;
+        const topic = topics.find(t => t.id === targetTopicId) || null;
+
+        populateQuizModalTopicDropdown(targetTopicId);
+
+        const deleteBtn = document.getElementById('quizModalDeleteBtn');
+        if (deleteBtn) deleteBtn.style.display = editingQuizId ? 'inline-flex' : 'none';
+
+        document.getElementById('quizModalTitle').textContent = `Create Topic Quiz — ${topic ? `Topic #${topic.orderIndex}: ${topic.title}` : 'New Assessment'}`;
+        document.getElementById('quizModalTopicId').value = targetTopicId || '';
+        document.getElementById('quizModalSubjectId').value = currentSubjectId || (currentSubject ? currentSubject.id : '');
         document.getElementById('quizTitleInput').value = `${topic ? topic.title : 'Topic'} Quiz Evaluation`;
         document.getElementById('quizDescInput').value = `Comprehensive multiple choice quiz for ${topic ? topic.title : 'this topic'}.`;
         document.getElementById('quizPassingScoreInput').value = '75';
         document.getElementById('quizTimeLimitInput').value = '10';
 
-        // Initialize with 10 default template questions (Max: 30)
+        // Initialize with 10 default template questions (Max: 20)
         builderQuestions = Array.from({ length: 10 }).map((_, i) => ({
             questionText: `Question ${i + 1}: `,
             options: [
@@ -2497,7 +2702,14 @@
             const data = await res.json();
             const q = data.quiz;
 
-            document.getElementById('quizModalTitle').textContent = `Edit Quiz: ${q.title} (10 Min • Max 30 Qs)`;
+            currentSubjectId = q.subjectId || currentSubjectId;
+            await ensureSubjectContextLoaded(q.topicId);
+            populateQuizModalTopicDropdown(q.topicId);
+
+            const deleteBtn = document.getElementById('quizModalDeleteBtn');
+            if (deleteBtn) deleteBtn.style.display = 'inline-flex';
+
+            document.getElementById('quizModalTitle').textContent = `Edit Quiz Studio: ${q.title}`;
             document.getElementById('quizModalTopicId').value = q.topicId;
             document.getElementById('quizModalSubjectId').value = q.subjectId;
             document.getElementById('quizTitleInput').value = q.title;
@@ -2507,7 +2719,10 @@
 
             builderQuestions = (q.questions || []).map(item => ({
                 questionText: item.questionText,
-                options: item.options || [
+                options: (item.options && item.options.length >= 2) ? item.options.map((o, idx) => ({
+                    id: o.id || `opt_${idx + 1}`,
+                    text: o.text || ''
+                })) : [
                     { id: 'opt_1', text: '' },
                     { id: 'opt_2', text: '' },
                     { id: 'opt_3', text: '' },
@@ -2528,49 +2743,99 @@
     function renderBuilderQuestions() {
         const container = document.getElementById('builderQuestionsList');
         const counter = document.getElementById('builderQuestionCounter');
+        const pillsBar = document.getElementById('builderQuestionNavPills');
         if (!container) return;
 
         const count = builderQuestions.length;
         if (counter) {
-            counter.textContent = `Questions: ${count} / 20 (Whiteboard Item 5: 10 min; max 20)`;
-            if (count < 1 || count > 20) {
-                counter.style.color = 'var(--color-error)';
-            } else {
-                counter.style.color = '#10b981';
-            }
+            counter.textContent = `Questions: ${count} / 20 (Whiteboard Item 5: 10 min • max 20 MC questions)`;
+            counter.style.color = (count < 1 || count > 20) ? 'var(--color-error)' : '#10b981';
         }
 
+        if (pillsBar) {
+            pillsBar.innerHTML = builderQuestions.map((q, idx) => {
+                const isComplete = Boolean(
+                    q.questionText &&
+                    q.questionText.trim().length > 0 &&
+                    !q.questionText.trim().endsWith(':') &&
+                    Array.isArray(q.options) &&
+                    q.options.every(o => o.text && o.text.trim().length > 0)
+                );
+                return `
+                    <button type="button" class="builder-q-pill ${isComplete ? 'complete' : 'incomplete'}" onclick="window.scrollToBuilderQuestion(${idx})" title="Jump to Question #${idx + 1} (${isComplete ? 'Complete' : 'Needs text/options'})">
+                        Q${idx + 1}
+                    </button>`;
+            }).join('') + (count < 20 ? `
+                <button type="button" class="builder-q-pill add-pill" onclick="window.addBuilderQuestion()" title="Add Question (+1)">
+                    + Add
+                </button>` : '');
+        }
+
+        const letters = ['A', 'B', 'C', 'D', 'E', 'F'];
+
         container.innerHTML = builderQuestions.map((q, qIndex) => {
-            const letters = ['A', 'B', 'C', 'D'];
             return `
-                <div class="card" style="margin-bottom: 1rem; padding: 1.25rem;" id="builderQCard-${qIndex}">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                        <span style="font-size: 0.8125rem; font-weight: 700; color: var(--color-primary);">Question #${qIndex + 1}</span>
-                        ${builderQuestions.length > 1 ? `
-                            <button type="button" class="btn btn-danger btn-sm" onclick="window.removeBuilderQuestion(${qIndex})" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">
-                                Remove
-                            </button>` : `<span style="font-size: 0.72rem; color: var(--color-text-muted);">(At least 1 question)</span>`}
+                <div class="card quiz-builder-q-card" style="margin-bottom: 1rem; padding: 1.25rem; border: 1px solid #e2e8f0; border-radius: 14px;" id="builderQCard-${qIndex}">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.85rem; padding-bottom: 0.65rem; border-bottom: 1px solid #f1f5f9;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="background: #eef2ff; color: #4338ca; font-size: 0.78rem; font-weight: 800; padding: 0.25rem 0.65rem; border-radius: 999px; border: 1px solid #c7d2fe;">
+                                Question #${qIndex + 1}
+                            </span>
+                            <span style="font-size: 0.74rem; color: #64748b;">
+                                Correct Key: <strong style="color: #059669;">Option ${letters[Math.max(0, q.options.findIndex(o => o.id === q.correctAnswer))] || 'A'}</strong>
+                            </span>
+                        </div>
+
+                        <div style="display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap;">
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="window.moveBuilderQuestion(${qIndex}, -1)" ${qIndex === 0 ? 'disabled' : ''} title="Move Question Up" style="padding: 0.22rem 0.5rem; font-size: 0.74rem;">
+                                ↑
+                            </button>
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="window.moveBuilderQuestion(${qIndex}, 1)" ${qIndex === builderQuestions.length - 1 ? 'disabled' : ''} title="Move Question Down" style="padding: 0.22rem 0.5rem; font-size: 0.74rem;">
+                                ↓
+                            </button>
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="window.duplicateBuilderQuestion(${qIndex})" title="Duplicate Question" style="padding: 0.22rem 0.55rem; font-size: 0.74rem;">
+                                Duplicate
+                            </button>
+                            ${q.options.length < 6 ? `
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="window.addBuilderOption(${qIndex})" title="Add Choice Option" style="padding: 0.22rem 0.55rem; font-size: 0.74rem;">
+                                    + Choice
+                                </button>` : ''}
+                            ${builderQuestions.length > 1 ? `
+                                <button type="button" class="btn btn-danger btn-sm" onclick="window.removeBuilderQuestion(${qIndex})" style="padding: 0.22rem 0.55rem; font-size: 0.74rem;">
+                                    Delete
+                                </button>` : `<span style="font-size: 0.72rem; color: var(--color-text-muted);">(Min 1 Q)</span>`}
+                        </div>
                     </div>
 
                     <div class="form-group" style="margin-bottom: 0.75rem;">
-                        <input type="text" class="form-control" placeholder="Enter question text..." value="${escapeHtml(q.questionText)}" oninput="window.updateBuilderQText(${qIndex}, this.value)" required>
+                        <label style="font-size: 0.75rem; font-weight: 700; color: #334155; display: block; margin-bottom: 0.3rem;">Question Stem</label>
+                        <input type="text" class="form-control" placeholder="Enter multiple choice question prompt..." value="${escapeHtml(q.questionText)}" oninput="window.updateBuilderQText(${qIndex}, this.value)" required>
                     </div>
 
-                    <div style="font-size: 0.75rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--color-text-muted);">Multiple Choice Options (Select radio for correct answer):</div>
-                    <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.75rem;">
-                        ${q.options.map((opt, optIndex) => `
-                            <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                <label style="display: flex; align-items: center; gap: 0.35rem; font-weight: 700; font-size: 0.8125rem; cursor: pointer;">
-                                    <input type="radio" name="correctOpt-${qIndex}" value="${opt.id}" ${q.correctAnswer === opt.id ? 'checked' : ''} onchange="window.updateBuilderCorrect(${qIndex}, '${opt.id}')">
-                                    <span>${letters[optIndex]}:</span>
-                                </label>
-                                <input type="text" class="form-control" style="flex: 1;" placeholder="Option ${letters[optIndex]} text..." value="${escapeHtml(opt.text)}" oninput="window.updateBuilderOptText(${qIndex}, ${optIndex}, this.value)" required>
-                            </div>
-                        `).join('')}
+                    <div style="font-size: 0.75rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--color-text-muted);">
+                        Multiple Choice Options (Select the radio button beside the correct answer):
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.85rem;">
+                        ${q.options.map((opt, optIndex) => {
+                            const isCorrect = q.correctAnswer === opt.id;
+                            return `
+                                <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.55rem; border-radius: 10px; background: ${isCorrect ? '#ecfdf5' : '#f8fafc'}; border: 1px solid ${isCorrect ? '#6ee7b7' : '#e2e8f0'};">
+                                    <label style="display: flex; align-items: center; gap: 0.35rem; font-weight: 800; font-size: 0.8125rem; cursor: pointer; color: ${isCorrect ? '#047857' : '#334155'}; min-width: 44px;">
+                                        <input type="radio" name="correctOpt-${qIndex}" value="${opt.id}" ${isCorrect ? 'checked' : ''} onchange="window.updateBuilderCorrect(${qIndex}, '${opt.id}')">
+                                        <span>${letters[optIndex] || (optIndex + 1)}:</span>
+                                    </label>
+                                    <input type="text" class="form-control" style="flex: 1; background: #fff;" placeholder="Choice ${letters[optIndex] || (optIndex + 1)} text..." value="${escapeHtml(opt.text)}" oninput="window.updateBuilderOptText(${qIndex}, ${optIndex}, this.value)" required>
+                                    ${q.options.length > 2 ? `
+                                        <button type="button" class="btn btn-secondary btn-sm" onclick="window.removeBuilderOption(${qIndex}, ${optIndex})" title="Remove choice" style="padding: 0.2rem 0.45rem; color: #dc2626;">×</button>
+                                    ` : ''}
+                                </div>
+                            `;
+                        }).join('')}
                     </div>
 
                     <div class="form-group" style="margin-bottom: 0;">
-                        <input type="text" class="form-control" style="font-size: 0.8125rem;" placeholder="Explanation / rationale for correct answer..." value="${escapeHtml(q.explanation)}" oninput="window.updateBuilderExplanation(${qIndex}, this.value)">
+                        <label style="font-size: 0.72rem; font-weight: 700; color: #64748b; display: block; margin-bottom: 0.25rem;">Answer Rationale / Explanation (Shown after submission)</label>
+                        <input type="text" class="form-control" style="font-size: 0.8125rem;" placeholder="Explain why the correct choice is right..." value="${escapeHtml(q.explanation)}" oninput="window.updateBuilderExplanation(${qIndex}, this.value)">
                     </div>
                 </div>`;
         }).join('');
@@ -2580,6 +2845,13 @@
         if (!str) return '';
         return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
+
+    window.scrollToBuilderQuestion = function (qIndex) {
+        const card = document.getElementById(`builderQCard-${qIndex}`);
+        if (card) {
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    };
 
     window.addBuilderQuestion = function () {
         if (builderQuestions.length >= 20) {
@@ -2600,6 +2872,51 @@
         });
 
         renderBuilderQuestions();
+        setTimeout(() => window.scrollToBuilderQuestion(builderQuestions.length - 1), 60);
+    };
+
+    window.duplicateBuilderQuestion = function (qIndex) {
+        if (builderQuestions.length >= 20) {
+            showToast('Maximum 20 questions reached', 'warning');
+            return;
+        }
+        const source = builderQuestions[qIndex];
+        if (!source) return;
+        const copy = JSON.parse(JSON.stringify(source));
+        copy.questionText = `${copy.questionText} (Copy)`;
+        builderQuestions.splice(qIndex + 1, 0, copy);
+        renderBuilderQuestions();
+        showToast(`Duplicated Question #${qIndex + 1}`, 'info');
+    };
+
+    window.moveBuilderQuestion = function (qIndex, delta) {
+        const targetIndex = qIndex + delta;
+        if (targetIndex < 0 || targetIndex >= builderQuestions.length) return;
+        const temp = builderQuestions[qIndex];
+        builderQuestions[qIndex] = builderQuestions[targetIndex];
+        builderQuestions[targetIndex] = temp;
+        renderBuilderQuestions();
+    };
+
+    window.addBuilderOption = function (qIndex) {
+        const q = builderQuestions[qIndex];
+        if (!q || q.options.length >= 6) return;
+        const nextNum = q.options.length + 1;
+        q.options.push({ id: `opt_${Date.now()}_${nextNum}`, text: '' });
+        renderBuilderQuestions();
+    };
+
+    window.removeBuilderOption = function (qIndex, optIndex) {
+        const q = builderQuestions[qIndex];
+        if (!q || q.options.length <= 2) {
+            showToast('Each question must have at least 2 options', 'warning');
+            return;
+        }
+        const removed = q.options.splice(optIndex, 1)[0];
+        if (removed && q.correctAnswer === removed.id) {
+            q.correctAnswer = q.options[0].id;
+        }
+        renderBuilderQuestions();
     };
 
     window.removeBuilderQuestion = function (index) {
@@ -2609,6 +2926,50 @@
         }
         builderQuestions.splice(index, 1);
         renderBuilderQuestions();
+    };
+
+    window.clearAllBuilderQuestions = function () {
+        if (!confirm('Reset the question builder to 1 blank question?')) return;
+        builderQuestions = [{
+            questionText: 'Question 1: ',
+            options: [
+                { id: 'opt_1', text: '' },
+                { id: 'opt_2', text: '' },
+                { id: 'opt_3', text: '' },
+                { id: 'opt_4', text: '' }
+            ],
+            correctAnswer: 'opt_1',
+            explanation: ''
+        }];
+        renderBuilderQuestions();
+        showToast('Cleared question list', 'info');
+    };
+
+    window.exportBuilderQuizJson = function () {
+        const title = document.getElementById('quizTitleInput')?.value?.trim() || 'Topic Quiz';
+        const description = document.getElementById('quizDescInput')?.value?.trim() || '';
+        const passingScorePercent = Number(document.getElementById('quizPassingScoreInput')?.value) || 75;
+        const timeLimitMinutes = Number(document.getElementById('quizTimeLimitInput')?.value) || 10;
+
+        const exportData = {
+            title,
+            description,
+            passingScorePercent,
+            timeLimitMinutes,
+            exportedAt: new Date().toISOString(),
+            questions: builderQuestions
+        };
+
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        showToast('Exported quiz JSON file!', 'success');
     };
 
     window.updateBuilderQText = function (qIndex, text) {
@@ -2622,17 +2983,107 @@
     };
 
     window.updateBuilderCorrect = function (qIndex, optId) {
-        if (builderQuestions[qIndex]) builderQuestions[qIndex].correctAnswer = optId;
+        if (builderQuestions[qIndex]) {
+            builderQuestions[qIndex].correctAnswer = optId;
+            renderBuilderQuestions();
+        }
     };
 
     window.updateBuilderExplanation = function (qIndex, text) {
         if (builderQuestions[qIndex]) builderQuestions[qIndex].explanation = text;
     };
 
+    // READ CRUD: Inspect Quiz Answer Key & Full Question Bank
+    window.inspectQuizAnswerKey = async function (quizId) {
+        if (!quizId) return;
+        try {
+            const res = await fetch(`/api/quizzes/${quizId}`);
+            if (!res.ok) throw new Error('Failed to load quiz details');
+            const data = await res.json();
+            const q = data.quiz;
+
+            const titleEl = document.getElementById('quizInspectTitle');
+            const subEl = document.getElementById('quizInspectSubtitle');
+            const bodyEl = document.getElementById('quizInspectBody');
+            const editBtn = document.getElementById('quizInspectEditBtn');
+            const previewBtn = document.getElementById('quizInspectPreviewBtn');
+
+            if (titleEl) titleEl.textContent = q.title || 'Quiz Specification & Answer Key';
+            if (subEl) {
+                subEl.textContent = `${(q.questions || []).length} Multiple Choice Questions • ${q.timeLimitMinutes || 10} Mins • Passing Score: ${q.passingScorePercent || 75}%`;
+            }
+
+            if (editBtn) {
+                editBtn.onclick = function () {
+                    closeModal('quizInspectModal');
+                    window.openEditQuizModal(q.id);
+                };
+            }
+            if (previewBtn) {
+                previewBtn.onclick = function () {
+                    closeModal('quizInspectModal');
+                    window.previewQuiz(q.id);
+                };
+            }
+
+            const letters = ['A', 'B', 'C', 'D', 'E', 'F'];
+            if (bodyEl) {
+                bodyEl.innerHTML = `
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1.25rem; padding: 0.9rem 1.1rem; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
+                        <div style="flex: 1; min-width: 180px;">
+                            <div style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: #64748b;">Assessment Description</div>
+                            <div style="font-size: 0.85rem; color: #0f172a; font-weight: 600;">${escapeHtml(q.description || 'Standard topic mastery evaluation.')}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: #64748b;">Anti-Cheating</div>
+                            <div style="font-size: 0.82rem; color: #059669; font-weight: 700;">Shuffled Qs & Choices Enabled</div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 0.85rem;">
+                        ${(q.questions || []).map((item, idx) => `
+                            <div style="border: 1px solid #e2e8f0; border-radius: 12px; padding: 1rem 1.15rem; background: #fff;">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem; margin-bottom: 0.65rem;">
+                                    <div style="font-weight: 700; color: #0f172a; font-size: 0.92rem;">
+                                        <span style="color: #4f46e5; font-weight: 800; margin-right: 0.35rem;">Q${idx + 1}.</span>
+                                        ${escapeHtml(item.questionText)}
+                                    </div>
+                                    <span style="background: #ecfdf5; color: #047857; border: 1px solid #6ee7b7; font-size: 0.72rem; font-weight: 800; padding: 0.2rem 0.55rem; border-radius: 999px; white-space: nowrap;">
+                                        Key: ${letters[Math.max(0, (item.options || []).findIndex(o => o.id === item.correctAnswer))] || 'A'}
+                                    </span>
+                                </div>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.45rem; margin-bottom: ${item.explanation ? '0.6rem' : '0'};">
+                                    ${(item.options || []).map((opt, oIdx) => {
+                                        const isCorrect = opt.id === item.correctAnswer;
+                                        return `
+                                            <div style="padding: 0.45rem 0.7rem; border-radius: 8px; font-size: 0.82rem; background: ${isCorrect ? '#ecfdf5' : '#f8fafc'}; border: 1px solid ${isCorrect ? '#34d399' : '#e2e8f0'}; color: ${isCorrect ? '#065f46' : '#334155'}; font-weight: ${isCorrect ? '700' : '500'};">
+                                                <strong>${letters[oIdx] || (oIdx + 1)}.</strong> ${escapeHtml(opt.text)} ${isCorrect ? '✓' : ''}
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                </div>
+                                ${item.explanation ? `
+                                    <div style="font-size: 0.78rem; color: #475569; background: #f1f5f9; padding: 0.45rem 0.7rem; border-radius: 8px;">
+                                        <strong>Rationale:</strong> ${escapeHtml(item.explanation)}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+
+            openModal('quizInspectModal');
+        } catch (err) {
+            console.error('Inspect quiz error:', err);
+            showToast(err.message || 'Failed to inspect quiz', 'error');
+        }
+    };
+
     // Auto-fill questions for faculty testing
     window.autoFillTopicQuestions = function () {
         const topicId = document.getElementById('quizModalTopicId').value;
-        const topic = currentSubject ? currentSubject.topics.find(t => t.id === topicId) : null;
+        const topic = currentSubject && currentSubject.topics ? currentSubject.topics.find(t => t.id === topicId) : null;
         const topicTitle = topic ? topic.title : 'CMS';
 
         builderQuestions = Array.from({ length: 10 }).map((_, i) => ({
@@ -2707,7 +3158,6 @@ Explanation: Headless CMS delivers content via REST or GraphQL APIs to any front
 
     function parseRawTextQuestions(rawText) {
         const parsed = [];
-        // Split by question indicators like "1.", "1)", "Question 1:", or double newlines
         const blocks = rawText.split(/\n\s*(?=(?:(?:Question\s*\d+|Q\d+|\d+)[\.\:\)]|\bQ\d+\b))/i);
 
         for (let block of blocks) {
@@ -2723,7 +3173,6 @@ Explanation: Headless CMS delivers content via REST or GraphQL APIs to any front
             let explanation = '';
 
             for (const line of lines) {
-                // Check for Answer line: "Answer: A" or "Ans: B"
                 const ansMatch = line.match(/^(?:Answer|Ans|Correct(?:\s*Answer)?)\s*[:\-\=]\s*([A-D1-4])/i);
                 if (ansMatch) {
                     const letter = ansMatch[1].toUpperCase();
@@ -2734,14 +3183,12 @@ Explanation: Headless CMS delivers content via REST or GraphQL APIs to any front
                     continue;
                 }
 
-                // Check for Explanation line: "Explanation: ..."
                 const expMatch = line.match(/^(?:Explanation|Rationale|Note)\s*[:\-\=]\s*(.+)/i);
                 if (expMatch) {
                     explanation = expMatch[1].trim();
                     continue;
                 }
 
-                // Check for Option line: "A. Text", "A) Text", "*B. Text", etc.
                 const optMatch = line.match(/^(?:\*?\s*[\(\[]?([A-D1-4])[\.\)\:\-\]]?\s+)(.+)/i);
                 if (optMatch) {
                     const optLetter = optMatch[1].toUpperCase();
@@ -2760,7 +3207,6 @@ Explanation: Headless CMS delivers content via REST or GraphQL APIs to any front
                     continue;
                 }
 
-                // Otherwise question text
                 if (options.length === 0) {
                     const clean = line.replace(/^(?:Question\s*\d+|Q\d+|\d+)[\.\:\)]\s*/i, '');
                     qText = qText ? `${qText} ${clean}` : clean;
@@ -2818,34 +3264,40 @@ Explanation: Headless CMS delivers content via REST or GraphQL APIs to any front
     };
 
     window.saveQuizFromBuilder = async function () {
-        const topicId = document.getElementById('quizModalTopicId').value;
-        const subjectId = document.getElementById('quizModalSubjectId').value;
+        const topicSelectEl = document.getElementById('quizModalTopicSelect');
+        const topicId = (topicSelectEl && topicSelectEl.value) ? topicSelectEl.value : document.getElementById('quizModalTopicId').value;
+        const subjectId = document.getElementById('quizModalSubjectId').value || currentSubjectId;
         const title = document.getElementById('quizTitleInput').value.trim();
         const description = document.getElementById('quizDescInput').value.trim();
         const passingScorePercent = Number(document.getElementById('quizPassingScoreInput').value) || 75;
         const timeLimitMinutes = Number(document.getElementById('quizTimeLimitInput').value) || 10;
+
+        if (!topicId) {
+            showToast('Please select a curriculum topic for this quiz', 'warning');
+            return;
+        }
 
         if (!title) {
             showToast('Please enter a quiz title', 'warning');
             return;
         }
 
-        // Validate max 20 questions (Whiteboard Item 5: max 20)
         if (builderQuestions.length < 1 || builderQuestions.length > 20) {
             showToast(`Quiz can have between 1 and 20 questions (Whiteboard Item 5: max 20). Currently: ${builderQuestions.length}`, 'error');
             return;
         }
 
-        // Validate all fields
         for (let i = 0; i < builderQuestions.length; i++) {
             const q = builderQuestions[i];
             if (!q.questionText.trim()) {
                 showToast(`Please enter text for Question #${i + 1}`, 'warning');
+                window.scrollToBuilderQuestion(i);
                 return;
             }
             for (let j = 0; j < q.options.length; j++) {
                 if (!q.options[j].text.trim()) {
                     showToast(`Please enter text for Question #${i + 1}, Option ${j + 1}`, 'warning');
+                    window.scrollToBuilderQuestion(i);
                     return;
                 }
             }
@@ -2881,11 +3333,20 @@ Explanation: Headless CMS delivers content via REST or GraphQL APIs to any front
 
             showToast(editingQuizId ? 'Quiz updated successfully!' : 'Quiz created successfully!', 'success');
             closeModal('quizModal');
-            loadQuizzesForSubject(currentSubjectId);
+            await loadQuizzesForSubject(currentSubjectId || subjectId);
+            if (typeof window.refreshCurrentSubjectAfterSave === 'function') {
+                window.refreshCurrentSubjectAfterSave();
+            }
         } catch (err) {
             console.error('Save quiz error:', err);
             showToast(err.message, 'error');
         }
+    };
+
+    window.deleteQuizFromBuilderModal = async function () {
+        if (!editingQuizId) return;
+        await window.deleteQuizConfirm(editingQuizId);
+        closeModal('quizModal');
     };
 
     window.deleteQuizConfirm = async function (quizId) {
@@ -2897,7 +3358,10 @@ Explanation: Headless CMS delivers content via REST or GraphQL APIs to any front
             const res = await fetch(`/api/quizzes/${quizId}`, { method: 'DELETE' });
             if (!res.ok) throw new Error('Failed to delete quiz');
             showToast('Quiz deleted successfully', 'success');
-            loadQuizzesForSubject(currentSubjectId);
+            await loadQuizzesForSubject(currentSubjectId);
+            if (typeof window.refreshCurrentSubjectAfterSave === 'function') {
+                window.refreshCurrentSubjectAfterSave();
+            }
         } catch (err) {
             console.error('Delete quiz error:', err);
             showToast(err.message, 'error');
@@ -2933,10 +3397,21 @@ Explanation: Headless CMS delivers content via REST or GraphQL APIs to any front
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Failed to upload quiz');
 
+            await ensureSubjectContextLoaded();
             showToast(data.message, 'success');
             closeModal('quizUploadModal');
 
-            // Populate builder with parsed questions!
+            const topics = (currentSubject && currentSubject.topics) || [];
+            const currentTopicVal = document.getElementById('quizModalTopicId')?.value;
+            const targetTopicId = currentTopicVal || (topics[0] ? topics[0].id : '');
+            populateQuizModalTopicDropdown(targetTopicId);
+            if (document.getElementById('quizModalTopicId')) {
+                document.getElementById('quizModalTopicId').value = targetTopicId;
+            }
+            if (document.getElementById('quizModalSubjectId') && currentSubjectId) {
+                document.getElementById('quizModalSubjectId').value = currentSubjectId;
+            }
+
             builderQuestions = data.questions.map(q => ({
                 questionText: q.questionText,
                 options: q.options,
@@ -2963,101 +3438,576 @@ Explanation: Headless CMS delivers content via REST or GraphQL APIs to any front
     };
 
     // ============================================
-    // IN-SYSTEM PRESENTATION SLIDES CREATOR
+    // PROFESSIONAL PRESENTATION & SLIDE STUDIO (FULL CRUD)
     // ============================================
 
-    window.openSlideCreatorModal = function (topicId) {
+    function normalizeSlideObject(rawSlide, index, fallbackTopicTitle) {
+        if (typeof rawSlide === 'string') {
+            return {
+                title: fallbackTopicTitle || `Slide #${index + 1}`,
+                subtitle: `Module Slide ${index + 1}`,
+                layout: 'bullets',
+                theme: 'indigo',
+                bullets: [rawSlide],
+                secondaryContent: '',
+                notes: ''
+            };
+        }
+        return {
+            title: rawSlide.title || fallbackTopicTitle || `Slide #${index + 1}`,
+            subtitle: rawSlide.subtitle || `Module Slide ${index + 1}`,
+            layout: rawSlide.layout || 'bullets',
+            theme: rawSlide.theme || 'indigo',
+            bullets: Array.isArray(rawSlide.bullets) ? rawSlide.bullets : [],
+            secondaryContent: rawSlide.secondaryContent || '',
+            notes: rawSlide.notes || ''
+        };
+    }
+
+    window.openSlideCreatorModal = async function (topicId) {
         activeSlideTopicId = topicId;
-        const topic = currentSubject ? currentSubject.topics.find(t => t.id === topicId) : null;
+        activeSlideIndex = 0;
+        activeSlideCustomFile = null;
 
-        document.getElementById('slideCreatorTopicTitle').textContent = `Presentation Slides - ${topic ? topic.title : ''}`;
+        await ensureSubjectContextLoaded(topicId);
+        const topic = currentSubject && currentSubject.topics ? currentSubject.topics.find(t => t.id === topicId) : null;
 
-        // Load existing custom slides or init default slides
-        slideBuilderSlides = (topic && topic.customSlides && topic.customSlides.length > 0)
-            ? JSON.parse(JSON.stringify(topic.customSlides))
-            : [
+        let serverPresentation = null;
+        try {
+            const res = await fetch(`/api/topics/${topicId}/slides`);
+            if (res.ok) {
+                const data = await res.json();
+                serverPresentation = data.presentation;
+            }
+        } catch (e) {
+            console.warn('Could not fetch topic presentation metadata:', e);
+        }
+
+        const topicTitle = topic ? topic.title : (serverPresentation ? serverPresentation.topicTitle : 'Topic Overview');
+        const titleEl = document.getElementById('slideCreatorTopicTitle');
+        const subEl = document.getElementById('slideCreatorTopicSubtitle');
+        if (titleEl) titleEl.textContent = `Presentation Studio — ${topicTitle}`;
+        if (subEl) {
+            subEl.textContent = `Create, preview, reorder, upload .PPTX/.PDF, or customize interactive slides for ${topicTitle}`;
+        }
+
+        const customSlides = (serverPresentation && Array.isArray(serverPresentation.customSlides) && serverPresentation.customSlides.length > 0)
+            ? serverPresentation.customSlides
+            : (topic && Array.isArray(topic.customSlides) && topic.customSlides.length > 0 ? topic.customSlides : null);
+
+        activeSlideCustomFile = (serverPresentation && serverPresentation.customFile)
+            ? serverPresentation.customFile
+            : (topic && topic.customFile ? topic.customFile : null);
+
+        const deleteDeckBtn = document.getElementById('studioDeleteDeckBtn');
+        if (deleteDeckBtn) {
+            const hasCustom = Boolean((customSlides && customSlides.length > 0) || activeSlideCustomFile);
+            deleteDeckBtn.style.display = hasCustom ? 'inline-flex' : 'none';
+        }
+
+        if (customSlides && customSlides.length > 0) {
+            slideBuilderSlides = customSlides.map((s, idx) => normalizeSlideObject(s, idx, topicTitle));
+        } else {
+            slideBuilderSlides = [
                 {
-                    title: `${topic ? topic.title : 'Topic Overview'}`,
-                    subtitle: 'Module Learning Objectives & Architecture',
-                    bullets: ['Introduction to core concepts', 'Architectural elements and data flow', 'Industry best practices and implementation'],
-                    theme: 'indigo'
+                    title: topicTitle,
+                    subtitle: `Topic #${topic ? topic.orderIndex : 1} • Executive Overview & Objectives`,
+                    layout: 'title',
+                    theme: 'indigo',
+                    bullets: [
+                        topic && topic.description ? topic.description : 'Understand core Content Management System principles',
+                        'Examine architectural components and real-world workflows',
+                        'Prepare for the sequential mastery topic quiz'
+                    ],
+                    secondaryContent: '',
+                    notes: `Welcome students to ${topicTitle}. Highlight the key objectives before diving into the technical architecture.`
+                },
+                {
+                    title: `${topicTitle}: Core Architecture`,
+                    subtitle: 'Key Concepts & Technical Pillars',
+                    layout: 'bullets',
+                    theme: 'blue',
+                    bullets: [
+                        'Modular separation of content storage and presentation layer',
+                        'Role-based access control and editorial publishing workflows',
+                        'Scalability, caching, and security best practices'
+                    ],
+                    secondaryContent: '',
+                    notes: 'Walk through each bullet point and relate it to practical CMS platforms.'
                 }
             ];
+        }
 
-        renderSlideBuilderList();
+        renderSlideStudio();
         openModal('slideCreatorModal');
     };
+
+    function renderSlideStudio() {
+        if (activeSlideIndex < 0) activeSlideIndex = 0;
+        if (activeSlideIndex >= slideBuilderSlides.length) activeSlideIndex = Math.max(0, slideBuilderSlides.length - 1);
+
+        const countBadge = document.getElementById('slideStudioCountBadge');
+        if (countBadge) {
+            countBadge.textContent = `${slideBuilderSlides.length} Slide${slideBuilderSlides.length === 1 ? '' : 's'}`;
+        }
+
+        renderSlideStudioFilmstrip();
+        renderSlideStudioLivePreview();
+        renderSlideBuilderList();
+    }
+
+    function renderSlideStudioFilmstrip() {
+        const filmstrip = document.getElementById('slideStudioFilmstrip');
+        if (!filmstrip) return;
+
+        const themeColors = {
+            indigo: '#4f46e5',
+            blue: '#2563eb',
+            emerald: '#059669',
+            amber: '#d97706',
+            orange: '#ea580c',
+            rose: '#e11d48',
+            purple: '#7c3aed',
+            cyan: '#0891b2',
+            slate: '#334155'
+        };
+
+        const layoutLabels = {
+            bullets: 'Bullets',
+            title: 'Title Cover',
+            'two-column': '2-Column',
+            callout: 'Callout',
+            code: 'Code Block'
+        };
+
+        filmstrip.innerHTML = slideBuilderSlides.map((slide, idx) => {
+            const isActive = idx === activeSlideIndex;
+            const dotColor = themeColors[slide.theme] || '#4f46e5';
+            const layoutLabel = layoutLabels[slide.layout || 'bullets'] || 'Bullets';
+
+            return `
+                <div class="studio-filmstrip-item ${isActive ? 'active' : ''}" onclick="window.selectSlideInStudio(${idx})">
+                    <div class="studio-filmstrip-top">
+                        <span class="studio-filmstrip-num">
+                            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${dotColor};margin-right:4px;"></span>
+                            #${idx + 1} • ${layoutLabel}
+                        </span>
+                        <div class="studio-filmstrip-actions" onclick="event.stopPropagation();">
+                            <button type="button" onclick="window.moveSlideItem(${idx}, -1)" ${idx === 0 ? 'disabled' : ''} title="Move Up">↑</button>
+                            <button type="button" onclick="window.moveSlideItem(${idx}, 1)" ${idx === slideBuilderSlides.length - 1 ? 'disabled' : ''} title="Move Down">↓</button>
+                            <button type="button" onclick="window.duplicateSlideItem(${idx})" title="Duplicate Slide">⧉</button>
+                            ${slideBuilderSlides.length > 1 ? `<button type="button" class="danger" onclick="window.removeSlideItem(${idx})" title="Delete Slide">×</button>` : ''}
+                        </div>
+                    </div>
+                    <div class="studio-filmstrip-title">${escapeHtml(slide.title || `Slide #${idx + 1}`)}</div>
+                    <div class="studio-filmstrip-sub">${escapeHtml((slide.bullets && slide.bullets[0]) || slide.subtitle || 'No content yet')}</div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function renderSlideStudioLivePreview() {
+        const stage = document.getElementById('slideStudioLiveStage');
+        const badge = document.getElementById('slideStudioPreviewBadge');
+        if (!stage) return;
+
+        const slide = slideBuilderSlides[activeSlideIndex];
+        if (!slide) {
+            stage.innerHTML = '';
+            return;
+        }
+
+        if (badge) {
+            badge.textContent = `Slide ${activeSlideIndex + 1} of ${slideBuilderSlides.length} • ${(slide.layout || 'bullets').toUpperCase()}`;
+        }
+
+        if (typeof window.renderCustomSlideStageHtml === 'function') {
+            stage.innerHTML = window.renderCustomSlideStageHtml(slide, activeSlideIndex, slideBuilderSlides.length);
+        } else {
+            stage.innerHTML = `
+                <div style="padding: 1.5rem; background: #1e293b; color: #fff; border-radius: 12px;">
+                    <h4>${escapeHtml(slide.title)}</h4>
+                    <p>${escapeHtml(slide.subtitle)}</p>
+                </div>`;
+        }
+    }
 
     function renderSlideBuilderList() {
         const container = document.getElementById('slideBuilderList');
         if (!container) return;
 
-        const themes = ['indigo', 'blue', 'emerald', 'orange', 'rose', 'purple', 'cyan'];
+        const slide = slideBuilderSlides[activeSlideIndex];
+        if (!slide) return;
 
-        container.innerHTML = slideBuilderSlides.map((slide, i) => `
+        const themes = [
+            { id: 'indigo', color: '#4f46e5', label: 'Indigo' },
+            { id: 'blue', color: '#2563eb', label: 'Royal Blue' },
+            { id: 'emerald', color: '#059669', label: 'Emerald' },
+            { id: 'amber', color: '#d97706', label: 'Amber Gold' },
+            { id: 'rose', color: '#e11d48', label: 'Crimson Rose' },
+            { id: 'purple', color: '#7c3aed', label: 'Violet' },
+            { id: 'cyan', color: '#0891b2', label: 'Teal Cyan' },
+            { id: 'slate', color: '#334155', label: 'Executive Slate' }
+        ];
+
+        const layouts = [
+            { id: 'bullets', label: 'Standard Bullets' },
+            { id: 'title', label: 'Hero Cover' },
+            { id: 'two-column', label: 'Two-Column Split' },
+            { id: 'callout', label: 'Key Callout' },
+            { id: 'code', label: 'Code / Config' }
+        ];
+
+        const currentLayout = slide.layout || 'bullets';
+        const showSecondary = currentLayout === 'two-column' || currentLayout === 'callout' || currentLayout === 'code';
+        const secondaryLabel = currentLayout === 'two-column'
+            ? 'Right Column Bullet Points (One per line):'
+            : (currentLayout === 'callout' ? 'Highlighted Callout Quote / Takeaway:' : 'Technical Code Snippet / CLI Commands:');
+
+        const fileAttachmentHtml = activeSlideCustomFile ? `
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; background: #ecfdf5; border: 1px solid #6ee7b7; padding: 0.65rem 0.9rem; border-radius: 10px; margin-bottom: 0.9rem;">
+                <div style="display: flex; align-items: center; gap: 0.55rem;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                    <div>
+                        <div style="font-size: 0.8rem; font-weight: 800; color: #065f46;">Attached Presentation File: ${escapeHtml(activeSlideCustomFile.fileName)}</div>
+                        <div style="font-size: 0.72rem; color: #047857;">Students can download this file alongside the interactive slide deck.</div>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="window.removeStudioAttachedFile()" style="color: #dc2626; font-size: 0.74rem; padding: 0.25rem 0.55rem;">
+                    Remove File
+                </button>
+            </div>
+        ` : '';
+
+        container.innerHTML = `
+            ${fileAttachmentHtml}
             <div class="slide-builder-card">
-                <div class="slide-builder-header">
-                    <span class="slide-number-badge">Slide #${i + 1}</span>
-                    <div style="display: flex; align-items: center; gap: 0.75rem;">
-                        <div class="slide-color-picker">
-                            ${themes.map(t => `
-                                <div class="color-dot theme-${t} ${slide.theme === t ? 'active' : ''}" style="background: var(--theme-${t}-color, #4f46e5);" onclick="window.setSlideTheme(${i}, '${t}')" title="Theme ${t}"></div>
-                            `).join('')}
-                        </div>
+                <div class="slide-builder-header" style="flex-wrap: wrap; gap: 0.5rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <span class="slide-number-badge">Editing Slide #${activeSlideIndex + 1} of ${slideBuilderSlides.length}</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="window.moveSlideItem(${activeSlideIndex}, -1)" ${activeSlideIndex === 0 ? 'disabled' : ''} style="padding: 0.22rem 0.5rem; font-size: 0.74rem;">↑ Move Up</button>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="window.moveSlideItem(${activeSlideIndex}, 1)" ${activeSlideIndex === slideBuilderSlides.length - 1 ? 'disabled' : ''} style="padding: 0.22rem 0.5rem; font-size: 0.74rem;">↓ Move Down</button>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="window.duplicateSlideItem(${activeSlideIndex})" style="padding: 0.22rem 0.55rem; font-size: 0.74rem;">Duplicate Slide</button>
                         ${slideBuilderSlides.length > 1 ? `
-                            <button type="button" class="btn btn-danger btn-sm" onclick="window.removeSlideItem(${i})" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">Remove</button>
+                            <button type="button" class="btn btn-danger btn-sm" onclick="window.removeSlideItem(${activeSlideIndex})" style="padding: 0.22rem 0.55rem; font-size: 0.74rem;">Delete Slide</button>
                         ` : ''}
                     </div>
                 </div>
 
-                <div class="form-group" style="margin-bottom: 0.5rem;">
-                    <input type="text" class="form-control" placeholder="Slide Title" value="${escapeHtml(slide.title)}" oninput="window.updateSlideTitle(${i}, this.value)" required>
+                <!-- Layout & Theme Row -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.85rem; margin-bottom: 0.85rem; padding: 0.75rem; background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0;">
+                    <div>
+                        <label style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; color: #475569; display: block; margin-bottom: 0.4rem;">Slide Layout Template</label>
+                        <div style="display: flex; flex-wrap: wrap; gap: 0.35rem;">
+                            ${layouts.map(l => `
+                                <button type="button" class="studio-layout-pill ${currentLayout === l.id ? 'active' : ''}" onclick="window.setSlideLayout(${activeSlideIndex}, '${l.id}')">
+                                    ${l.label}
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+                    <div>
+                        <label style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; color: #475569; display: block; margin-bottom: 0.4rem;">Slide Color Theme</label>
+                        <div class="slide-color-picker" style="display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap;">
+                            ${themes.map(t => `
+                                <div class="color-dot ${slide.theme === t.id ? 'active' : ''}" style="background: ${t.color}; width: 22px; height: 22px; border-radius: 50%; cursor: pointer; border: ${slide.theme === t.id ? '3px solid #0f172a' : '2px solid #fff'}; box-shadow: 0 1px 3px rgba(0,0,0,0.2);" onclick="window.setSlideTheme(${activeSlideIndex}, '${t.id}')" title="${t.label}"></div>
+                            `).join('')}
+                        </div>
+                    </div>
                 </div>
-                <div class="form-group" style="margin-bottom: 0.5rem;">
-                    <input type="text" class="form-control" placeholder="Slide Subtitle / Category" value="${escapeHtml(slide.subtitle)}" oninput="window.updateSlideSubtitle(${i}, this.value)">
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.75rem; margin-bottom: 0.65rem;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label style="font-size: 0.75rem; font-weight: 700; color: #334155;">Slide Headline / Title</label>
+                        <input type="text" class="form-control" placeholder="Slide Title" value="${escapeHtml(slide.title)}" oninput="window.updateSlideTitle(${activeSlideIndex}, this.value)" required>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label style="font-size: 0.75rem; font-weight: 700; color: #334155;">Subtitle / Section Tag</label>
+                        <input type="text" class="form-control" placeholder="Slide Subtitle / Category" value="${escapeHtml(slide.subtitle)}" oninput="window.updateSlideSubtitle(${activeSlideIndex}, this.value)">
+                    </div>
                 </div>
-                <div class="form-group" style="margin-bottom: 0.5rem;">
-                    <label style="font-size: 0.75rem; font-weight: 700; color: var(--color-text-muted);">Bullet Points (One per line):</label>
-                    <textarea class="form-control" rows="3" placeholder="Key concept point 1&#10;Key concept point 2&#10;Key concept point 3" oninput="window.updateSlideBullets(${i}, this.value)">${Array.isArray(slide.bullets) ? slide.bullets.join('\n') : ''}</textarea>
+
+                <div class="form-group" style="margin-bottom: 0.65rem;">
+                    <label style="font-size: 0.75rem; font-weight: 700; color: #334155;">
+                        ${currentLayout === 'two-column' ? 'Left Column Bullet Points (One per line):' : 'Primary Key Points / Bullets (One per line):'}
+                    </label>
+                    <textarea class="form-control" rows="4" placeholder="Key concept point 1&#10;Key concept point 2&#10;Key concept point 3" oninput="window.updateSlideBullets(${activeSlideIndex}, this.value)">${Array.isArray(slide.bullets) ? escapeHtml(slide.bullets.join('\n')) : ''}</textarea>
+                </div>
+
+                ${showSecondary ? `
+                    <div class="form-group" style="margin-bottom: 0.65rem;">
+                        <label style="font-size: 0.75rem; font-weight: 700; color: #4f46e5;">${secondaryLabel}</label>
+                        <textarea class="form-control" rows="4" style="${currentLayout === 'code' ? 'font-family: monospace; background: #0f172a; color: #e2e8f0;' : ''}" placeholder="${currentLayout === 'code' ? '// Enter code or configuration snippet...' : 'Enter secondary column points or callout quote...'}" oninput="window.updateSlideSecondaryContent(${activeSlideIndex}, this.value)">${escapeHtml(slide.secondaryContent || '')}</textarea>
+                    </div>
+                ` : ''}
+
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label style="font-size: 0.75rem; font-weight: 700; color: #64748b;">Speaker Notes & Instructor Guide (Displayed below slide viewer)</label>
+                    <textarea class="form-control" rows="2" placeholder="Add instructor talking points, examples, or references for this slide..." oninput="window.updateSlideNotes(${activeSlideIndex}, this.value)">${escapeHtml(slide.notes || '')}</textarea>
                 </div>
             </div>
-        `).join('');
+        `;
     }
 
+    window.selectSlideInStudio = function (index) {
+        if (index < 0 || index >= slideBuilderSlides.length) return;
+        activeSlideIndex = index;
+        renderSlideStudio();
+    };
+
     window.addSlideItem = function () {
+        const nextNum = slideBuilderSlides.length + 1;
         slideBuilderSlides.push({
-            title: `Key Concepts ${slideBuilderSlides.length + 1}`,
-            subtitle: 'Detailed Architecture Overview',
-            bullets: ['Key takeaway point A', 'Key takeaway point B', 'Key takeaway point C'],
-            theme: 'blue'
+            title: `Key Concepts & Architecture #${nextNum}`,
+            subtitle: `Module Slide ${nextNum}`,
+            layout: 'bullets',
+            theme: ['indigo', 'blue', 'emerald', 'purple', 'cyan'][nextNum % 5],
+            bullets: [
+                'Primary concept and technical definition',
+                'Implementation workflow and architectural role',
+                'Best practices and security considerations'
+            ],
+            secondaryContent: '',
+            notes: ''
         });
-        renderSlideBuilderList();
+        activeSlideIndex = slideBuilderSlides.length - 1;
+        renderSlideStudio();
+    };
+
+    window.duplicateSlideItem = function (index) {
+        const source = slideBuilderSlides[index];
+        if (!source) return;
+        const copy = JSON.parse(JSON.stringify(source));
+        copy.title = `${copy.title} (Copy)`;
+        slideBuilderSlides.splice(index + 1, 0, copy);
+        activeSlideIndex = index + 1;
+        renderSlideStudio();
+        showToast(`Duplicated Slide #${index + 1}`, 'info');
+    };
+
+    window.moveSlideItem = function (index, delta) {
+        const target = index + delta;
+        if (target < 0 || target >= slideBuilderSlides.length) return;
+        const temp = slideBuilderSlides[index];
+        slideBuilderSlides[index] = slideBuilderSlides[target];
+        slideBuilderSlides[target] = temp;
+        activeSlideIndex = target;
+        renderSlideStudio();
     };
 
     window.removeSlideItem = function (index) {
-        if (slideBuilderSlides.length <= 1) return;
+        if (slideBuilderSlides.length <= 1) {
+            showToast('Presentation must have at least 1 slide', 'warning');
+            return;
+        }
         slideBuilderSlides.splice(index, 1);
-        renderSlideBuilderList();
+        if (activeSlideIndex >= slideBuilderSlides.length) {
+            activeSlideIndex = slideBuilderSlides.length - 1;
+        }
+        renderSlideStudio();
     };
 
-    window.updateSlideTitle = function (i, val) {
-        if (slideBuilderSlides[i]) slideBuilderSlides[i].title = val;
-    };
-
-    window.updateSlideSubtitle = function (i, val) {
-        if (slideBuilderSlides[i]) slideBuilderSlides[i].subtitle = val;
-    };
-
-    window.updateSlideBullets = function (i, val) {
+    window.setSlideLayout = function (i, layout) {
         if (slideBuilderSlides[i]) {
-            slideBuilderSlides[i].bullets = val.split('\n').filter(l => l.trim().length > 0);
+            slideBuilderSlides[i].layout = layout;
+            renderSlideStudio();
         }
     };
 
     window.setSlideTheme = function (i, theme) {
         if (slideBuilderSlides[i]) {
             slideBuilderSlides[i].theme = theme;
-            renderSlideBuilderList();
+            renderSlideStudio();
+        }
+    };
+
+    window.updateSlideTitle = function (i, val) {
+        if (slideBuilderSlides[i]) {
+            slideBuilderSlides[i].title = val;
+            renderSlideStudioFilmstrip();
+            renderSlideStudioLivePreview();
+        }
+    };
+
+    window.updateSlideSubtitle = function (i, val) {
+        if (slideBuilderSlides[i]) {
+            slideBuilderSlides[i].subtitle = val;
+            renderSlideStudioLivePreview();
+        }
+    };
+
+    window.updateSlideBullets = function (i, val) {
+        if (slideBuilderSlides[i]) {
+            slideBuilderSlides[i].bullets = val.split('\n').filter(l => l.trim().length > 0);
+            renderSlideStudioFilmstrip();
+            renderSlideStudioLivePreview();
+        }
+    };
+
+    window.updateSlideSecondaryContent = function (i, val) {
+        if (slideBuilderSlides[i]) {
+            slideBuilderSlides[i].secondaryContent = val;
+            renderSlideStudioLivePreview();
+        }
+    };
+
+    window.updateSlideNotes = function (i, val) {
+        if (slideBuilderSlides[i]) {
+            slideBuilderSlides[i].notes = val;
+        }
+    };
+
+    window.handleStudioPptxUpload = function (file) {
+        if (!file) return;
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (!['pptx', 'ppt', 'pdf', 'json'].includes(ext)) {
+            showToast('Please select a .pptx, .ppt, .pdf, or .json presentation file', 'warning');
+            return;
+        }
+
+        if (ext === 'json') {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const parsed = JSON.parse(e.target.result);
+                    const arr = Array.isArray(parsed) ? parsed : (parsed.slides || []);
+                    if (arr.length === 0) throw new Error('No slides found in JSON');
+                    slideBuilderSlides = arr.map((s, idx) => normalizeSlideObject(s, idx, file.name));
+                    activeSlideIndex = 0;
+                    renderSlideStudio();
+                    showToast(`Imported ${slideBuilderSlides.length} slides from ${file.name}!`, 'success');
+                } catch (err) {
+                    showToast('Invalid slide JSON file: ' + err.message, 'error');
+                }
+            };
+            reader.readAsText(file);
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            activeSlideCustomFile = {
+                fileName: file.name,
+                fileType: file.type || `application/${ext}`,
+                fileSize: file.size,
+                fileData: e.target.result,
+                uploadedAt: new Date().toISOString()
+            };
+            renderSlideStudio();
+            showToast(`Attached "${file.name}" to this topic presentation! Click Save & Publish Deck to persist.`, 'success');
+        };
+        reader.readAsDataURL(file);
+    };
+
+    window.removeStudioAttachedFile = function () {
+        activeSlideCustomFile = null;
+        renderSlideStudio();
+        showToast('Removed attached presentation file', 'info');
+    };
+
+    window.generateSlidesFromSyllabus = function () {
+        const topic = currentSubject && currentSubject.topics
+            ? currentSubject.topics.find(t => t.id === activeSlideTopicId)
+            : null;
+        const title = topic ? topic.title : 'Content Management System Module';
+        const orderNum = topic ? topic.orderIndex : 1;
+        const desc = (topic && topic.description) || `Comprehensive exploration of ${title} principles, architecture, and implementation.`;
+
+        slideBuilderSlides = [
+            {
+                title: title,
+                subtitle: `Topic #${orderNum} • Official Curriculum Presentation`,
+                layout: 'title',
+                theme: 'indigo',
+                bullets: [
+                    desc,
+                    'Core architectural concepts & system workflows',
+                    'Enterprise implementation & sequential quiz preparation'
+                ],
+                secondaryContent: '',
+                notes: `Introduce Topic #${orderNum}: ${title}. Explain how this module builds on the previous lesson.`
+            },
+            {
+                title: 'Learning Objectives & Outcomes',
+                subtitle: `Topic #${orderNum} • What You Will Master`,
+                layout: 'bullets',
+                theme: 'blue',
+                bullets: [
+                    `Define the core purpose and architectural role of ${title}`,
+                    'Identify key system components, data structures, and user roles',
+                    'Compare traditional vs. modern implementation strategies',
+                    'Apply best practices to real-world Content Management scenarios'
+                ],
+                secondaryContent: '',
+                notes: 'Review the 4 learning outcomes expected before taking the Topic Quiz.'
+            },
+            {
+                title: `${title}: Architectural Comparison`,
+                subtitle: 'Two-Column Structural Breakdown',
+                layout: 'two-column',
+                theme: 'emerald',
+                bullets: [
+                    'Core Layer Responsibilities',
+                    'Structured content modeling & metadata validation',
+                    'Role-based editorial permissions & workflow states'
+                ],
+                secondaryContent: 'Delivery & Integration Layer\nHigh-performance caching and CDN distribution\nRESTful / GraphQL API extensibility and theme rendering',
+                notes: 'Contrast the backend repository responsibilities with the frontend delivery pipeline.'
+            },
+            {
+                title: 'Technical Configuration & Implementation',
+                subtitle: `${title} • Code & Pipeline Pattern`,
+                layout: 'code',
+                theme: 'slate',
+                bullets: [
+                    'Standard configuration pattern used in production CMS environments',
+                    'Ensures clean separation between content data and rendering logic'
+                ],
+                secondaryContent: `// ${title} — Module Configuration\nexport const cmsModuleConfig = {\n  topicOrder: ${orderNum},\n  moduleName: "${title}",\n  enableVersionControl: true,\n  workflowState: "published",\n  cacheStrategy: "edge-stale-while-revalidate"\n};`,
+                notes: 'Walk through the configuration properties and explain why version control and caching matter.'
+            },
+            {
+                title: 'Essential Industry Takeaway',
+                subtitle: `${title} • Key Principle`,
+                layout: 'callout',
+                theme: 'purple',
+                bullets: [
+                    'Always decouple content governance from visual presentation',
+                    'Enforce least-privilege access for authors, editors, and administrators'
+                ],
+                secondaryContent: `A well-designed ${title} strategy empowers non-technical editors to publish safely while maintaining strict architectural integrity, security, and performance.`,
+                notes: 'Emphasize this key takeaway—questions on the topic quiz directly test this principle.'
+            },
+            {
+                title: 'Summary & Topic Quiz Preparation',
+                subtitle: `Topic #${orderNum} Review • Ready for Assessment`,
+                layout: 'bullets',
+                theme: 'amber',
+                bullets: [
+                    `Reviewed core architecture and workflows for ${title}`,
+                    'Examined real-world configuration and governance patterns',
+                    'Next Step: Complete the Topic Quiz (75% passing score) to unlock the next module!'
+                ],
+                secondaryContent: '',
+                notes: 'Ask students if they have any questions before they launch the Topic Quiz.'
+            }
+        ];
+
+        activeSlideIndex = 0;
+        renderSlideStudio();
+        showToast(`Generated 6-slide professional deck for "${title}"!`, 'success');
+    };
+
+    window.deleteTopicPresentationFromStudio = async function () {
+        if (!activeSlideTopicId) return;
+        if (typeof window.confirmDeleteTopicPresentation === 'function') {
+            await window.confirmDeleteTopicPresentation(activeSlideTopicId);
+            closeModal('slideCreatorModal');
         }
     };
 
@@ -3068,14 +4018,19 @@ Explanation: Headless CMS delivers content via REST or GraphQL APIs to any front
             const res = await fetch(`/api/topics/${activeSlideTopicId}/slides`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ slides: slideBuilderSlides })
+                body: JSON.stringify({
+                    slides: slideBuilderSlides,
+                    customFile: activeSlideCustomFile
+                })
             });
 
-            if (!res.ok) throw new Error('Failed to save slides');
-            showToast('Presentation slides saved successfully!', 'success');
+            if (!res.ok) throw new Error('Failed to save presentation deck');
+            showToast('Presentation deck saved & published!', 'success');
             closeModal('slideCreatorModal');
 
-            // Reload topics page if on topics
+            if (typeof window.refreshCurrentSubjectAfterSave === 'function') {
+                await window.refreshCurrentSubjectAfterSave();
+            }
             if (typeof window.loadTopicsPage === 'function') {
                 window.loadTopicsPage();
             }

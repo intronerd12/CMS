@@ -249,12 +249,17 @@ app.get('/api/topics/:id/download', (req, res) => {
     }
 });
 
-// ==================== SUBJECT ROUTES (Requirement #2) ====================
+// ==================== SUBJECT & CLASS ENROLLMENT ROUTES (Requirement #2) ====================
 
 app.get('/api/subjects', (req, res) => {
     try {
         const isStaff = isStaffUser(req);
-        const subjects = db.getAllSubjects(isStaff);
+        if (!isStaff) {
+            const studentId = req.query.studentId || req.headers['x-user-id'];
+            const subjects = studentId ? db.getSubjectsForStudent(studentId) : [];
+            return res.json({ subjects });
+        }
+        const subjects = db.getAllSubjects(true);
         res.json({ subjects });
     } catch (error) {
         res.status(500).json({ error: 'Server error loading subjects' });
@@ -264,6 +269,13 @@ app.get('/api/subjects', (req, res) => {
 app.get('/api/subjects/:id', (req, res) => {
     try {
         const isStaff = isStaffUser(req);
+        const studentId = req.query.studentId || req.headers['x-user-id'];
+        if (!isStaff && (!studentId || !db.isStudentEnrolled(studentId, req.params.id))) {
+            return res.status(403).json({
+                error: 'You must join this class with a Class Code from your instructor first.',
+                notEnrolled: true
+            });
+        }
         const subject = db.getSubjectById(req.params.id, isStaff);
         if (!subject) {
             return res.status(404).json({ error: 'Subject not found' });
@@ -271,6 +283,103 @@ app.get('/api/subjects/:id', (req, res) => {
         res.json({ subject });
     } catch (error) {
         res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Student joins a class using a Class Code (Google Classroom / MS Teams style)
+app.post('/api/classes/join', (req, res) => {
+    try {
+        const { studentId, joinCode } = req.body;
+        if (!studentId || !joinCode) {
+            return res.status(400).json({ error: 'Student ID and Class Code are required' });
+        }
+        const student = db.getUserById(studentId);
+        if (!student) {
+            return res.status(404).json({ error: 'Student account not found' });
+        }
+
+        const result = db.joinSubjectByCode(studentId, joinCode);
+        res.json({
+            message: result.alreadyEnrolled
+                ? `You are already enrolled in ${result.subject.code} — ${result.subject.name}`
+                : `Successfully joined ${result.subject.code} — ${result.subject.name}!`,
+            alreadyEnrolled: result.alreadyEnrolled,
+            subject: result.subject
+        });
+    } catch (error) {
+        res.status(400).json({ error: error.message || 'Could not join class with that code' });
+    }
+});
+
+// Student leaves / unenrolls from a class
+app.post('/api/subjects/:id/leave', (req, res) => {
+    try {
+        const { studentId } = req.body;
+        if (!studentId) {
+            return res.status(400).json({ error: 'Student ID is required' });
+        }
+        db.leaveSubject(studentId, req.params.id);
+        res.json({ message: 'You have left the class.' });
+    } catch (error) {
+        res.status(500).json({ error: 'Server error leaving class' });
+    }
+});
+
+// Faculty regenerates a subject's Class Join Code
+app.post('/api/subjects/:id/regenerate-code', (req, res) => {
+    try {
+        const subject = db.getSubjectById(req.params.id, true);
+        if (!subject) {
+            return res.status(404).json({ error: 'Subject not found' });
+        }
+        const joinCode = db.regenerateSubjectJoinCode(req.params.id);
+        const updated = db.getSubjectById(req.params.id, true);
+        res.json({
+            message: `New Class Code generated: ${joinCode}`,
+            joinCode,
+            subject: updated
+        });
+    } catch (error) {
+        console.error('Regenerate join code error:', error);
+        res.status(500).json({ error: 'Server error regenerating class code' });
+    }
+});
+
+// Faculty views enrolled students roster for a subject
+app.get('/api/subjects/:id/students', (req, res) => {
+    try {
+        const subject = db.getSubjectById(req.params.id, true);
+        if (!subject) {
+            return res.status(404).json({ error: 'Subject not found' });
+        }
+        const students = db.getEnrolledStudents(req.params.id);
+        res.json({
+            subjectId: subject.id,
+            subjectName: subject.name,
+            subjectCode: subject.code,
+            joinCode: subject.joinCode,
+            enrolledCount: students.length,
+            students
+        });
+    } catch (error) {
+        console.error('Get enrolled students error:', error);
+        res.status(500).json({ error: 'Server error loading class roster' });
+    }
+});
+
+// Faculty removes a student from a class
+app.delete('/api/subjects/:id/students/:studentId', (req, res) => {
+    try {
+        db.removeStudentFromSubject(req.params.id, req.params.studentId);
+        const students = db.getEnrolledStudents(req.params.id);
+        res.json({
+            message: 'Student removed from class roster',
+            enrolledCount: students.length,
+            students
+        });
+    } catch (error) {
+        console.error('Remove student error:', error);
+        res.status(500).json({ error: 'Server error removing student' });
     }
 });
 
@@ -529,8 +638,25 @@ app.put('/api/subjects/:id/topics/reorder', (req, res) => {
     }
 });
 
-// Save custom PPT slides created in the system by Faculty
-app.post('/api/topics/:id/slides', (req, res) => {
+// Presentation / Slide Studio Full CRUD Routes (Create, Read, Update, Delete)
+app.get('/api/topics/:id/slides', (req, res) => {
+    try {
+        const topic = db.getTopicById(req.params.id);
+        if (!topic) {
+            return res.status(404).json({ error: 'Topic not found' });
+        }
+        res.json({
+            topic,
+            slides: topic.customSlides || [],
+            presentation: topic.presentation
+        });
+    } catch (error) {
+        console.error('Get topic slides error:', error);
+        res.status(500).json({ error: 'Server error loading slides' });
+    }
+});
+
+function handleSaveTopicSlides(req, res) {
     try {
         const { id } = req.params;
         const topic = db.getTopicById(id);
@@ -538,18 +664,26 @@ app.post('/api/topics/:id/slides', (req, res) => {
             return res.status(404).json({ error: 'Topic not found' });
         }
 
-        const { slides } = req.body;
+        const { slides, presentationKey, customFile, outline, summary, content } = req.body;
         if (!Array.isArray(slides)) {
             return res.status(400).json({ error: 'Slides must be an array' });
         }
+
+        // Default to 'custom' when saving studio slides so custom slides become the active presentation immediately
+        const resolvedKey = presentationKey !== undefined
+            ? (presentationKey ? String(presentationKey).trim() : null)
+            : (slides.length > 0 ? 'custom' : topic.presentationKey);
 
         db.updateTopic({
             id,
             title: topic.title,
             description: topic.description,
-            presentationKey: topic.presentationKey,
-            outline: topic.outline,
-            slidesContent: JSON.stringify(slides),
+            presentationKey: resolvedKey,
+            outline: outline !== undefined ? outline : topic.outline,
+            slidesContent: slides.length > 0 ? JSON.stringify(slides) : null,
+            customFile: customFile !== undefined ? customFile : topic.customFile,
+            summary: summary !== undefined ? summary : topic.summary,
+            content: content !== undefined ? content : topic.content,
             isPublished: topic.isPublished
         });
 
@@ -558,6 +692,27 @@ app.post('/api/topics/:id/slides', (req, res) => {
     } catch (error) {
         console.error('Save topic slides error:', error);
         res.status(500).json({ error: 'Server error saving slides' });
+    }
+}
+
+app.post('/api/topics/:id/slides', handleSaveTopicSlides);
+app.put('/api/topics/:id/slides', handleSaveTopicSlides);
+
+app.delete('/api/topics/:id/slides', (req, res) => {
+    try {
+        const { id } = req.params;
+        const topic = db.getTopicById(id);
+        if (!topic) {
+            return res.status(404).json({ error: 'Topic not found' });
+        }
+        const updated = db.deleteTopicPresentation(id);
+        res.json({
+            message: 'Presentation removed from topic successfully',
+            topic: updated
+        });
+    } catch (error) {
+        console.error('Delete topic slides error:', error);
+        res.status(500).json({ error: 'Server error deleting presentation' });
     }
 });
 
@@ -570,6 +725,13 @@ app.get('/api/subjects/:id/student-progress/:studentId', (req, res) => {
         const subject = db.getSubjectById(subjectId);
         if (!subject) {
             return res.status(404).json({ error: 'Subject not found' });
+        }
+        const isStaff = isStaffUser(req);
+        if (!isStaff && !db.isStudentEnrolled(studentId, subjectId)) {
+            return res.status(403).json({
+                error: 'You must join this class with a Class Code first.',
+                notEnrolled: true
+            });
         }
 
         const progressData = db.getStudentTopicProgress(studentId, subjectId);
@@ -1009,6 +1171,22 @@ app.get('/api/subjects/:id/matrix', (req, res) => {
 
 app.get('/api/stats', (req, res) => {
     try {
+        const isStaff = isStaffUser(req);
+        const studentId = req.query.studentId || req.headers['x-user-id'];
+        if (!isStaff && studentId) {
+            const enrolledSubjects = db.getSubjectsForStudent(studentId);
+            const totalTopics = enrolledSubjects.reduce((sum, s) => sum + (s.topics ? s.topics.length : 0), 0);
+            const totalQuizzes = enrolledSubjects.reduce((sum, s) => sum + (s.topics ? s.topics.filter(t => t.hasQuiz).length : 0), 0);
+            const studentScores = db.getScoresByStudent(studentId);
+            return res.json({
+                totalSubjects: enrolledSubjects.length,
+                totalTopics,
+                totalQuizzes,
+                totalScores: studentScores.length,
+                totalUsers: 1
+            });
+        }
+
         const subjects = db.getAllSubjects();
         const totalTopics = db.getTotalTopicsCount();
         const totalQuizzes = db.getTotalQuizzesCount();
