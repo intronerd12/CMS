@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 const { randomUUID: uuidv4 } = require('crypto');
 const { SYLLABUS_14_TOPICS } = require('./quiz-data');
 const presentations = require('./presentations');
+const { extractPptxSlides } = require('./pptx-parser');
 
 const isServerless = Boolean(
     process.env.VERCEL ||
@@ -528,8 +529,40 @@ function enrichTopic(topic) {
         ? topic.customFile
         : (topic.customFile && typeof topic.customFile === 'object' ? (topic.customFile.fileUrl || topic.customFile.fileName || null) : null);
     const hasCustomFile = !!normalizedCustomFile;
-    const hasCustomSlides = customSlides.length > 0;
     const customSourceName = hasCustomFile ? String(normalizedCustomFile).split('/').pop() : `${topic.title}.pptx`;
+
+    // If custom PPTX file is attached but slidesContent is not yet parsed, extract slides from PPTX
+    if (hasCustomFile && customSlides.length === 0 && /\.pptx?$/i.test(normalizedCustomFile)) {
+        try {
+            const diskPath = path.join(__dirname, 'public', normalizedCustomFile.replace(/^\//, ''));
+            const customUploadsDir = process.env.UPLOADS_DIR || (
+                isServerless ? path.join('/tmp', 'uploads', 'custom') : path.join(__dirname, 'public', 'uploads', 'custom')
+            );
+            const altPath = path.join(customUploadsDir, path.basename(normalizedCustomFile));
+            const targetPath = fs.existsSync(diskPath) ? diskPath : (fs.existsSync(altPath) ? altPath : null);
+            if (targetPath) {
+                const parsed = extractPptxSlides(targetPath, {
+                    outputDir: path.join(customUploadsDir, 'slides'),
+                    publicUrlPrefix: '/uploads/custom/slides',
+                    deckSlug: path.basename(normalizedCustomFile, path.extname(normalizedCustomFile)),
+                    isServerless
+                });
+                if (parsed && parsed.length > 0) {
+                    customSlides = parsed;
+                    try {
+                        db.prepare('UPDATE topics SET slidesContent = ? WHERE id = ?').run(JSON.stringify(customSlides), topic.id);
+                    } catch (e) {}
+                }
+            }
+        } catch (err) {
+            console.error('[enrichTopic] Error auto-parsing PPTX:', err.message);
+        }
+    }
+
+    const hasCustomSlides = customSlides.length > 0;
+    const customCover = (hasCustomSlides && customSlides[0] && customSlides[0].imageUrl)
+        ? customSlides[0].imageUrl
+        : '/uploads/presentations/placeholder.webp';
 
     let finalPresentation = null;
     if (isExplicitCustomMode && (hasCustomSlides || hasCustomFile)) {
@@ -537,10 +570,10 @@ function enrichTopic(topic) {
             key: 'custom',
             isCustom: true,
             title: topic.title,
-            category: hasCustomFile ? 'Uploaded Presentation' : 'Interactive Studio Slides',
+            category: hasCustomFile ? 'Uploaded Presentation Deck' : 'Course Slide Deck',
             accent: '#4f46e5',
             slideCount: hasCustomSlides ? customSlides.length : 1,
-            cover: '/uploads/presentations/placeholder.webp',
+            cover: customCover,
             slides: hasCustomSlides ? customSlides : [{
                 slideNumber: 1,
                 title: topic.title,
@@ -575,10 +608,10 @@ function enrichTopic(topic) {
             key: 'custom',
             isCustom: true,
             title: topic.title,
-            category: hasCustomFile ? 'Uploaded Presentation' : 'Interactive Studio Slides',
+            category: hasCustomFile ? 'Uploaded Presentation Deck' : 'Course Slide Deck',
             accent: '#4f46e5',
             slideCount: hasCustomSlides ? customSlides.length : 1,
-            cover: '/uploads/presentations/placeholder.webp',
+            cover: customCover,
             slides: hasCustomSlides ? customSlides : [{
                 slideNumber: 1,
                 title: topic.title,

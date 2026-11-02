@@ -3506,7 +3506,13 @@ Explanation: Headless CMS delivers content via REST or GraphQL APIs to any front
         };
     }
 
-    window.openSlideCreatorModal = async function (topicId) {
+    window.openSlideCreatorModal = function (topicId) {
+        if (typeof window.openEditTopicModal === 'function') {
+            window.openEditTopicModal(topicId);
+        }
+    };
+
+    window._legacyOpenSlideCreatorModal = async function (topicId) {
         activeSlideTopicId = topicId;
         activeSlideIndex = 0;
         activeSlideCustomFile = null;

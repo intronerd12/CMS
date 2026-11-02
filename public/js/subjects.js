@@ -872,14 +872,6 @@
                         ` : ''}
 
                         ${isStaff ? `
-                            <button class="btn-deck-action" onclick="window.openSlideCreatorModal('${topic.id}')" title="Open Presentation Studio (Create, Edit, Reorder, or Delete Slides)" style="background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-weight: 700;">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
-                                    <line x1="8" y1="21" x2="16" y2="21"/>
-                                    <line x1="12" y1="17" x2="12" y2="21"/>
-                                </svg>
-                                <span>Slide Studio</span>
-                            </button>
                             ${(slideCount > 0 || topic.customFile || (topic.customSlides && topic.customSlides.length > 0)) ? `
                                 <button class="btn-deck-action" onclick="window.confirmDeleteTopicPresentation('${topic.id}', '${escapeHtml(topic.title)}')" title="Remove presentation deck from this topic" style="background: #fef2f2; color: #dc2626; border: 1px solid #fecaca;">
                                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
@@ -1063,9 +1055,6 @@
                             </a>
                         ` : ''}
                         ${isStaff ? `
-                            <button class="btn-deck-action" onclick="window.openSlideCreatorModal('${topic.id}')" style="padding: 0.3rem 0.55rem; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe;">
-                                Slide Studio
-                            </button>
                             <button class="btn-deck-action" onclick="${topic.quiz ? `window.openEditQuizModal('${topic.quiz.id}')` : `window.openCreateQuizModal('${topic.id}')`}" style="padding: 0.3rem 0.55rem; background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0;">
                                 ${topic.quiz ? 'Edit Quiz' : '+ Quiz'}
                             </button>
@@ -1144,7 +1133,9 @@
             customUploadedPresentation = {
                 fileUrl: topic.customFile,
                 filename: topic.customFile.split('/').pop(),
-                originalname: topic.customFile.split('/').pop()
+                originalname: topic.customFile.split('/').pop(),
+                slideCount: topic.presentation ? topic.presentation.slideCount : (topic.customSlides ? topic.customSlides.length : null),
+                slides: topic.customSlides || (topic.presentation ? topic.presentation.slides : null)
             };
             if (fileStatus) {
                 fileStatus.style.display = 'inline-block';
@@ -1158,16 +1149,6 @@
 
         updateTopicPresentationPreview();
         openModal('topicModal');
-    };
-
-    window.launchInSystemSlideCreatorFromModal = function () {
-        const topicId = document.getElementById('topicIdInput').value;
-        closeModal('topicModal');
-        if (topicId && typeof window.openSlideCreatorModal === 'function') {
-            window.openSlideCreatorModal(topicId);
-        } else {
-            showToast('Save the lesson first, then you can customize presentation slides.', 'info');
-        }
     };
 
     // Save Topic
@@ -1191,8 +1172,11 @@
         const payload = {
             title,
             description,
-            presentationKey: presentationKey || null,
+            presentationKey: presentationKey || (customUploadedPresentation ? 'custom' : null),
             customFile: customUploadedPresentation ? customUploadedPresentation.fileUrl : null,
+            slidesContent: (customUploadedPresentation && customUploadedPresentation.slides && customUploadedPresentation.slides.length > 0)
+                ? customUploadedPresentation.slides
+                : undefined,
             outline,
             summary: summary || null,
             content: content || null,
@@ -1307,7 +1291,28 @@
         const numLabel = `Slide ${(idx || 0) + 1}${total ? ` / ${total}` : ''}`;
 
         let bodyHtml = '';
-        if (layout === 'title') {
+        if (layout === 'image' || (slide.imageUrl && (!bullets || bullets.length === 0))) {
+            bodyHtml = `
+                <div class="slide-image-fullscreen-box" style="width: 100%; height: 100%; min-height: 380px; display: flex; align-items: center; justify-content: center; background: #0b0f19; border-radius: 12px; overflow: hidden; padding: 0.5rem;">
+                    <img src="${slide.imageUrl}" alt="${escapeHtml(slide.title || 'Slide')}" style="max-width: 100%; max-height: 520px; object-fit: contain; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+                </div>
+            `;
+        } else if (layout === 'split' || (slide.imageUrl && bullets.length > 0)) {
+            bodyHtml = `
+                <div class="slide-two-col-grid" style="display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 1.5rem; align-items: center;">
+                    <div>
+                        <h3 class="slide-html-title">${escapeHtml(slide.title || 'Untitled Slide')}</h3>
+                        ${subtitle ? `<div class="slide-html-subtitle">${escapeHtml(subtitle)}</div>` : ''}
+                        <ul class="slide-html-bullets">
+                            ${bullets.map(b => `<li>${escapeHtml(b)}</li>`).join('')}
+                        </ul>
+                    </div>
+                    <div style="display: flex; align-items: center; justify-content: center; background: rgba(15,23,42,0.6); border-radius: 10px; padding: 0.5rem; min-height: 280px;">
+                        <img src="${slide.imageUrl}" alt="${escapeHtml(slide.title || 'Slide')}" style="max-width: 100%; max-height: 360px; object-fit: contain; border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.35);">
+                    </div>
+                </div>
+            `;
+        } else if (layout === 'title') {
             bodyHtml = `
                 <div class="slide-layout-title-stage">
                     <div class="slide-kicker-pill">${escapeHtml(subtitle || 'Course Presentation Module')}</div>
@@ -1427,15 +1432,7 @@
 
         // Title and meta
         document.getElementById('viewerTopicTitle').textContent = topic.title;
-        document.getElementById('viewerDeckCategory').textContent = isCustom
-            ? 'Interactive Studio Slides'
-            : (topic.presentation?.category || 'Presentation');
-
-        // Faculty Edit in Studio button inside Viewer
-        const editStudioBtn = document.getElementById('viewerEditStudioBtn');
-        if (editStudioBtn) {
-            editStudioBtn.style.display = isTeacherOrAdmin() ? 'inline-flex' : 'none';
-        }
+        document.getElementById('viewerDeckCategory').textContent = topic.presentation?.category || 'Presentation Deck';
 
         // Download link
         const downloadBtn = document.getElementById('viewerDownloadBtn');
@@ -1463,12 +1460,22 @@
         // Render Filmstrip
         const filmstrip = document.getElementById('viewerFilmstrip');
         if (isCustom) {
-            filmstrip.innerHTML = slides.map((s, i) => `
-                <div class="filmstrip-thumb ${i === 0 ? 'active' : ''}" style="min-width: 96px; height: 46px; padding: 0 8px; background: #1e293b; color: #fff; font-size: 0.7rem; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; font-weight: 700; cursor: pointer; border-radius: 6px; overflow: hidden;" onclick="window.jumpToSlide(${i})" data-index="${i}">
-                    <span style="color: #818cf8; font-size: 0.62rem;">SLIDE ${i + 1}</span>
-                    <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">${escapeHtml(s.title || `Slide ${i + 1}`)}</span>
-                </div>
-            `).join('');
+            filmstrip.innerHTML = slides.map((s, i) => {
+                if (s.imageUrl) {
+                    return `
+                        <div class="filmstrip-thumb ${i === 0 ? 'active' : ''}" style="min-width: 96px; height: 52px; position: relative; border-radius: 6px; overflow: hidden; cursor: pointer; border: 2px solid ${i === 0 ? 'var(--color-primary, #4f46e5)' : 'transparent'}; background: #0f172a;" onclick="window.jumpToSlide(${i})" data-index="${i}">
+                            <img src="${s.imageUrl}" alt="Slide ${i + 1}" style="width: 100%; height: 100%; object-fit: cover;">
+                            <span style="position: absolute; bottom: 2px; left: 4px; background: rgba(0,0,0,0.75); color: #fff; font-size: 0.6rem; padding: 1px 4px; border-radius: 3px; font-weight: 700;">${i + 1}</span>
+                        </div>
+                    `;
+                }
+                return `
+                    <div class="filmstrip-thumb ${i === 0 ? 'active' : ''}" style="min-width: 96px; height: 52px; padding: 4px 8px; background: #1e293b; color: #fff; font-size: 0.7rem; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; font-weight: 700; cursor: pointer; border-radius: 6px; overflow: hidden; border: 2px solid ${i === 0 ? 'var(--color-primary, #4f46e5)' : 'transparent'};" onclick="window.jumpToSlide(${i})" data-index="${i}">
+                        <span style="color: #818cf8; font-size: 0.62rem;">SLIDE ${i + 1}</span>
+                        <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">${escapeHtml(s.title || `Slide ${i + 1}`)}</span>
+                    </div>
+                `;
+            }).join('');
         } else {
             filmstrip.innerHTML = slides.map((url, i) => `
                 <img src="${url}" alt="Slide ${i + 1}" class="filmstrip-thumb ${i === 0 ? 'active' : ''}" 
@@ -1478,15 +1485,6 @@
 
         renderCurrentSlide();
         document.addEventListener('keydown', handleViewerKeydown);
-    };
-
-    window.editCurrentViewerSlidesInStudio = function () {
-        if (!slideViewer.topic) return;
-        const topicId = slideViewer.topic.id;
-        window.closeSlideViewer();
-        if (typeof window.openSlideCreatorModal === 'function') {
-            window.openSlideCreatorModal(topicId);
-        }
     };
 
     window.launchQuizFromViewer = function () {
@@ -1556,12 +1554,26 @@
         const outlineItems = topic.outline ? topic.outline.split('\n').filter(Boolean) : [];
 
         if (slideViewer.isCustom) {
-            if (img) img.style.display = 'none';
-            if (customContainer) {
-                customContainer.style.display = 'block';
-                const slide = slideViewer.slides[current] || {};
-                customContainer.className = `slide-html-card theme-${slide.theme || 'indigo'} layout-${slide.layout || 'bullets'}`;
-                customContainer.innerHTML = window.renderCustomSlideStageHtml(slide, current, total);
+            const slide = slideViewer.slides[current] || {};
+            const isPureImageSlide = Boolean(slide.imageUrl && (slide.layout === 'image' || !slide.bullets || slide.bullets.length === 0));
+
+            if (isPureImageSlide) {
+                if (customContainer) customContainer.style.display = 'none';
+                if (img) {
+                    img.style.display = 'block';
+                    img.style.opacity = '0.4';
+                    img.src = slide.imageUrl;
+                    img.alt = slide.title || `Slide ${current + 1}`;
+                    img.onload = () => { img.style.opacity = '1'; };
+                }
+            } else {
+                if (img) img.style.display = 'none';
+                if (customContainer) {
+                    customContainer.style.display = 'block';
+                    customContainer.className = `slide-html-card theme-${slide.theme || 'indigo'} layout-${slide.layout || 'bullets'}`;
+                    customContainer.innerHTML = window.renderCustomSlideStageHtml(slide, current, total);
+                }
+            }
 
                 const notesEl = document.getElementById('viewerNotesContent');
                 if (notesEl) {
@@ -1580,7 +1592,6 @@
                         </ul>
                     `;
                 }
-            }
         } else {
             if (customContainer) customContainer.style.display = 'none';
             if (img) {
@@ -1745,7 +1756,8 @@
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Upload failed');
 
-            statusEl.textContent = `Uploaded: ${data.originalname} (${Math.round(data.size / 1024)} KB)`;
+            const slideCountText = data.slideCount ? ` (${data.slideCount} slides extracted)` : ` (${Math.round(data.size / 1024)} KB)`;
+            statusEl.textContent = `Uploaded: ${data.originalname}${slideCountText}`;
             statusEl.style.color = 'var(--color-success)';
 
             // Auto-fill title if empty
@@ -1754,22 +1766,14 @@
                 titleInput.value = file.name.replace(/\.[^/.]+$/, "");
             }
 
-            customUploadedPresentation = data;
-
-            // Update preview box
-            const previewBox = document.getElementById('topicPresentationPreviewBox');
-            if (previewBox) {
-                previewBox.style.display = 'flex';
-                previewBox.innerHTML = `
-                    <div style="font-size: 2rem;">📊</div>
-                    <div>
-                        <strong>Custom Presentation Attached: ${escapeHtml(data.originalname)}</strong>
-                        <div style="font-size: var(--font-size-xs); color: var(--color-text-secondary); margin-top: 2px;">
-                            ${data.fileUrl} (${Math.round(data.size / 1024)} KB)
-                        </div>
-                    </div>
-                `;
+            // Auto-fill outline if empty and outline was extracted
+            const outlineInput = document.getElementById('topicOutlineInput');
+            if (outlineInput && !outlineInput.value && data.outline) {
+                outlineInput.value = data.outline;
             }
+
+            customUploadedPresentation = data;
+            updateTopicPresentationPreview();
         } catch (err) {
             statusEl.textContent = `Error: ${err.message}`;
             statusEl.style.color = 'var(--color-error)';
@@ -1851,21 +1855,35 @@
         const box = document.getElementById('topicPresentationPreviewBox');
         if (!box) return;
 
-        if (!key) {
-            if (!customUploadedPresentation) {
-                box.style.display = 'none';
-            } else {
-                box.style.display = 'flex';
-                box.innerHTML = `
-                    <div style="font-size: 2rem;">📊</div>
+        if (customUploadedPresentation) {
+            const slideCount = customUploadedPresentation.slideCount || (customUploadedPresentation.slides ? customUploadedPresentation.slides.length : null);
+            const slideCountPill = slideCount ? `<span style="background: #10b981; color: #fff; font-size: 0.7rem; font-weight: 700; padding: 2px 7px; border-radius: 999px;">${slideCount} Slides Extracted</span>` : '';
+            const sizeKb = customUploadedPresentation.size ? `${Math.round(customUploadedPresentation.size / 1024)} KB` : '';
+            box.style.display = 'flex';
+            box.style.alignItems = 'center';
+            box.style.justifyContent = 'space-between';
+            box.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <div style="width: 42px; height: 42px; border-radius: 8px; background: #fee2e2; color: #dc2626; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 0.75rem; border: 1px solid #fca5a5;">PPTX</div>
                     <div>
-                        <strong>Custom Presentation Attached: ${escapeHtml(customUploadedPresentation.originalname || 'Presentation')}</strong>
-                        <div style="font-size: var(--font-size-xs); color: var(--color-text-secondary); margin-top: 2px;">
-                            ${escapeHtml(customUploadedPresentation.fileUrl)}
+                        <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                            <strong style="font-size: 0.88rem; color: #0f172a;">${escapeHtml(customUploadedPresentation.originalname || 'Presentation.pptx')}</strong>
+                            ${slideCountPill}
+                        </div>
+                        <div style="font-size: 0.75rem; color: #64748b; margin-top: 2px;">
+                            ${escapeHtml(customUploadedPresentation.fileUrl || '')} ${sizeKb ? `(${sizeKb})` : ''}
                         </div>
                     </div>
-                `;
-            }
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="window.clearCustomTopicPresentation()" style="color: #dc2626; border-color: #fecaca; background: #fff; font-size: 0.75rem; padding: 0.25rem 0.6rem;">
+                    Remove Deck
+                </button>
+            `;
+            return;
+        }
+
+        if (!key) {
+            box.style.display = 'none';
             return;
         }
 
@@ -1876,19 +1894,34 @@
         }
 
         box.style.display = 'flex';
+        box.style.alignItems = 'center';
+        box.style.justifyContent = 'flex-start';
         box.innerHTML = `
-            <img src="${deck.cover}" alt="${escapeHtml(deck.title)}" style="width: 100px; height: 60px; object-fit: cover; border-radius: 4px; box-shadow: var(--shadow-sm);">
-            <div>
-                <strong>${escapeHtml(deck.title)} Deck Attached</strong>
-                <div style="font-size: var(--font-size-xs); color: var(--color-text-secondary); margin-top: 2px;">
-                    ${deck.slideCount} extracted slides ready for students.
+            <img src="${deck.cover}" alt="${escapeHtml(deck.title)}" style="width: 90px; height: 54px; object-fit: cover; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #e2e8f0;">
+            <div style="margin-left: 0.75rem;">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <strong style="font-size: 0.88rem; color: #0f172a;">${escapeHtml(deck.title)} Library Deck</strong>
+                    <span style="background: #6366f1; color: #fff; font-size: 0.7rem; font-weight: 700; padding: 2px 7px; border-radius: 999px;">${deck.slideCount} Slides</span>
                 </div>
-                <div style="font-size: var(--font-size-xs); color: var(--color-primary); font-weight: 600; margin-top: 2px;">
-                    Category: ${escapeHtml(deck.category)}
+                <div style="font-size: 0.75rem; color: #64748b; margin-top: 2px;">
+                    Category: ${escapeHtml(deck.category || 'Presentation')}
                 </div>
             </div>
         `;
     }
+
+    window.clearCustomTopicPresentation = function () {
+        customUploadedPresentation = null;
+        const fileStatus = document.getElementById('topicFileUploadStatus');
+        if (fileStatus) {
+            fileStatus.style.display = 'inline-block';
+            fileStatus.textContent = 'No custom file chosen';
+            fileStatus.style.color = 'var(--color-text-muted)';
+        }
+        const fileInput = document.getElementById('topicFileInput');
+        if (fileInput) fileInput.value = '';
+        updateTopicPresentationPreview();
+    };
 
     // Segmented Control Helpers
     window.selectSegment = function (containerId, value) {

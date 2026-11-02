@@ -7,6 +7,7 @@ const fs = require('fs');
 const multer = require('multer');
 const db = require('./database');
 const presentations = require('./presentations');
+const { extractPptxSlides } = require('./pptx-parser');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -500,15 +501,43 @@ app.post('/api/subjects/:id/topics', (req, res) => {
             return res.status(400).json({ error: 'Topic title is required' });
         }
 
+        let resolvedSlidesContent = slidesContent ? (typeof slidesContent === 'string' ? slidesContent : JSON.stringify(slidesContent)) : null;
+        let resolvedOutline = Array.isArray(outline) ? outline.join('\n') : (outline ? outline.trim() : null);
+
+        // Auto-extract slides from uploaded PPTX if slidesContent not provided
+        if (!resolvedSlidesContent && customFile && /\.pptx?$/i.test(customFile)) {
+            try {
+                const diskPath = path.join(__dirname, 'public', customFile.replace(/^\//, ''));
+                const altPath = path.join(customUploadsDir, path.basename(customFile));
+                const targetPath = fs.existsSync(diskPath) ? diskPath : (fs.existsSync(altPath) ? altPath : null);
+                if (targetPath) {
+                    const parsed = extractPptxSlides(targetPath, {
+                        outputDir: path.join(customUploadsDir, 'slides'),
+                        publicUrlPrefix: '/uploads/custom/slides',
+                        deckSlug: path.basename(customFile, path.extname(customFile)),
+                        isServerless
+                    });
+                    if (parsed && parsed.length > 0) {
+                        resolvedSlidesContent = JSON.stringify(parsed);
+                        if (!resolvedOutline) {
+                            resolvedOutline = parsed.map(s => s.title).filter(t => t && !/^slide\s+\d+$/i.test(t)).slice(0, 12).join('\n');
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('[Create Topic] Error extracting PPTX slides:', err.message);
+            }
+        }
+
         const newTopic = {
             id: uuidv4(),
             subjectId,
             title: title.trim(),
             description: description ? description.trim() : null,
-            presentationKey: presentationKey ? presentationKey.trim().toLowerCase() : null,
+            presentationKey: presentationKey ? presentationKey.trim().toLowerCase() : (customFile ? 'custom' : null),
             customFile: customFile ? customFile.trim() : null,
-            slidesContent: slidesContent ? (typeof slidesContent === 'string' ? slidesContent : JSON.stringify(slidesContent)) : null,
-            outline: Array.isArray(outline) ? outline.join('\n') : (outline ? outline.trim() : null),
+            slidesContent: resolvedSlidesContent,
+            outline: resolvedOutline,
             isPublished: isPublished !== false && isPublished !== 0 && isPublished !== '0',
             summary: summary ? summary.trim() : null,
             content: content ? content.trim() : null
@@ -537,14 +566,43 @@ app.put('/api/topics/:id', (req, res) => {
             return res.status(400).json({ error: 'Topic title is required' });
         }
 
+        const targetCustomFile = customFile !== undefined ? (customFile ? customFile.trim() : null) : current.customFile;
+        let resolvedSlidesContent = slidesContent !== undefined ? slidesContent : current.slidesContent;
+        let resolvedOutline = outline !== undefined ? (Array.isArray(outline) ? outline.join('\n') : (outline ? outline.trim() : null)) : current.outline;
+
+        // Auto-extract slides from uploaded PPTX if slidesContent not provided
+        if (!resolvedSlidesContent && targetCustomFile && /\.pptx?$/i.test(targetCustomFile)) {
+            try {
+                const diskPath = path.join(__dirname, 'public', targetCustomFile.replace(/^\//, ''));
+                const altPath = path.join(customUploadsDir, path.basename(targetCustomFile));
+                const targetPath = fs.existsSync(diskPath) ? diskPath : (fs.existsSync(altPath) ? altPath : null);
+                if (targetPath) {
+                    const parsed = extractPptxSlides(targetPath, {
+                        outputDir: path.join(customUploadsDir, 'slides'),
+                        publicUrlPrefix: '/uploads/custom/slides',
+                        deckSlug: path.basename(targetCustomFile, path.extname(targetCustomFile)),
+                        isServerless
+                    });
+                    if (parsed && parsed.length > 0) {
+                        resolvedSlidesContent = JSON.stringify(parsed);
+                        if (!resolvedOutline) {
+                            resolvedOutline = parsed.map(s => s.title).filter(t => t && !/^slide\s+\d+$/i.test(t)).slice(0, 12).join('\n');
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('[Update Topic] Error extracting PPTX slides:', err.message);
+            }
+        }
+
         db.updateTopic({
             id,
             title: title.trim(),
             description: description !== undefined ? (description ? description.trim() : null) : current.description,
-            presentationKey: presentationKey !== undefined ? (presentationKey ? presentationKey.trim().toLowerCase() : null) : current.presentationKey,
-            customFile: customFile !== undefined ? (customFile ? customFile.trim() : null) : current.customFile,
-            slidesContent: slidesContent !== undefined ? slidesContent : current.slidesContent,
-            outline: outline !== undefined ? (Array.isArray(outline) ? outline.join('\n') : (outline ? outline.trim() : null)) : current.outline,
+            presentationKey: presentationKey !== undefined ? (presentationKey ? presentationKey.trim().toLowerCase() : (targetCustomFile ? 'custom' : null)) : (targetCustomFile ? 'custom' : current.presentationKey),
+            customFile: targetCustomFile,
+            slidesContent: resolvedSlidesContent,
+            outline: resolvedOutline,
             isPublished: isPublished !== undefined ? (isPublished !== false && isPublished !== 0 && isPublished !== '0') : current.isPublished,
             summary: summary !== undefined ? (summary ? summary.trim() : null) : current.summary,
             content: content !== undefined ? (content ? content.trim() : null) : current.content,
@@ -582,7 +640,7 @@ app.patch('/api/topics/:id/publish', (req, res) => {
     }
 });
 
-// Custom presentation file upload
+// Custom presentation file upload with automatic slide extraction
 app.post('/api/topics/upload-presentation', upload.single('file'), (req, res) => {
     try {
         if (!req.file) {
@@ -590,12 +648,37 @@ app.post('/api/topics/upload-presentation', upload.single('file'), (req, res) =>
         }
 
         const fileUrl = `/uploads/custom/${req.file.filename}`;
+        const ext = path.extname(req.file.originalname).toLowerCase();
+        let extractedSlides = [];
+
+        if (ext === '.pptx' || ext === '.ppt') {
+            try {
+                extractedSlides = extractPptxSlides(req.file.path, {
+                    outputDir: path.join(customUploadsDir, 'slides'),
+                    publicUrlPrefix: '/uploads/custom/slides',
+                    deckSlug: path.basename(req.file.filename, ext),
+                    isServerless
+                });
+            } catch (parseErr) {
+                console.error('[Upload Presentation] Error extracting PPTX slides:', parseErr.message);
+            }
+        }
+
+        const outline = extractedSlides
+            .map(s => s.title)
+            .filter(t => t && !/^slide\s+\d+$/i.test(t))
+            .slice(0, 12)
+            .join('\n');
+
         res.json({
             message: 'Presentation uploaded successfully',
             fileUrl,
             filename: req.file.filename,
             originalname: req.file.originalname,
-            size: req.file.size
+            size: req.file.size,
+            slideCount: extractedSlides.length,
+            slides: extractedSlides,
+            outline
         });
     } catch (error) {
         console.error('Upload presentation error:', error);
