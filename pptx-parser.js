@@ -278,3 +278,4 @@ function extractPptxSlides(source, options = {}) {
 module.exports = {
     extractPptxSlides
 };
+

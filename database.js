@@ -834,17 +834,29 @@ module.exports = {
     createSubject: (subjectData) => {
         const now = new Date().toISOString();
         const joinCode = generateUniqueJoinCode(subjectData.joinCode || null);
-        return stmtInsertSubject.run({
-            id: subjectData.id || uuidv4(),
+        const id = subjectData.id || uuidv4();
+        stmtInsertSubject.run({
+            id,
             name: subjectData.name,
             code: subjectData.code,
-            term: subjectData.term,
-            year: subjectData.year,
+            term: subjectData.term || '1st Semester',
+            year: subjectData.year || subjectData.yearLevel || '1st Year',
             description: subjectData.description || null,
             joinCode,
             createdBy: subjectData.createdBy || null,
             createdAt: subjectData.createdAt || now
         });
+        return {
+            id,
+            name: subjectData.name,
+            code: subjectData.code,
+            term: subjectData.term || '1st Semester',
+            year: subjectData.year || subjectData.yearLevel || '1st Year',
+            description: subjectData.description || null,
+            joinCode,
+            createdBy: subjectData.createdBy || null,
+            createdAt: subjectData.createdAt || now
+        };
     },
     updateSubject: (subjectData) => {
         return stmtUpdateSubject.run({
@@ -919,13 +931,14 @@ module.exports = {
     getNextTopicOrder: (subjectId) => stmtGetMaxTopicOrder.get(subjectId).m + 1,
     createTopic: (topicData) => {
         const now = new Date().toISOString();
+        const id = topicData.id || uuidv4();
         const order = topicData.orderIndex !== undefined ? topicData.orderIndex : (stmtGetMaxTopicOrder.get(topicData.subjectId).m + 1);
         const isPublished = topicData.isPublished !== undefined ? (topicData.isPublished ? 1 : 0) : 1;
         const normalizedFile = typeof topicData.customFile === 'object' && topicData.customFile
             ? (topicData.customFile.fileUrl || topicData.customFile.fileName || null)
             : (topicData.customFile || null);
-        return stmtInsertTopic.run({
-            id: topicData.id || uuidv4(),
+        stmtInsertTopic.run({
+            id,
             subjectId: topicData.subjectId,
             title: topicData.title,
             description: topicData.description || null,
@@ -939,6 +952,8 @@ module.exports = {
             content: topicData.content || null,
             createdAt: topicData.createdAt || now
         });
+        const createdRow = stmtGetTopicById.get(id);
+        return createdRow ? enrichTopic(createdRow) : { id, ...topicData };
     },
     updateTopic: (topicData) => {
         const current = stmtGetTopicById.get(topicData.id);
