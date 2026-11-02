@@ -252,12 +252,11 @@
                         <div>
                             <div class="subject-card-header">
                                 <span class="subject-code-badge">
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                                        <polyline points="4 7 4 4 20 4 20 7"/>
-                                        <line x1="9" y1="20" x2="15" y2="20"/>
-                                        <line x1="12" y1="4" x2="12" y2="20"/>
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
                                     </svg>
-                                    ${escapeHtml(subject.code)}
+                                    <span>${escapeHtml(subject.code)}</span>
                                 </span>
                                 <div class="subject-meta-chips">
                                     <span class="chip-term">${escapeHtml(subject.term)}</span>
@@ -291,29 +290,31 @@
                             <p class="subject-card-desc">${escapeHtml(subject.description || 'Comprehensive curriculum covering core principles, hands-on demonstrations, and assessments.')}</p>
 
                             ${isStaff ? `
-                                <div class="subject-join-code-strip">
-                                    <div class="subject-join-code-info">
-                                        <span class="subject-join-code-label">Class Code</span>
-                                        <span class="subject-join-code-val">${escapeHtml(subject.joinCode || 'CMS315')}</span>
+                                <div class="subject-class-code-card">
+                                    <div class="subject-code-left">
+                                        <span class="code-badge-label">CLASS CODE</span>
+                                        <span class="code-badge-mono">${escapeHtml(subject.joinCode || 'CMS315')}</span>
                                     </div>
-                                    <div class="subject-join-code-btns">
-                                        <button type="button" class="btn-code-mini" onclick="window.copyClassJoinCode('${escapeHtml(subject.joinCode || 'CMS315')}')" title="Copy Class Code">
-                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                    <div class="subject-code-actions">
+                                        <button type="button" class="btn-card-copy-code" onclick="window.copyClassJoinCode('${escapeHtml(subject.joinCode || 'CMS315')}')" title="Copy Class Code">
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                                             <span>Copy</span>
                                         </button>
-                                        <button type="button" class="btn-code-mini roster" onclick="window.openClassRosterModal('${subject.id}')" title="View Class Code & Enrolled Students">
-                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-                                            <span>${subject.enrolledCount || 0} Enrolled</span>
+                                        <button type="button" class="btn-card-roster" onclick="window.openClassRosterModal('${subject.id}')" title="View Enrolled Students & Class Code">
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                                            <span><strong>${subject.enrolledCount || 0}</strong> Enrolled</span>
                                         </button>
                                     </div>
                                 </div>
                             ` : `
-                                <div class="subject-join-code-strip student-enrolled-strip">
-                                    <span style="display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.76rem; font-weight: 700; color: #059669;">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                                        Enrolled via Class Code
-                                    </span>
-                                    <span style="font-size: 0.72rem; color: #64748b; font-weight: 600;">${topicsCount} Topics Unlocked Sequentially</span>
+                                <div class="subject-class-code-card student-enrolled">
+                                    <div class="subject-code-left">
+                                        <span class="student-enrolled-pill">
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                                            Enrolled via Class Code
+                                        </span>
+                                    </div>
+                                    <span class="student-topics-count">${topicsCount} Lessons Ready</span>
                                 </div>
                             `}
 
@@ -616,43 +617,48 @@
         }
 
         if (!isStaff) {
-            studentBanner.className = 'student-notice-banner';
+            studentBanner.className = 'toc-classroom-bar student-bar';
             studentBanner.style.display = 'flex';
-            studentBanner.style.justifyContent = 'space-between';
-            studentBanner.style.flexWrap = 'wrap';
             studentBanner.innerHTML = `
-                <div style="display: inline-flex; align-items: center; gap: 0.55rem;">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10"/>
-                        <line x1="12" y1="16" x2="12" y2="12"/>
-                        <line x1="12" y1="8" x2="12.01" y2="8"/>
-                    </svg>
-                    <span>Showing <strong>${publishedCount} released lesson${publishedCount !== 1 ? 's' : ''}</strong> uploaded by your instructor for this course.</span>
+                <div class="toc-classroom-bar-left">
+                    <span class="toc-class-badge student-badge">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        Enrolled Course
+                    </span>
+                    <span class="toc-class-lesson-info">
+                        Showing <strong>${publishedCount} released lesson${publishedCount !== 1 ? 's' : ''}</strong> uploaded by your instructor for this course.
+                    </span>
                 </div>
-                <button type="button" class="btn btn-secondary btn-sm" onclick="window.openJoinClassModal()" style="font-size: 0.76rem; padding: 0.25rem 0.65rem;">
-                    + Join Another Class
-                </button>
+                <div class="toc-classroom-bar-right">
+                    <button type="button" class="btn-toc-join-more" onclick="window.openJoinClassModal()">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+                        <span>Join Another Class</span>
+                    </button>
+                </div>
             `;
         } else {
-            studentBanner.className = 'faculty-classroom-code-bar';
+            studentBanner.className = 'toc-classroom-bar faculty-bar';
             studentBanner.style.display = 'flex';
             studentBanner.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
-                    <span class="faculty-code-pill-tag">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
-                        Class Join Code: <strong>${escapeHtml(currentSubject.joinCode || 'CMS315')}</strong>
-                    </span>
-                    <button type="button" class="btn btn-secondary btn-sm" onclick="window.copyClassJoinCode('${escapeHtml(currentSubject.joinCode || 'CMS315')}')">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                <div class="toc-classroom-bar-left">
+                    <div class="toc-code-display-wrap">
+                        <span class="toc-code-label">CLASS JOIN CODE</span>
+                        <span class="toc-code-val" title="Class Join Code">${escapeHtml(currentSubject.joinCode || 'CMS315')}</span>
+                    </div>
+                    <button type="button" class="btn-toc-action btn-toc-copy" onclick="window.copyClassJoinCode('${escapeHtml(currentSubject.joinCode || 'CMS315')}')" title="Copy Class Code">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                         <span>Copy Code</span>
                     </button>
-                    <button type="button" class="btn btn-secondary btn-sm" onclick="window.openClassRosterModal('${currentSubject.id}')">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-                        <span>Class Roster (${currentSubject.enrolledCount || 0} Students)</span>
+                    <button type="button" class="btn-toc-action btn-toc-roster" onclick="window.openClassRosterModal('${currentSubject.id}')" title="View Enrolled Students & Manage Join Code">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        <span>Class Roster (<strong>${currentSubject.enrolledCount || 0}</strong> Students)</span>
                     </button>
                 </div>
-                <div style="font-size: 0.78rem; color: #475569; font-weight: 500;">
-                    Share this code with students so they can enroll in <strong>${escapeHtml(currentSubject.code)}</strong>
+                <div class="toc-classroom-bar-right">
+                    <span class="toc-share-hint">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                        Share code with students to join <strong>${escapeHtml(currentSubject.code)}</strong>
+                    </span>
                 </div>
             `;
         }

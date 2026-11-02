@@ -382,60 +382,70 @@ body:not([data-role="faculty"]):not([data-role="admin"]) .faculty-only {
 }
 
 .subject-code-badge {
-    font-family: var(--code-font);
-    font-size: var(--font-size-xs);
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    padding: 0.25rem 0.65rem;
-    background: var(--color-primary-light);
-    color: var(--color-primary);
-    border: 1px solid var(--theme-border-accent, rgba(0, 115, 170, 0.2));
-    border-radius: var(--radius-md);
+    font-family: var(--code-font, monospace);
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    padding: 0.28rem 0.65rem;
+    background: #0f172a;
+    color: #ffffff;
+    border: 1px solid #1e293b;
+    border-radius: 8px;
     display: inline-flex;
     align-items: center;
-    gap: 0.375rem;
+    gap: 0.45rem;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+}
+
+.subject-code-badge svg {
+    color: #38bdf8;
+    flex-shrink: 0;
 }
 
 .subject-meta-chips {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: 0.4rem;
     flex-wrap: wrap;
 }
 
 .chip-term {
-    font-size: var(--font-size-xs);
-    font-weight: 600;
-    padding: 0.2rem 0.5rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.22rem 0.6rem;
     background: #eef2ff;
     color: #4338ca;
-    border-radius: var(--radius-full);
+    border: 1px solid #c7d2fe;
+    border-radius: 9999px;
 }
 
 .chip-year {
-    font-size: var(--font-size-xs);
-    font-weight: 600;
-    padding: 0.2rem 0.5rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.22rem 0.6rem;
     background: #fef3c7;
     color: #92400e;
-    border-radius: var(--radius-full);
+    border: 1px solid #fde68a;
+    border-radius: 9999px;
 }
 
 .subject-card-title {
-    font-size: var(--font-size-xl);
-    font-weight: 700;
-    color: var(--color-text-primary);
-    line-height: 1.3;
-    margin-bottom: var(--space-2);
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1.35;
+    margin-top: 0.25rem;
+    margin-bottom: 0.4rem;
+    letter-spacing: -0.01em;
 }
 
 .subject-card-desc {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+    color: #475569;
     line-height: 1.5;
-    margin-bottom: var(--space-5);
+    margin-bottom: 0.85rem;
     display: -webkit-box;
-    -webkit-line-clamp: 3;
+    -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
@@ -530,23 +540,45 @@ body:not([data-role="faculty"]):not([data-role="admin"]) .faculty-only {
 .btn-open-toc {
     display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
-    font-size: var(--font-size-xs);
+    gap: 0.45rem;
+    font-size: 0.78rem;
     font-weight: 700;
-    color: var(--color-primary);
-    background: var(--color-primary-lighter);
-    padding: 0.5rem 0.9rem;
-    border-radius: var(--radius-lg);
-    border: 1.5px solid var(--theme-border-accent, rgba(0, 115, 170, 0.25));
+    color: #ffffff;
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    padding: 0.45rem 0.95rem;
+    border-radius: 8px;
+    border: none;
     cursor: pointer;
-    transition: all var(--transition-fast);
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.22);
+    transition: all 0.2s ease;
 }
 
 .btn-open-toc:hover {
-    background: var(--color-primary);
-    border-color: var(--color-primary);
+    background: linear-gradient(135deg, #1d4ed8, #1e40af);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.32);
+    transform: translateY(-1px);
     color: #ffffff;
-    transform: translateX(2px);
+}
+
+.btn-back-subjects {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #334155;
+    background: #ffffff;
+    padding: 0.48rem 0.85rem;
+    border-radius: 8px;
+    border: 1.5px solid #cbd5e1;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-back-subjects:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+    border-color: #94a3b8;
 }
 
 /* Subject Card Action Dropdown */
@@ -629,7 +661,7 @@ body:not([data-role="faculty"]):not([data-role="admin"]) .faculty-only {
     bottom: -50px;
     width: 260px;
     height: 260px;
-    background: radial-gradient(circle, rgba(0, 115, 170, 0.35) 0%, rgba(0,0,0,0) 70%);
+    background: radial-gradient(circle, rgba(0, 115, 170, 0.35) 0%, rgba(0, 0, 0, 0) 70%);
     pointer-events: none;
 }
 
@@ -1507,6 +1539,7 @@ body:not([data-role="faculty"]):not([data-role="admin"]) .faculty-only {
         opacity: 0;
         transform: translateX(30px);
     }
+
     to {
         opacity: 1;
         transform: translateX(0);
@@ -1876,6 +1909,284 @@ body:not([data-role="faculty"]):not([data-role="admin"]) .faculty-only {
     flex-wrap: wrap;
 }
 
+/* ============================================
+   SUBJECT CARD CLASS CODE STRIP (Modern UI)
+   ============================================ */
+.subject-class-code-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    padding: 0.65rem 0.85rem;
+    background: #f8fafc;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 10px;
+    margin-bottom: 1rem;
+    transition: all 0.15s ease;
+}
+
+.subject-class-code-card:hover {
+    border-color: #cbd5e1;
+    background: #f1f5f9;
+}
+
+.subject-code-left {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.code-badge-label {
+    font-size: 0.65rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #64748b;
+}
+
+.code-badge-mono {
+    font-family: var(--code-font, monospace);
+    font-size: 0.95rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    color: #1e3a8a;
+    background: #ffffff;
+    padding: 0.15rem 0.5rem;
+    border-radius: 5px;
+    border: 1px solid #bfdbfe;
+}
+
+.subject-code-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.btn-card-copy-code {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.25rem 0.55rem;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-card-copy-code:hover {
+    background: #eff6ff;
+    border-color: #93c5fd;
+    transform: translateY(-1px);
+}
+
+.btn-card-roster {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.25rem 0.6rem;
+    border-radius: 6px;
+    background: #1e293b;
+    color: #ffffff;
+    border: 1px solid #0f172a;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-card-roster:hover {
+    background: #334155;
+    transform: translateY(-1px);
+}
+
+.subject-class-code-card.student-enrolled {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+}
+
+.student-enrolled-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #065f46;
+}
+
+.student-topics-count {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #059669;
+}
+
+/* ============================================
+   TOC CLASSROOM ACCESS STRIP (Below Hero)
+   ============================================ */
+.toc-classroom-bar,
+.faculty-classroom-code-bar,
+.student-notice-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding: 0.85rem 1.25rem;
+    background: linear-gradient(135deg, #ffffff 0%, #f8faff 100%);
+    border: 1.5px solid #dbeafe;
+    border-left: 5px solid #2563eb;
+    border-radius: 12px;
+    margin: 1.25rem 0 1.25rem 0;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+.toc-classroom-bar.student-bar,
+.student-notice-banner {
+    background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%);
+    border-color: #bbf7d0;
+    border-left-color: #059669;
+}
+
+.toc-classroom-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+}
+
+.toc-code-display-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    background: #f1f5f9;
+    padding: 0.25rem 0.65rem;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+}
+
+.toc-code-label {
+    font-size: 0.68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #475569;
+}
+
+.toc-code-val {
+    font-family: var(--code-font, monospace);
+    font-size: 0.95rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    color: #1e3a8a;
+    background: #ffffff;
+    padding: 0.1rem 0.45rem;
+    border-radius: 4px;
+    border: 1px solid #bfdbfe;
+}
+
+.btn-toc-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 0.38rem 0.75rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-toc-copy {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+}
+
+.btn-toc-copy:hover {
+    background: #dbeafe;
+    border-color: #93c5fd;
+    transform: translateY(-1px);
+}
+
+.btn-toc-roster {
+    background: #1e293b;
+    color: #ffffff;
+    border: 1px solid #0f172a;
+}
+
+.btn-toc-roster:hover {
+    background: #334155;
+    transform: translateY(-1px);
+}
+
+.toc-classroom-bar-right {
+    display: flex;
+    align-items: center;
+}
+
+.toc-share-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #475569;
+}
+
+.toc-share-hint svg {
+    color: #2563eb;
+    flex-shrink: 0;
+}
+
+.toc-class-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.2rem 0.6rem;
+    border-radius: 9999px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+}
+
+.toc-class-badge.student-badge {
+    background: #ecfdf5;
+    color: #065f46;
+    border-color: #a7f3d0;
+}
+
+.toc-class-lesson-info {
+    font-size: 0.84rem;
+    color: #334155;
+}
+
+.btn-toc-join-more {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 0.38rem 0.75rem;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #2563eb;
+    border: 1px solid #bfdbfe;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-toc-join-more:hover {
+    background: #eff6ff;
+}
+
 .subject-join-code-strip {
     display: flex;
     align-items: center;
@@ -1888,29 +2199,6 @@ body:not([data-role="faculty"]):not([data-role="admin"]) .faculty-only {
     border-radius: 10px;
 }
 
-.join-code-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    font-size: 0.76rem;
-    color: #1e3a8a;
-    font-weight: 700;
-}
-
-.join-code-pill strong {
-    font-family: var(--code-font, monospace);
-    font-size: 0.85rem;
-    font-weight: 800;
-    letter-spacing: 0.08em;
-    background: #ffffff;
-    color: #1d4ed8;
-    padding: 0.12rem 0.45rem;
-    border-radius: 6px;
-    border: 1px solid #93c5fd;
-}
-
-.btn-copy-code,
-.btn-roster-chip,
 .btn-leave-class {
     display: inline-flex;
     align-items: center;
@@ -1920,53 +2208,10 @@ body:not([data-role="faculty"]):not([data-role="admin"]) .faculty-only {
     padding: 0.22rem 0.55rem;
     border-radius: 6px;
     cursor: pointer;
-    transition: all 0.15s ease;
-}
-
-.btn-copy-code {
-    background: #ffffff;
-    color: #1d4ed8;
-    border: 1px solid #93c5fd;
-}
-
-.btn-copy-code:hover {
-    background: #dbeafe;
-}
-
-.btn-roster-chip {
-    background: #1e40af;
-    color: #ffffff;
-    border: 1px solid #1e3a8a;
-}
-
-.btn-roster-chip:hover {
-    background: #1d4ed8;
-}
-
-.subject-enrolled-strip {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-    padding: 0.45rem 0.75rem;
-    background: #ecfdf5;
-    border: 1px solid #a7f3d0;
-    border-radius: 10px;
-}
-
-.enrolled-badge-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    font-size: 0.74rem;
-    font-weight: 700;
-    color: #065f46;
-}
-
-.btn-leave-class {
     background: #ffffff;
     color: #dc2626;
     border: 1px solid #fecaca;
+    transition: all 0.15s ease;
 }
 
 .btn-leave-class:hover {
@@ -2030,9 +2275,11 @@ body:not([data-role="faculty"]):not([data-role="admin"]) .faculty-only {
     .toc-whiteboard-grid {
         grid-template-columns: 1fr;
     }
+
     .subjects-grid {
         grid-template-columns: 1fr;
     }
+
     .slide-two-col-grid {
         grid-template-columns: 1fr;
     }
@@ -2042,19 +2289,24 @@ body:not([data-role="faculty"]):not([data-role="admin"]) .faculty-only {
     .toc-hero {
         padding: var(--space-5);
     }
+
     .toc-hero-title {
         font-size: var(--font-size-xl);
     }
+
     .viewer-stage {
         padding: var(--space-2);
     }
+
     .viewer-nav-btn {
         width: 40px;
         height: 40px;
     }
+
     .viewer-nav-btn.prev {
         left: var(--space-2);
     }
+
     .viewer-nav-btn.next {
         right: var(--space-2);
     }
