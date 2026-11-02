@@ -798,7 +798,7 @@ app.post('/api/quizzes', (req, res) => {
 
         if (!Array.isArray(questions) || questions.length < 1 || questions.length > 20) {
             return res.status(400).json({
-                error: `Requirement: Quiz can have up to 20 multiple-choice questions (Whiteboard Item 5: max 20). Current count: ${Array.isArray(questions) ? questions.length : 0}.`
+                error: `Requirement: Quiz can have up to 20 multiple-choice questions (max 20 questions). Current count: ${Array.isArray(questions) ? questions.length : 0}.`
             });
         }
 
@@ -865,7 +865,7 @@ app.put('/api/quizzes/:id', (req, res) => {
 
         if (!Array.isArray(questions) || questions.length < 1 || questions.length > 20) {
             return res.status(400).json({
-                error: `Requirement: Quiz can have up to 20 multiple-choice questions (Whiteboard Item 5: max 20). Current count: ${Array.isArray(questions) ? questions.length : 0}.`
+                error: `Requirement: Quiz can have up to 20 multiple-choice questions (max 20 questions). Current count: ${Array.isArray(questions) ? questions.length : 0}.`
             });
         }
 
@@ -1003,10 +1003,10 @@ app.post('/api/quizzes/upload', quizUpload.single('file'), (req, res) => {
             return res.status(400).json({ error: 'Unsupported file type. Please upload a .json or .csv quiz file.' });
         }
 
-        // Validate question count (max 20 questions as per whiteboard item 5)
+        // Validate question count (max 20 questions)
         if (questions.length < 1 || questions.length > 20) {
             return res.status(400).json({
-                error: `Requirement check failed: Quiz must have between 1 and 20 questions (Whiteboard Item 5: max 20). The uploaded file has ${questions.length} questions.`
+                error: `Requirement check failed: Quiz must have between 1 and 20 questions (max 20 questions). The uploaded file has ${questions.length} questions.`
             });
         }
 

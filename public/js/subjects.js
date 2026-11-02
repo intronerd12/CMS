@@ -2032,6 +2032,12 @@
             if (typeof window.loadQuizzesPage === 'function' && document.getElementById('page-quizzes')?.classList.contains('active')) {
                 window.loadQuizzesPage();
             }
+            if (typeof window.loadScoresPage === 'function' && document.getElementById('page-scores')?.classList.contains('active')) {
+                window.loadScoresPage();
+            }
+            if (typeof window.loadMatrixPage === 'function' && document.getElementById('page-matrix')?.classList.contains('active')) {
+                window.loadMatrixPage();
+            }
             return true;
         } catch (err) {
             if (errorEl) {
@@ -2043,6 +2049,8 @@
             return false;
         }
     }
+
+    window.performJoinClassByCode = performJoinClassByCode;
 
     window.handleJoinClassSubmit = async function (e) {
         if (e) e.preventDefault();

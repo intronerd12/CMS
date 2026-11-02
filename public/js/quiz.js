@@ -149,25 +149,24 @@
                             <h3>No Subjects Available</h3>
                             <p>Create a course subject first before building topic quizzes.</p>
                         </div>` : `
-                        <div class="empty-state-full" style="grid-column: 1 / -1; max-width: 560px; margin: 1.5rem auto; background: #fff; border: 1.5px dashed #cbd5e1; border-radius: 16px; padding: 2.75rem 2rem; text-align: center;">
-                            <div style="width: 56px; height: 56px; border-radius: 14px; background: linear-gradient(135deg, #fff7ed, #ffedd5); color: #ea580c; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem;">
-                                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                        <div class="empty-state-full class-enroll-needed-card" style="grid-column: 1 / -1;">
+                            <div class="enroll-needed-icon icon-purple">
+                                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                     <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
                                     <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                                 </svg>
                             </div>
-                            <h3 style="font-size: 1.15rem; font-weight: 800; color: #0f172a; margin-bottom: 0.4rem;">Join a Class to Access Quizzes</h3>
-                            <p style="color: #64748b; font-size: 0.875rem; margin-bottom: 1.25rem;">
+                            <h3>Join a Class to Access Quizzes</h3>
+                            <p>
                                 Enter the <strong>Class Join Code</strong> provided by your instructor to enroll in the classroom and unlock topic assessments.
                             </p>
-                            <button type="button" class="btn btn-primary" onclick="window.openJoinClassModal()">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
-                                    <polyline points="10 17 15 12 10 7"/>
-                                    <line x1="15" y1="12" x2="3" y2="12"/>
-                                </svg>
-                                <span>Enter Class Join Code</span>
-                            </button>
+                            <div class="inline-enroll-action-group">
+                                <input type="text" id="quizzesInlineJoinInput" class="class-code-inline-input" placeholder="e.g. CMS315" maxlength="12" autocomplete="off" onkeydown="if(event.key==='Enter')window.handleQuizzesInlineJoin()">
+                                <button type="button" class="btn btn-primary" onclick="window.handleQuizzesInlineJoin()">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                                    <span>Join Class</span>
+                                </button>
+                            </div>
                         </div>`;
                 }
                 return;
@@ -858,11 +857,11 @@
                             <line x1="12" y1="8" x2="12" y2="12"/>
                             <line x1="12" y1="16" x2="12.01" y2="16"/>
                         </svg>
-                        FAILED QUIZ • CANNOT PROCEED TO NEXT TOPIC (REPEAT TOPIC - ITEM 5)
+                        FAILED QUIZ • CANNOT PROCEED TO NEXT TOPIC
                     </span>
                     <h2 class="result-hero-title" style="color: #991b1b;">Cannot Proceed to Next Topic</h2>
                     <p class="result-hero-subtitle" style="color: #7f1d1d;">
-                        Whiteboard Requirement #5: You scored <strong>${percentage}%</strong>. The required passing threshold is <strong>${passReq}%</strong>.
+                        You scored <strong>${percentage}%</strong>. The required passing threshold is <strong>${passReq}%</strong>.
                         <br>⚠️ <strong>You cannot proceed to the next topic until you pass this quiz.</strong> Please repeat this topic and review the lecture presentation before retaking the test.
                     </p>
 
@@ -1083,20 +1082,24 @@
                 }
                 if (!isFaculty) {
                     container.innerHTML = `
-                        <div class="empty-state-full" style="max-width: 560px; margin: 1.5rem auto; background: #fff; border: 1.5px dashed #cbd5e1; border-radius: 16px; padding: 2.75rem 2rem; text-align: center;">
-                            <div style="width: 56px; height: 56px; border-radius: 14px; background: linear-gradient(135deg, #fff7ed, #ffedd5); color: #ea580c; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem;">
-                                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                        <div class="empty-state-full class-enroll-needed-card">
+                            <div class="enroll-needed-icon">
+                                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                     <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
                                     <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                                 </svg>
                             </div>
-                            <h3 style="font-size: 1.15rem; font-weight: 800; color: #0f172a; margin-bottom: 0.4rem;">Join a Class to View Your Scores</h3>
-                            <p style="color: #64748b; font-size: 0.875rem; margin-bottom: 1.25rem;">
-                                Enter your instructor's <strong>Class Join Code</strong> to enroll in a class and track your quiz transcript.
+                            <h3>Join a Class to View Your Scores</h3>
+                            <p>
+                                Enter your instructor's <strong>Class Join Code</strong> to enroll in a class and view your quiz transcript and grade reports.
                             </p>
-                            <button type="button" class="btn btn-primary" onclick="window.openJoinClassModal()">
-                                <span>Enter Class Join Code</span>
-                            </button>
+                            <div class="inline-enroll-action-group">
+                                <input type="text" id="scoresInlineJoinInput" class="class-code-inline-input" placeholder="e.g. CMS315" maxlength="12" autocomplete="off" onkeydown="if(event.key==='Enter')window.handleScoresInlineJoin()">
+                                <button type="button" class="btn btn-primary" onclick="window.handleScoresInlineJoin()">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                                    <span>Join Class</span>
+                                </button>
+                            </div>
                         </div>`;
                     return;
                 }
@@ -1118,7 +1121,31 @@
         }
     };
 
-    // State for Whiteboard Items #6 & #8 (Scores, Sorting, Matrix, Exports)
+    window.handleScoresInlineJoin = async function () {
+        const inp = document.getElementById('scoresInlineJoinInput');
+        const code = inp ? inp.value.trim() : '';
+        if (typeof window.performJoinClassByCode === 'function') {
+            await window.performJoinClassByCode(code, null);
+        }
+    };
+
+    window.handleMatrixInlineJoin = async function () {
+        const inp = document.getElementById('matrixInlineJoinInput');
+        const code = inp ? inp.value.trim() : '';
+        if (typeof window.performJoinClassByCode === 'function') {
+            await window.performJoinClassByCode(code, null);
+        }
+    };
+
+    window.handleQuizzesInlineJoin = async function () {
+        const inp = document.getElementById('quizzesInlineJoinInput');
+        const code = inp ? inp.value.trim() : '';
+        if (typeof window.performJoinClassByCode === 'function') {
+            await window.performJoinClassByCode(code, null);
+        }
+    };
+
+    // State for Scores, Sorting, Matrix, Exports
     let rawFacultyScores = [];
     let rawFacultyMatrix = null;
     let scoresCurrentTab = 'topic-summary'; // 'topic-summary' (Item 6) | 'master-matrix' (Item 8)
@@ -1178,15 +1205,15 @@
         if (!container) return;
 
         container.innerHTML = `
-            <!-- Tabs Bar: Whiteboard #6 vs Whiteboard #8 -->
+            <!-- Tabs Bar -->
             <div class="scores-tabs-bar">
                 <button type="button" class="scores-tab-btn ${scoresCurrentTab === 'topic-summary' ? 'active' : ''}" onclick="window.switchScoresTab('topic-summary')">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-                    <span>Topic Assessment Summary (Item 6)</span>
+                    <span>Topic Assessment Records</span>
                 </button>
                 <button type="button" class="scores-tab-btn ${scoresCurrentTab === 'master-matrix' ? 'active' : ''}" onclick="window.switchScoresTab('master-matrix')">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
-                    <span>Summary of ALL Quiz Scores per Student (Item 8)</span>
+                    <span>Cumulative Master Matrix</span>
                 </button>
             </div>
 
@@ -1669,20 +1696,24 @@
                 }
                 if (!isFaculty) {
                     container.innerHTML = `
-                        <div class="empty-state-full" style="max-width: 560px; margin: 1.5rem auto; background: #fff; border: 1.5px dashed #cbd5e1; border-radius: 16px; padding: 2.75rem 2rem; text-align: center;">
-                            <div style="width: 56px; height: 56px; border-radius: 14px; background: linear-gradient(135deg, #fff7ed, #ffedd5); color: #ea580c; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem;">
-                                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                        <div class="empty-state-full class-enroll-needed-card">
+                            <div class="enroll-needed-icon icon-orange">
+                                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                     <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
                                     <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                                 </svg>
                             </div>
-                            <h3 style="font-size: 1.15rem; font-weight: 800; color: #0f172a; margin-bottom: 0.4rem;">Join a Class to View Your Performance Matrix</h3>
-                            <p style="color: #64748b; font-size: 0.875rem; margin-bottom: 1.25rem;">
+                            <h3>Join a Class to View Your Performance Matrix</h3>
+                            <p>
                                 Enter your instructor's <strong>Class Join Code</strong> to enroll in a class and view your 14-topic progress matrix.
                             </p>
-                            <button type="button" class="btn btn-primary" onclick="window.openJoinClassModal()">
-                                <span>Enter Class Join Code</span>
-                            </button>
+                            <div class="inline-enroll-action-group">
+                                <input type="text" id="matrixInlineJoinInput" class="class-code-inline-input" placeholder="e.g. CMS315" maxlength="12" autocomplete="off" onkeydown="if(event.key==='Enter')window.handleMatrixInlineJoin()">
+                                <button type="button" class="btn btn-primary" onclick="window.handleMatrixInlineJoin()">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                                    <span>Join Class</span>
+                                </button>
+                            </div>
                         </div>`;
                     return;
                 }
@@ -1716,7 +1747,7 @@
         matrixBox.innerHTML = `
             <div style="text-align: center; padding: 3rem; color: var(--color-text-muted);">
                 <div class="spinner" style="margin: 0 auto 1rem;"></div>
-                <p>Loading Cumulative Quiz Performance Matrix (Whiteboard Item 8)...</p>
+                <p>Loading Cumulative Quiz Performance Matrix...</p>
             </div>
         `;
 
@@ -1762,10 +1793,13 @@
         const topStudent = [...allStudents].sort((a, b) => (b.overallAverage || 0) - (a.overallAverage || 0))[0] || null;
 
         matrixBox.innerHTML = `
-            <!-- Whiteboard Item #8 Requirement Banner -->
+            <!-- Cumulative Performance Ledger Banner -->
             <div class="matrix-hero-banner">
                 <div class="matrix-hero-left">
-                    <span class="matrix-req-badge">Whiteboard Requirement #8</span>
+                    <span class="matrix-req-badge">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="vertical-align: -1px; margin-right: 4px;"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                        Official Performance Ledger
+                    </span>
                     <h2 class="matrix-hero-title">Summary of ALL Quiz Scores per Student</h2>
                     <p class="matrix-hero-desc">
                         Cumulative assessment ledger tracking individual performance across all curriculum topics (Topics 1 to ${topics.length || 14}).
@@ -2004,10 +2038,13 @@
         const isGraduated = totalTopics > 0 && passedTopicsCount >= totalTopics;
 
         matrixBox.innerHTML = `
-            <!-- Whiteboard Item #8 Requirement Banner for Student -->
+            <!-- Student Cumulative Summary Banner -->
             <div class="matrix-hero-banner">
                 <div class="matrix-hero-left">
-                    <span class="matrix-req-badge">Whiteboard Requirement #8</span>
+                    <span class="matrix-req-badge">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="vertical-align: -1px; margin-right: 4px;"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+                        Student Transcript
+                    </span>
                     <h2 class="matrix-hero-title">My Cumulative Quiz Summary</h2>
                     <p class="matrix-hero-desc">
                         Official academic performance ledger for <strong>${escapeHtml(subCode)}: ${escapeHtml(subName)}</strong> (${escapeHtml(subTerm)}, ${escapeHtml(subYear)}).
@@ -2442,7 +2479,7 @@
             printBox.innerHTML = `
                 <div class="print-report-header">
                     <h2>CMS Learning Management System</h2>
-                    <h4>Topic Assessment Summary Report (Whiteboard Item 6)</h4>
+                    <h4>Topic Assessment Summary Report</h4>
                     <p>Course: Content Management Systems (IT 315) • Date Generated: ${dateStr}</p>
                     <p style="margin-top: 0.25rem;">Sorted by: <strong>${summarySort}</strong> • Filter: <strong>${summaryTopicFilter}</strong></p>
                 </div>
@@ -2491,7 +2528,7 @@
             printBox.innerHTML = `
                 <div class="print-report-header">
                     <h2>CMS Learning Management System</h2>
-                    <h4>Summary of ALL Quiz Scores per Student - Master Matrix (Whiteboard Item 8)</h4>
+                    <h4>Summary of ALL Quiz Scores per Student - Master Matrix</h4>
                     <p>Course: Content Management Systems (IT 315) • Date Generated: ${dateStr}</p>
                     <p style="margin-top: 0.25rem;">Sorted by: <strong>${matrixSort}</strong> • Total Enrolled: <strong>${matrixList.length}</strong></p>
                 </div>
@@ -2748,7 +2785,7 @@
 
         const count = builderQuestions.length;
         if (counter) {
-            counter.textContent = `Questions: ${count} / 20 (Whiteboard Item 5: 10 min • max 20 MC questions)`;
+            counter.textContent = `Questions: ${count} / 20 (10 min • max 20 MC questions)`;
             counter.style.color = (count < 1 || count > 20) ? 'var(--color-error)' : '#10b981';
         }
 
@@ -2855,7 +2892,7 @@
 
     window.addBuilderQuestion = function () {
         if (builderQuestions.length >= 20) {
-            showToast('Maximum 20 questions reached (Whiteboard Item 5: max 20)', 'warning');
+            showToast('Maximum 20 questions reached (max 20 questions allowed)', 'warning');
             return;
         }
 
@@ -3099,7 +3136,7 @@
         }));
 
         renderBuilderQuestions();
-        showToast('Auto-filled 10 sample questions (Whiteboard: max 20)!', 'success');
+        showToast('Auto-filled 10 sample questions (max 20)!', 'success');
     };
 
     // ============================================
@@ -3253,7 +3290,7 @@ Explanation: Headless CMS delivers content via REST or GraphQL APIs to any front
         }
 
         if (parsed.length > 20) {
-            showToast(`Note: Maximum 20 questions allowed (Whiteboard Item 5: max 20). Keeping first 20 out of ${parsed.length}.`, 'info');
+            showToast(`Note: Maximum 20 questions allowed. Keeping first 20 out of ${parsed.length}.`, 'info');
             parsed.splice(20);
         }
 
@@ -3283,7 +3320,7 @@ Explanation: Headless CMS delivers content via REST or GraphQL APIs to any front
         }
 
         if (builderQuestions.length < 1 || builderQuestions.length > 20) {
-            showToast(`Quiz can have between 1 and 20 questions (Whiteboard Item 5: max 20). Currently: ${builderQuestions.length}`, 'error');
+            showToast(`Quiz can have between 1 and 20 questions. Currently: ${builderQuestions.length}`, 'error');
             return;
         }
 

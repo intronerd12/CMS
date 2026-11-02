@@ -994,7 +994,7 @@ module.exports = {
     },
     createQuiz: (quizData, questions = []) => {
         if (!questions || questions.length < 1 || questions.length > 20) {
-            throw new Error(`Quiz can have up to 20 questions (Whiteboard Item 5: max 20). You provided ${questions ? questions.length : 0}.`);
+            throw new Error(`Quiz must have between 1 and 20 questions (max 20 questions). You provided ${questions ? questions.length : 0}.`);
         }
         const now = new Date().toISOString();
         const quizId = quizData.id || uuidv4();
@@ -1032,7 +1032,7 @@ module.exports = {
     },
     updateQuiz: (quizData, questions = []) => {
         if (!questions || questions.length < 1 || questions.length > 20) {
-            throw new Error(`Quiz can have up to 20 questions (Whiteboard Item 5: max 20). You provided ${questions ? questions.length : 0}.`);
+            throw new Error(`Quiz must have between 1 and 20 questions (max 20 questions). You provided ${questions ? questions.length : 0}.`);
         }
         const now = new Date().toISOString();
 

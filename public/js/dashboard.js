@@ -131,8 +131,8 @@ function navigateTo(pageName) {
         subjects: { title: 'Subjects', subtitle: 'Manage your subjects and courses' },
         topics: { title: 'Topics & Lessons', subtitle: 'Content and learning materials' },
         quizzes: { title: 'Quizzes', subtitle: 'Assessments and evaluations' },
-        scores: { title: 'Scores & Summary', subtitle: 'View topic performance reports (Whiteboard Item 6)' },
-        matrix: { title: 'Summary of ALL Quiz Scores per Student', subtitle: 'Cumulative Performance Matrix (Whiteboard Item 8)' },
+        scores: { title: 'Scores & Gradebook', subtitle: 'View topic assessment reports and student quiz scores' },
+        matrix: { title: 'Summary of ALL Quiz Scores per Student', subtitle: 'Cumulative assessment ledger tracking student performance across all curriculum topics' },
         'quiz-result': { title: 'Quiz Assessment Results', subtitle: 'Official evaluation report and certification' },
         users: { title: 'User Management', subtitle: 'Manage registered users' }
     };
@@ -299,6 +299,16 @@ async function loadDashboardData() {
     }
 }
 
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 function renderDashboardEnrollmentBanner(subjects, role) {
     const container = document.getElementById('dashboardClassEnrollmentBanner');
     if (!container) return;
@@ -309,31 +319,47 @@ function renderDashboardEnrollmentBanner(subjects, role) {
             return;
         }
         container.innerHTML = `
-            <div class="class-code-hub-card faculty-hub">
-                <div class="class-code-hub-left">
-                    <div class="class-code-hub-badge">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
-                        <span>Classroom Enrollment Codes</span>
+            <div class="class-code-hub-card faculty-code-hub">
+                <div class="class-code-hub-header">
+                    <div class="class-code-hub-left">
+                        <div class="class-code-hub-badge">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+                            </svg>
+                            <span>Classroom Enrollment Codes</span>
+                        </div>
+                        <h3>Share Class Codes with Students</h3>
+                        <p>Students enroll by entering your unique 6-character Class Code (Google Classroom &amp; MS Teams style). Share the code below with your students to grant access.</p>
                     </div>
-                    <h3>Share Class Code with Students</h3>
-                    <p>Students cannot access your classes automatically. Share the unique Class Join Code below (just like Google Classroom & MS Teams) so students can enroll.</p>
                 </div>
                 <div class="class-code-hub-list">
                     ${subjects.map(s => `
                         <div class="class-code-pill-card">
                             <div class="class-code-pill-meta">
-                                <span class="class-code-pill-course">${s.code} — ${s.name}</span>
-                                <span class="class-code-pill-roster">${s.enrolledCount || 0} Student${(s.enrolledCount === 1) ? '' : 's'} Enrolled</span>
+                                <div class="class-code-pill-title-row">
+                                    <span class="class-course-code-tag">${escapeHtml(s.code)}</span>
+                                    <h4 class="class-course-name">${escapeHtml(s.name)}</h4>
+                                </div>
+                                <div class="class-code-pill-sub-row">
+                                    <span class="class-code-term-chip">${escapeHtml(s.term || '1st Semester')} • ${escapeHtml(s.year || '3rd Year')}</span>
+                                    <span class="class-code-pill-roster">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                                        <strong>${s.enrolledCount || 0}</strong> Student${(s.enrolledCount === 1) ? '' : 's'} Enrolled
+                                    </span>
+                                </div>
                             </div>
                             <div class="class-code-pill-actions">
-                                <span class="class-code-mono" title="Class Join Code">${s.joinCode || 'CMS315'}</span>
-                                <button type="button" class="btn btn-secondary btn-sm" onclick="window.copyClassJoinCode('${s.joinCode || 'CMS315'}')" title="Copy Class Code">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                                    <span>Copy</span>
-                                </button>
-                                <button type="button" class="btn btn-primary btn-sm" onclick="window.openClassRosterModal('${s.id}')">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                                    <span>Code & Roster</span>
+                                <div class="class-code-display-box" title="Class Join Code">
+                                    <span class="class-code-label">CLASS CODE</span>
+                                    <span class="class-code-mono">${escapeHtml(s.joinCode || 'CMS315')}</span>
+                                    <button type="button" class="btn-copy-code-pill" onclick="window.copyClassJoinCode('${escapeHtml(s.joinCode || 'CMS315')}')" title="Copy Class Code">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                        <span>Copy</span>
+                                    </button>
+                                </div>
+                                <button type="button" class="btn btn-primary btn-sm btn-manage-roster" onclick="window.openClassRosterModal('${escapeHtml(s.id)}')">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                                    <span>Code &amp; Roster</span>
                                 </button>
                             </div>
                         </div>
@@ -344,52 +370,62 @@ function renderDashboardEnrollmentBanner(subjects, role) {
     } else {
         if (!subjects || subjects.length === 0) {
             container.innerHTML = `
-                <div class="class-code-hub-card student-empty-hub">
-                    <div class="class-code-hub-left">
-                        <div class="class-code-hub-badge">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
-                            <span>Class Enrollment Required</span>
+                <div class="class-code-hub-card student-join-hub">
+                    <div class="student-hub-content">
+                        <div class="class-code-hub-left">
+                            <div class="class-code-hub-badge badge-orange">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+                                </svg>
+                                <span>Class Enrollment Required</span>
+                            </div>
+                            <h3>Join Your Instructor's Class with a Code</h3>
+                            <p>You are not enrolled in any classes yet. Enter the 6-character Class Code provided by your instructor to unlock topics, lesson presentations, and quizzes.</p>
                         </div>
-                        <h3>Join Your Instructor's Class with a Code</h3>
-                        <p>You are not enrolled in any classes yet. Enter the 6-character Class Code provided by your faculty instructor to unlock your course subjects, presentations, and quizzes.</p>
+                        <form class="class-code-inline-form" onsubmit="window.handleInlineDashboardJoin(event)">
+                            <div class="inline-input-wrapper">
+                                <input
+                                    type="text"
+                                    id="dashboardInlineJoinCodeInput"
+                                    class="class-code-inline-input"
+                                    placeholder="Enter Code (e.g. CMS315)"
+                                    maxlength="12"
+                                    required
+                                    autocomplete="off"
+                                >
+                                <button type="submit" class="btn btn-primary btn-join-inline">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                                    <span>Join Class</span>
+                                </button>
+                            </div>
+                        </form>
                     </div>
-                    <form class="class-code-inline-form" onsubmit="window.handleInlineDashboardJoin(event)">
-                        <input
-                            type="text"
-                            id="dashboardInlineJoinCodeInput"
-                            class="class-code-inline-input"
-                            placeholder="Enter Code (e.g. CMS315)"
-                            maxlength="12"
-                            required
-                            autocomplete="off"
-                        >
-                        <button type="submit" class="btn btn-primary">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                            <span>Join Class</span>
-                        </button>
-                    </form>
                 </div>
             `;
         } else {
             container.innerHTML = `
                 <div class="class-code-hub-card student-enrolled-hub">
-                    <div class="class-code-hub-left">
-                        <div class="class-code-hub-badge">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                            <span>Enrolled Classroom${subjects.length > 1 ? 's' : ''} (${subjects.length})</span>
+                    <div class="student-hub-content enrolled">
+                        <div class="class-code-hub-left">
+                            <div class="class-code-hub-badge badge-emerald">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+                                </svg>
+                                <span>Enrolled Classroom${subjects.length > 1 ? 's' : ''} (${subjects.length})</span>
+                            </div>
+                            <h3>Your Active Course Classrooms</h3>
+                            <p>You are actively enrolled in: ${subjects.map(s => `<span class="enrolled-subject-tag">${escapeHtml(s.code)} — ${escapeHtml(s.name)}</span>`).join(' ')}</p>
                         </div>
-                        <h3>Your Active Course Classrooms</h3>
-                        <p>You are enrolled in ${subjects.map(s => `<strong>${s.code} — ${s.name}</strong>`).join(', ')}. Have another class code from an instructor?</p>
-                    </div>
-                    <div style="display: flex; gap: 0.65rem; align-items: center; flex-wrap: wrap;">
-                        <button type="button" class="btn btn-secondary" onclick="navigateTo('topics')">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-                            <span>Open Course Lessons</span>
-                        </button>
-                        <button type="button" class="btn btn-primary" onclick="window.openJoinClassModal()">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                            <span>Join Another Class</span>
-                        </button>
+                        <div class="student-hub-actions">
+                            <button type="button" class="btn btn-secondary" onclick="navigateTo('topics')">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                                <span>Open Course Lessons</span>
+                            </button>
+                            <button type="button" class="btn btn-primary" onclick="window.openJoinClassModal()">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                <span>Join Another Class</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             `;
