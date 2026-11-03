@@ -858,8 +858,15 @@
                                 </svg>
                                 <span>Grade Slip</span>
                             </button>
+                            <button class="btn-deck-action" onclick="window.startQuizFromTopic('${topic.id}', '${topic.quiz ? topic.quiz.id : ''}')" style="background: #f8fafc; color: var(--color-text-main); border: 1px solid #cbd5e1; font-weight: 600;" title="Retake quiz to improve score">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="1 4 1 10 7 10"/>
+                                    <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+                                </svg>
+                                <span>Retake Quiz</span>
+                            </button>
                         ` : !isStaff && !isLocked ? `
-                            <button class="btn-deck-action" onclick="window.navigateTo('quizzes')" style="background: var(--color-primary); color: #ffffff; border: none; font-weight: 700;" title="Take topic quiz">
+                            <button class="btn-deck-action" onclick="window.startQuizFromTopic('${topic.id}', '${topic.quiz ? topic.quiz.id : ''}')" style="background: var(--color-primary); color: #ffffff; border: none; font-weight: 700;" title="Take topic quiz">
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <circle cx="12" cy="12" r="10"/>
                                     <polygon points="10 8 16 12 10 16 10 8"/>

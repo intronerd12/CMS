@@ -1,35 +1,38 @@
 [
   {
-    "id": "e953e1ff-3bb3-499d-b19e-bce2d6422a83",
-    "username": "admin",
-    "email": "admin@lms.com",
-    "password": "$2b$10$dYYV3dp2ztP9wd8nerLHrOy2FppdHPF6uhNjaU.bRF8xhECDTZDwK",
-    "firstName": "System",
-    "lastName": "Administrator",
-    "role": "admin",
-    "createdAt": "2026-10-22T03:32:14.889Z",
-    "isActive": true
-  },
-  {
     "id": "feb675b3-d156-484f-b00d-d07941e2dc5f",
     "username": "student_juan",
     "email": "juan@student.edu",
-    "password": "$2b$10$C/n4H75WwCfPz8jtFxRC/OtYQvDjIaYuT5JjHk/Q0iOqLwverAQ8G",
+    "password": "$2b$10$L/MarkHZJm1hfGHBJ9ZhHe/uDsOC47rJetYDRr5.4Tk5NpeI6o3YG",
     "firstName": "Juan",
     "lastName": "Dela Cruz",
     "role": "student",
+    "profilePic": "",
     "createdAt": "2026-10-22T03:45:39.891Z",
-    "isActive": true
+    "isActive": 1
   },
   {
     "id": "60429a4a-e5f1-46e2-8636-a5c58915048f",
     "username": "prof_santos",
-    "email": "santos@faculty.edu",
-    "password": "$2b$10$WDLvRD8Nu9YIbvZj.9JXfeMkvOGfxShz3ztGf.u.rIs9Eo7nac0Ea",
+    "email": "maria.santos@university.edu",
+    "password": "$2b$10$zjSBXvBBmpRYIUnpUKH5q.f8Apg3DgNnBkz6CRAv.QTlwOHnGa4Gm",
     "firstName": "Maria",
     "lastName": "Santos",
     "role": "faculty",
+    "profilePic": "",
     "createdAt": "2026-10-22T03:45:47.623Z",
-    "isActive": true
+    "isActive": 1
+  },
+  {
+    "id": "d1b3e379-66d7-42a3-83b5-d308a4c0105f",
+    "username": "sqlite_student",
+    "email": "sqlite@school.edu",
+    "password": "$2b$10$ZaRQ7HsrI6s/fxBp0j0owObk/Ti08LaamNsHkc4iB2DuNEs.LkVAi",
+    "firstName": "Alex",
+    "lastName": "Reyes",
+    "role": "student",
+    "profilePic": "",
+    "createdAt": "2026-10-22T04:11:46.958Z",
+    "isActive": 1
   }
 ]

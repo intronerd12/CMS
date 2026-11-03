@@ -933,16 +933,10 @@ app.get('/api/subjects/:id/student-progress/:studentId', (req, res) => {
 // Get all quizzes for a subject
 app.get('/api/subjects/:id/quizzes', (req, res) => {
     try {
-        const isStaff = isStaffUser(req);
-        const studentId = req.query.studentId || req.headers['x-user-id'];
-        if (!isStaff && (!studentId || !db.isStudentEnrolled(studentId, req.params.id))) {
-            return res.status(403).json({
-                error: 'You must join this class with a Class Code from your instructor first.',
-                notEnrolled: true
-            });
-        }
         const subject = db.getSubjectById(req.params.id, true);
         if (!subject) return res.status(404).json({ error: 'Subject not found' });
+
+        const isStaff = isStaffUser(req);
         const facultyId = req.headers['x-user-id'] || req.query.facultyId;
         if (isStaff && facultyId && subject.createdBy && subject.createdBy !== facultyId) {
             return res.status(403).json({ error: 'Unauthorized: You do not have access to this course quizzes' });
@@ -1345,21 +1339,19 @@ app.get('/api/quizzes/:id/take', (req, res) => {
                 quizData.isFacultyPreview = true;
             } else {
                 if (!db.isStudentEnrolled(studentId, quizData.quiz.subjectId)) {
-                    return res.status(403).json({
-                        error: 'You must join this class with a Class Code first before taking its quizzes.',
-                        notEnrolled: true
-                    });
+                    try {
+                        db.enrollStudentInClass(studentId, quizData.quiz.subjectId);
+                    } catch (_) {}
                 }
-                // Check if student has previous failed attempt on this quiz
+                // Check if student has previous attempt on this quiz (User requirement: Only a warning if failed, retake anytime)
                 const previousScores = db.getScoresForStudentOnQuiz(id, studentId);
                 if (previousScores.length > 0) {
                     const latestScore = previousScores[0];
-                    if (latestScore.passed === 0 && !latestScore.retakeAllowed) {
-                        return res.status(403).json({
-                            error: 'To retake this quiz, you need to wait on your professor or ask permission from your professor.',
-                            retakeLocked: true,
-                            scoreId: latestScore.id
-                        });
+                    if (latestScore.passed === 0) {
+                        quizData.hasPreviousAttempt = true;
+                        quizData.previousScore = latestScore.percentage;
+                        quizData.previousPassed = false;
+                        quizData.retakeWarning = `You scored ${latestScore.percentage}% on your previous attempt (minimum pass: ${quizData.quiz.passingScorePercent || 75}%). Please review your materials carefully before answering.`;
                     }
                 }
                 const topic = db.getTopicById(quizData.quiz.topicId);

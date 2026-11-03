@@ -407,8 +407,8 @@ function seedAndMigrate() {
             const jsonUsers = JSON.parse(raw);
             if (Array.isArray(jsonUsers)) {
                 const insertUser = db.prepare(`
-                    INSERT OR IGNORE INTO users (id, username, email, password, firstName, lastName, role, createdAt, isActive)
-                    VALUES (@id, @username, @email, @password, @firstName, @lastName, @role, @createdAt, @isActive)
+                    INSERT OR IGNORE INTO users (id, username, email, password, firstName, lastName, role, profilePic, createdAt, isActive)
+                    VALUES (@id, @username, @email, @password, @firstName, @lastName, @role, @profilePic, @createdAt, @isActive)
                 `);
                 const insertMany = db.transaction((users) => {
                     for (const u of users) {
@@ -420,6 +420,7 @@ function seedAndMigrate() {
                             firstName: u.firstName,
                             lastName: u.lastName,
                             role: u.role,
+                            profilePic: u.profilePic || '',
                             createdAt: u.createdAt || new Date().toISOString(),
                             isActive: u.isActive === false ? 0 : 1
                         });
@@ -824,9 +825,52 @@ module.exports = {
     getUserByEmail: (email) => stmtGetUserByEmail.get(email),
     getUserById: (id) => stmtGetUserById.get(id),
     getAllUsers: () => stmtGetAllUsers.all(),
-    createUser: (userData) => stmtInsertUser.run({ profilePic: '', ...userData }),
-    updateUserProfile: (userData) => stmtUpdateUserProfile.run(userData),
-    updateUserPassword: (id, password) => stmtUpdateUserPassword.run({ id, password }),
+    createUser: (userData) => {
+        const fullUser = { profilePic: '', isActive: 1, ...userData };
+        const res = stmtInsertUser.run(fullUser);
+        try {
+            const usersJsonPath = path.join(__dirname, 'data', 'users.json');
+            let list = [];
+            if (fs.existsSync(usersJsonPath)) {
+                list = JSON.parse(fs.readFileSync(usersJsonPath, 'utf8'));
+            }
+            if (!list.some(u => u.id === fullUser.id || u.username === fullUser.username)) {
+                list.push(fullUser);
+                fs.writeFileSync(usersJsonPath, JSON.stringify(list, null, 2), 'utf8');
+            }
+        } catch (_) {}
+        return res;
+    },
+    updateUserProfile: (userData) => {
+        const res = stmtUpdateUserProfile.run(userData);
+        try {
+            const usersJsonPath = path.join(__dirname, 'data', 'users.json');
+            if (fs.existsSync(usersJsonPath)) {
+                const list = JSON.parse(fs.readFileSync(usersJsonPath, 'utf8'));
+                const idx = list.findIndex(u => u.id === userData.id);
+                if (idx !== -1) {
+                    list[idx] = { ...list[idx], ...userData };
+                    fs.writeFileSync(usersJsonPath, JSON.stringify(list, null, 2), 'utf8');
+                }
+            }
+        } catch (_) {}
+        return res;
+    },
+    updateUserPassword: (id, password) => {
+        const res = stmtUpdateUserPassword.run({ id, password });
+        try {
+            const usersJsonPath = path.join(__dirname, 'data', 'users.json');
+            if (fs.existsSync(usersJsonPath)) {
+                const list = JSON.parse(fs.readFileSync(usersJsonPath, 'utf8'));
+                const idx = list.findIndex(u => u.id === id);
+                if (idx !== -1) {
+                    list[idx].password = password;
+                    fs.writeFileSync(usersJsonPath, JSON.stringify(list, null, 2), 'utf8');
+                }
+            }
+        } catch (_) {}
+        return res;
+    },
 
     // Subjects
     getSubjectsForFaculty: (facultyId, includeUnpublished = true) => {
