@@ -1429,13 +1429,13 @@
 
     <!-- ==================== 9. OFFICIAL GRADE SLIP & CERTIFICATE MODAL ==================== -->
     <div id="certificateModal" class="modal-overlay">
-        <div class="modal-container" style="max-width: 980px; max-height: 94vh; display: flex; flex-direction: column;">
+        <div class="modal-container" style="max-width: 1040px; max-height: 96vh; display: flex; flex-direction: column;">
             <div class="modal-header no-print">
                 <div style="display: flex; align-items: center; gap: 0.6rem;">
                     <span style="font-size: 1.35rem;">🎓</span>
                     <div>
-                        <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700;">Official Academic Certificate of Mastery</h3>
-                        <p style="margin: 0; font-size: 0.75rem; color: var(--color-text-muted);">Verified Institutional Credential & Assessment Transcript</p>
+                        <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700;">Official Academic Grade Slip &amp; Certificate</h3>
+                        <p style="margin: 0; font-size: 0.75rem; color: var(--color-text-muted);">Verified Institutional Credential, Grade Slip &amp; Assessment Transcript</p>
                     </div>
                 </div>
                 <div style="display: flex; gap: 0.6rem; align-items: center;">
@@ -1445,7 +1445,7 @@
                             <polyline points="7 10 12 15 17 10"/>
                             <line x1="12" y1="15" x2="12" y2="3"/>
                         </svg>
-                        <span>Save as PDF</span>
+                        <span>Save as PDF (1-Page A4)</span>
                     </button>
                     <button type="button" class="btn btn-secondary btn-sm" onclick="window.printOfficialCertificate()" style="display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.45rem 0.85rem;">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1463,7 +1463,7 @@
                     </button>
                 </div>
             </div>
-            <div class="modal-body" style="overflow-y: auto; flex: 1; padding: 1.5rem; background: #f1f5f9;">
+            <div class="modal-body" style="overflow-y: auto; flex: 1; padding: 1.25rem; background: #f1f5f9; display: flex; justify-content: center; align-items: center;">
                 <div id="printableCertificate">
                     <!-- Populated dynamically -->
                 </div>

@@ -416,8 +416,11 @@
             } else {
                 // Student Actions
                 if (isPassed) {
+                    const targetAttempt = (topicProg && topicProg.passedAttempt)
+                        ? topicProg.passedAttempt
+                        : ((topicProg && topicProg.bestAttempt) ? topicProg.bestAttempt : lastAttempt);
                     actionsHtml = `
-                        <button type="button" class="btn-view-result" onclick="window.viewPastResult('${lastAttempt ? lastAttempt.id : ''}')">
+                        <button type="button" class="btn-view-result" onclick="window.viewPastResult('${targetAttempt ? targetAttempt.id : ''}')">
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                                 <polyline points="14 2 14 8 20 8"/>
@@ -1527,11 +1530,11 @@
                         <div class="cert-content-layer">
                             <!-- Academic Header & Crest -->
                             <div class="cert-crest-wrap">${academicCrestSvg}</div>
-                            <div class="cert-institution-name">COLLEGE OF COMPUTER STUDIES & INFORMATION TECHNOLOGY</div>
+                            <div class="cert-institution-name">COLLEGE OF COMPUTER STUDIES &amp; INFORMATION TECHNOLOGY</div>
                             <div class="cert-institution-sub">CMS LEARNING MANAGEMENT SYSTEM • CURRICULUM ACCREDITATION</div>
 
                             <div class="cert-main-title ${isPassed ? '' : 'status-failed'}">
-                                ${isPassed ? 'Certificate of Academic Excellence' : 'Official Academic Assessment Record'}
+                                ${isPassed ? 'Certificate of Academic Excellence &amp; Grade Slip' : 'Official Academic Assessment Grade Slip'}
                             </div>
 
                             <div class="cert-divider">
@@ -1546,7 +1549,7 @@
                             </div>
                             <div class="cert-recipient-name">${studentFullName}</div>
                             <div class="cert-recipient-bar"></div>
-                            <div class="cert-recipient-id">Student ID / Email: ${s.email || s.username || 'student@domain.edu'}</div>
+                            <div class="cert-recipient-id">Student ID / Email: ${s.email || s.username || 'student@domain.edu'} ${s.username ? '(' + s.username + ')' : ''}</div>
 
                             <!-- Narrative Statement -->
                             <div class="cert-body-text">
@@ -1563,24 +1566,28 @@
                                 </div>
                                 <div>
                                     <span class="cert-status-badge ${isPassed ? 'passed' : 'failed'}">
-                                        ${isPassed ? '★ Mastered / Passed' : '⚠ Requires Retake'}
+                                        ${isPassed ? '★ Mastered / Passed (' + s.percentage + '%)' : '⚠ Requires Retake (' + s.percentage + '%)'}
                                     </span>
                                 </div>
                             </div>
 
-                            <!-- Metrics Row -->
+                            <!-- Metrics Row (4 Columns for complete Grade Slip information) -->
                             <div class="cert-metrics-row">
                                 <div class="cert-metric-box">
                                     <div class="cert-metric-label">Raw Score</div>
                                     <div class="cert-metric-val">${s.score} / ${s.totalQuestions} Qs</div>
                                 </div>
                                 <div class="cert-metric-box">
-                                    <div class="cert-metric-label">Mastery Grade</div>
+                                    <div class="cert-metric-label">Final Grade</div>
                                     <div class="cert-metric-val" style="color: ${isPassed ? '#059669' : '#dc2626'}">${s.percentage}%</div>
                                 </div>
                                 <div class="cert-metric-box">
+                                    <div class="cert-metric-label">Passing Standard</div>
+                                    <div class="cert-metric-val">${s.passingScorePercent || 75}% Required</div>
+                                </div>
+                                <div class="cert-metric-box">
                                     <div class="cert-metric-label">Date Conferred</div>
-                                    <div class="cert-metric-val" style="font-size: 0.88rem; padding-top: 0.15rem;">${dateStr}</div>
+                                    <div class="cert-metric-val" style="font-size: 0.85rem; padding-top: 0.12rem;">${dateStr}</div>
                                 </div>
                             </div>
 
@@ -1639,7 +1646,7 @@
             const student = certBox.getAttribute('data-student-name') || 'Student';
             const topic = certBox.getAttribute('data-topic-title') || 'Assessment';
             const topicIdx = certBox.getAttribute('data-topic-index') || '1';
-            const filename = `CMS-Certificate-${student}-Topic${topicIdx}_${topic}.pdf`;
+            const filename = `CMS-GradeSlip-${student}-Topic${topicIdx}_${topic}.pdf`;
 
             if (typeof window.html2pdf !== 'function') {
                 console.warn('html2pdf library not found, falling back to window.print');
@@ -1648,11 +1655,11 @@
             }
 
             const opt = {
-                margin: [6, 6, 6, 6],
+                margin: [4, 4, 4, 4],
                 filename: filename,
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: {
-                    scale: 2.5,
+                    scale: 2,
                     useCORS: true,
                     letterRendering: true,
                     backgroundColor: '#ffffff',
@@ -1663,11 +1670,12 @@
                     unit: 'mm',
                     format: 'a4',
                     orientation: 'landscape'
-                }
+                },
+                pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
             };
 
             await window.html2pdf().set(opt).from(certBox).save();
-            showToast('Certificate PDF downloaded successfully!', 'success');
+            showToast('Grade Slip PDF downloaded successfully!', 'success');
         } catch (err) {
             console.error('Failed to export PDF:', err);
             showToast('PDF export issue, opening print dialog...', 'warning');

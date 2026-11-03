@@ -1438,6 +1438,8 @@ module.exports = {
                 bestScorePercentage: highestScore,
                 lastAttempt: topicScores[0] || null,
                 retakeAllowed: topicScores[0] ? (topicScores[0].retakeAllowed === 1) : false,
+                passedAttempt: passedScore || null,
+                bestAttempt: (topicScores.find(s => s.percentage === highestScore)) || topicScores[0] || null,
                 requiredPassingScore: topic.quiz ? topic.quiz.passingScorePercent : 75.0
             };
         });
@@ -1519,23 +1521,39 @@ module.exports = {
         const reviewDetails = [];
 
         rawQuestions.forEach(q => {
-            const options = JSON.parse(q.options);
+            let options = [];
+            try {
+                options = typeof q.options === 'string' ? JSON.parse(q.options) : (q.options || []);
+            } catch (_) {
+                options = [];
+            }
             const studentSelectedOptionId = studentAnswers[q.id] || null;
-            const isCorrect = studentSelectedOptionId === q.correctAnswer;
+
+            // Flexible option and answer resolution (supports option ID or exact/trimmed text)
+            let correctOpt = options.find(o => o.id === q.correctAnswer);
+            if (!correctOpt) {
+                correctOpt = options.find(o => o.text && o.text.trim().toLowerCase() === String(q.correctAnswer).trim().toLowerCase());
+            }
+
+            const studentSelectedOpt = options.find(o => o.id === studentSelectedOptionId || (o.text && o.text.trim().toLowerCase() === String(studentSelectedOptionId).trim().toLowerCase()));
+
+            let isCorrect = false;
+            if (correctOpt && studentSelectedOpt) {
+                isCorrect = (studentSelectedOpt.id === correctOpt.id) || (studentSelectedOpt.text.trim().toLowerCase() === correctOpt.text.trim().toLowerCase());
+            } else if (studentSelectedOptionId) {
+                isCorrect = studentSelectedOptionId === q.correctAnswer;
+            }
 
             if (isCorrect) correctCount++;
-
-            const studentSelectedOpt = options.find(o => o.id === studentSelectedOptionId);
-            const correctOpt = options.find(o => o.id === q.correctAnswer);
 
             reviewDetails.push({
                 questionId: q.id,
                 questionText: q.questionText,
                 options,
                 selectedOptionId: studentSelectedOptionId,
-                selectedText: studentSelectedOpt ? studentSelectedOpt.text : 'No answer provided',
-                correctOptionId: q.correctAnswer,
-                correctText: correctOpt ? correctOpt.text : '',
+                selectedText: studentSelectedOpt ? studentSelectedOpt.text : (studentSelectedOptionId || 'No answer provided'),
+                correctOptionId: correctOpt ? correctOpt.id : q.correctAnswer,
+                correctText: correctOpt ? correctOpt.text : (q.correctAnswer || ''),
                 isCorrect,
                 explanation: q.explanation || ''
             });

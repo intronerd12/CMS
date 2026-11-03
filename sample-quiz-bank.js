@@ -137,6 +137,12 @@ const SAMPLE_QUESTION_BANKS = {
             explanation: 'Actions (`add_action`) trigger side effects when events occur. Filters (`add_filter`) receive data, modify it, and return the modified value.'
         },
         {
+            questionText: 'Which hook type in WordPress allows developers to intercept and modify content data using code such as apply_filters("the_content", $content)?',
+            options: ['Filter Hook', 'Action Hook', 'Database Trigger', 'REST Endpoint'],
+            correctAnswer: 'Filter Hook',
+            explanation: 'Filter hooks (`apply_filters()`, `add_filter()`) accept content data, pass it through registered callbacks for modification, and return the filtered value.'
+        },
+        {
             questionText: 'Which template file is the mandatory fallback at the bottom of the WordPress Template Hierarchy?',
             options: ['index.php', 'single.php', 'front-page.php', 'archive.php'],
             correctAnswer: 'index.php',
@@ -631,3 +637,4 @@ module.exports = {
     getRandomizedSampleQuiz,
     shuffle
 };
+
