@@ -129,6 +129,64 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==================== REGISTER FORM ====================
+    let selectedRegisterAvatar = '';
+
+    const registerAvatarInput = document.getElementById('registerProfilePic');
+    if (registerAvatarInput) {
+        registerAvatarInput.addEventListener('change', (e) => {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+
+            if (file.size > 5 * 1024 * 1024) {
+                const errorDiv = document.getElementById('registerError');
+                showError(errorDiv, 'Profile image size must be less than 5MB');
+                registerAvatarInput.value = '';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const size = Math.min(img.width, img.height);
+                    const targetSize = Math.min(size, 256);
+                    canvas.width = targetSize;
+                    canvas.height = targetSize;
+                    const ctx = canvas.getContext('2d');
+                    const sx = (img.width - size) / 2;
+                    const sy = (img.height - size) / 2;
+                    ctx.drawImage(img, sx, sy, size, size, 0, 0, targetSize, targetSize);
+                    selectedRegisterAvatar = canvas.toDataURL('image/jpeg', 0.88);
+
+                    const previewEl = document.getElementById('registerAvatarPreview');
+                    if (previewEl) {
+                        previewEl.innerHTML = `<img src="${selectedRegisterAvatar}" alt="Profile Preview" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
+                    }
+                    const removeBtn = document.getElementById('registerAvatarRemoveBtn');
+                    if (removeBtn) removeBtn.style.display = 'inline-block';
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    window.clearRegisterAvatar = function () {
+        selectedRegisterAvatar = '';
+        if (registerAvatarInput) registerAvatarInput.value = '';
+        const previewEl = document.getElementById('registerAvatarPreview');
+        if (previewEl) {
+            previewEl.innerHTML = `
+                <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                    <circle cx="12" cy="7" r="4"/>
+                </svg>`;
+        }
+        const removeBtn = document.getElementById('registerAvatarRemoveBtn');
+        if (removeBtn) removeBtn.style.display = 'none';
+    };
+
     const registerForm = document.getElementById('registerForm');
     if (registerForm) {
         // Password strength checker
@@ -200,7 +258,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 const response = await fetch(`${API_BASE}/api/auth/register`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, email, password, firstName, lastName, role })
+                    body: JSON.stringify({ 
+                        username, 
+                        email, 
+                        password, 
+                        firstName, 
+                        lastName, 
+                        role,
+                        profilePic: selectedRegisterAvatar || ''
+                    })
                 });
 
                 const data = await response.json();
@@ -216,6 +282,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Show success
                 showSuccess(successDiv, `Account created for ${firstName} ${lastName} (@${username})! Redirecting to login...`);
                 registerForm.reset();
+                window.clearRegisterAvatar();
 
                 // Redirect after 1.5 seconds
                 setTimeout(() => {

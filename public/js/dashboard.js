@@ -24,13 +24,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (data && data.user) {
                     const fresh = data.user;
                     sessionStorage.setItem('currentUser', JSON.stringify(fresh));
+                    currentUser = fresh;
                     const freshName = `${fresh.firstName || ''} ${fresh.lastName || ''}`.trim() || fresh.username || 'User';
                     const nameEl = document.getElementById('userName');
                     if (nameEl) nameEl.textContent = freshName;
                     const handleEl = document.getElementById('userHandle');
                     if (handleEl) handleEl.textContent = fresh.username ? `@${fresh.username}` : '';
-                    const avatarEl = document.getElementById('userAvatar');
-                    if (avatarEl) avatarEl.textContent = (fresh.firstName || fresh.username || 'U').charAt(0).toUpperCase();
+                    renderUserAvatar(fresh);
                 }
             })
             .catch(() => {});
@@ -71,8 +71,7 @@ function initializeDashboard() {
             roleEl.className = 'user-role role-student';
         }
     }
-    const userInitial = (currentUser.firstName || currentUser.username || 'U').charAt(0).toUpperCase();
-    document.getElementById('userAvatar').textContent = userInitial;
+    renderUserAvatar(currentUser);
 
     // Set greeting
     const hour = new Date().getHours();
@@ -493,3 +492,291 @@ function formatDate(dateStr) {
 
 // Make navigateTo global for onclick handlers
 window.navigateTo = navigateTo;
+
+
+// ==================== PROFILE SETTINGS & PHOTO LOGIC ====================
+
+let pendingProfileAvatar = null;
+
+function renderUserAvatar(user) {
+    if (!user) return;
+    const avatarEl = document.getElementById('userAvatar');
+    if (!avatarEl) return;
+
+    if (user.profilePic && typeof user.profilePic === 'string' && user.profilePic.trim().length > 0) {
+        avatarEl.innerHTML = `<img src="${user.profilePic}" alt="${user.firstName || 'User'}" class="user-avatar-img" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
+    } else {
+        const userInitial = (user.firstName || user.username || 'U').charAt(0).toUpperCase();
+        avatarEl.textContent = userInitial;
+    }
+}
+window.renderUserAvatar = renderUserAvatar;
+
+window.openProfileSettingsModal = function () {
+    if (!currentUser) return;
+
+    pendingProfileAvatar = currentUser.profilePic || '';
+
+    const fnInput = document.getElementById('profileModalFirstName');
+    const lnInput = document.getElementById('profileModalLastName');
+    const emInput = document.getElementById('profileModalEmail');
+    const unInput = document.getElementById('profileModalUsername');
+    const roleInput = document.getElementById('profileModalRole');
+    const roleBadge = document.getElementById('profileModalRoleBadge');
+    const pwdInput = document.getElementById('profileModalPassword');
+    const pwdConfirmInput = document.getElementById('profileModalConfirmPassword');
+    const feedback = document.getElementById('profileModalFeedback');
+
+    if (fnInput) fnInput.value = currentUser.firstName || '';
+    if (lnInput) lnInput.value = currentUser.lastName || '';
+    if (emInput) emInput.value = currentUser.email || '';
+    if (unInput) unInput.value = currentUser.username || '';
+    if (roleInput) roleInput.value = (currentUser.role === 'faculty') ? 'Faculty Member' : 'Enrolled Student';
+    if (pwdInput) pwdInput.value = '';
+    if (pwdConfirmInput) pwdConfirmInput.value = '';
+    if (feedback) feedback.style.display = 'none';
+
+    if (roleBadge) {
+        if (currentUser.role === 'faculty') {
+            roleBadge.textContent = 'Faculty Member';
+            roleBadge.className = 'profile-role-badge faculty';
+        } else {
+            roleBadge.textContent = 'Enrolled Student';
+            roleBadge.className = 'profile-role-badge student';
+        }
+    }
+
+    renderModalAvatarPreview();
+
+    const fileInput = document.getElementById('profileModalPicInput');
+    if (fileInput && !fileInput.dataset.bound) {
+        fileInput.dataset.bound = 'true';
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+
+            if (file.size > 5 * 1024 * 1024) {
+                showToast('Image size must be less than 5MB', 'warning');
+                fileInput.value = '';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const size = Math.min(img.width, img.height);
+                    const targetSize = Math.min(size, 256);
+                    canvas.width = targetSize;
+                    canvas.height = targetSize;
+                    const ctx = canvas.getContext('2d');
+                    const sx = (img.width - size) / 2;
+                    const sy = (img.height - size) / 2;
+                    ctx.drawImage(img, sx, sy, size, size, 0, 0, targetSize, targetSize);
+                    pendingProfileAvatar = canvas.toDataURL('image/jpeg', 0.88);
+                    renderModalAvatarPreview();
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    const modal = document.getElementById('profileSettingsModal');
+    if (modal) modal.classList.add('active');
+};
+
+function renderModalAvatarPreview() {
+    const circle = document.getElementById('profileModalAvatarCircle');
+    const removeBtn = document.getElementById('profileModalRemovePicBtn');
+    if (!circle) return;
+
+    if (pendingProfileAvatar && pendingProfileAvatar.trim().length > 0) {
+        circle.innerHTML = `<img src="${pendingProfileAvatar}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
+        if (removeBtn) removeBtn.style.display = 'inline-flex';
+    } else {
+        const initial = (currentUser ? (currentUser.firstName || currentUser.username || 'U') : 'U').charAt(0).toUpperCase();
+        circle.innerHTML = `<span>${initial}</span>`;
+        if (removeBtn) removeBtn.style.display = 'none';
+    }
+}
+
+window.removeProfileModalPic = function () {
+    pendingProfileAvatar = '';
+    const fileInput = document.getElementById('profileModalPicInput');
+    if (fileInput) fileInput.value = '';
+    renderModalAvatarPreview();
+};
+
+window.promptConfirmProfileUpdate = function () {
+    const fn = (document.getElementById('profileModalFirstName')?.value || '').trim();
+    const ln = (document.getElementById('profileModalLastName')?.value || '').trim();
+    const em = (document.getElementById('profileModalEmail')?.value || '').trim();
+    const pwd = document.getElementById('profileModalPassword')?.value || '';
+    const pwdConfirm = document.getElementById('profileModalConfirmPassword')?.value || '';
+    const feedback = document.getElementById('profileModalFeedback');
+
+    if (!fn || !ln || !em) {
+        if (feedback) {
+            feedback.textContent = 'Please fill in your first name, last name, and email address.';
+            feedback.style.background = '#fef2f2';
+            feedback.style.color = '#991b1b';
+            feedback.style.border = '1px solid #fecaca';
+            feedback.style.display = 'block';
+        }
+        return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(em)) {
+        if (feedback) {
+            feedback.textContent = 'Please enter a valid email address.';
+            feedback.style.background = '#fef2f2';
+            feedback.style.color = '#991b1b';
+            feedback.style.border = '1px solid #fecaca';
+            feedback.style.display = 'block';
+        }
+        return;
+    }
+
+    if (pwd || pwdConfirm) {
+        if (pwd.length < 6) {
+            if (feedback) {
+                feedback.textContent = 'New password must be at least 6 characters.';
+                feedback.style.background = '#fef2f2';
+                feedback.style.color = '#991b1b';
+                feedback.style.border = '1px solid #fecaca';
+                feedback.style.display = 'block';
+            }
+            return;
+        }
+        if (pwd !== pwdConfirm) {
+            if (feedback) {
+                feedback.textContent = 'New passwords do not match. Please verify.';
+                feedback.style.background = '#fef2f2';
+                feedback.style.color = '#991b1b';
+                feedback.style.border = '1px solid #fecaca';
+                feedback.style.display = 'block';
+            }
+            return;
+        }
+    }
+
+    if (feedback) feedback.style.display = 'none';
+
+    // Populate Confirm Warning Modal
+    const nameSummary = document.getElementById('confirmSummaryName');
+    const emailSummary = document.getElementById('confirmSummaryEmail');
+    const photoSummary = document.getElementById('confirmSummaryPhoto');
+    const pwdSummary = document.getElementById('confirmSummaryPassword');
+
+    if (nameSummary) nameSummary.textContent = `${fn} ${ln}`;
+    if (emailSummary) emailSummary.textContent = em;
+
+    if (photoSummary) {
+        const currentPic = (currentUser ? currentUser.profilePic : '') || '';
+        if (pendingProfileAvatar !== currentPic) {
+            if (pendingProfileAvatar) {
+                photoSummary.textContent = 'New Photo Selected';
+                photoSummary.className = 'confirm-summary-badge updated';
+            } else {
+                photoSummary.textContent = 'Photo Removed';
+                photoSummary.className = 'confirm-summary-badge removed';
+            }
+        } else {
+            photoSummary.textContent = 'Unchanged';
+            photoSummary.className = 'confirm-summary-badge';
+        }
+    }
+
+    if (pwdSummary) {
+        if (pwd) {
+            pwdSummary.textContent = 'Will Be Updated';
+            pwdSummary.className = 'confirm-summary-badge updated';
+        } else {
+            pwdSummary.textContent = 'Unchanged';
+            pwdSummary.className = 'confirm-summary-badge';
+        }
+    }
+
+    const confirmModal = document.getElementById('confirmProfileChangeModal');
+    if (confirmModal) confirmModal.classList.add('active');
+};
+
+window.executeProfileUpdate = async function () {
+    const fn = (document.getElementById('profileModalFirstName')?.value || '').trim();
+    const ln = (document.getElementById('profileModalLastName')?.value || '').trim();
+    const em = (document.getElementById('profileModalEmail')?.value || '').trim();
+    const pwd = document.getElementById('profileModalPassword')?.value || '';
+
+    const btn = document.getElementById('confirmSaveProfileBtn');
+    const origHtml = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `
+            <svg class="spin-animation" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10" stroke-opacity="0.25"/>
+                <path d="M12 2a10 10 0 0 1 10 10"/>
+            </svg>
+            <span>Saving Updates...</span>
+        `;
+    }
+
+    try {
+        const payload = {
+            firstName: fn,
+            lastName: ln,
+            email: em,
+            profilePic: pendingProfileAvatar
+        };
+        if (pwd && pwd.length >= 6) {
+            payload.password = pwd;
+        }
+
+        const res = await fetch(`${API_BASE}/api/auth/profile/${currentUser.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+            throw new Error(data.error || 'Failed to update profile');
+        }
+
+        currentUser = data.user;
+        sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
+
+        const fullName = `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || currentUser.username || 'User';
+        const nameEl = document.getElementById('userName');
+        if (nameEl) nameEl.textContent = fullName;
+
+        const handleEl = document.getElementById('userHandle');
+        if (handleEl) handleEl.textContent = currentUser.username ? `@${currentUser.username}` : '';
+
+        renderUserAvatar(currentUser);
+
+        const hour = new Date().getHours();
+        let greetingText = 'Good morning';
+        if (hour >= 12 && hour < 17) greetingText = 'Good afternoon';
+        else if (hour >= 17) greetingText = 'Good evening';
+        const greetingEl = document.getElementById('greeting');
+        if (greetingEl) {
+            greetingEl.textContent = `${greetingText}, ${currentUser.firstName || currentUser.username || 'User'}!`;
+        }
+
+        closeModal('confirmProfileChangeModal');
+        closeModal('profileSettingsModal');
+
+        showToast('Profile and picture updated successfully!', 'success');
+    } catch (err) {
+        console.error('Profile update error:', err);
+        showToast(err.message || 'Error updating profile', 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+        }
+    }
+};

@@ -74,7 +74,7 @@ app.get('/api/health', (req, res) => {
 // Register
 app.post('/api/auth/register', (req, res) => {
     try {
-        const { username, email, password, firstName, lastName, role } = req.body;
+        const { username, email, password, firstName, lastName, role, profilePic } = req.body;
 
         // Validation
         if (!username || !email || !password || !firstName || !lastName || !role) {
@@ -110,6 +110,7 @@ app.post('/api/auth/register', (req, res) => {
             firstName: firstName.trim(),
             lastName: lastName.trim(),
             role,
+            profilePic: (profilePic && typeof profilePic === 'string') ? profilePic.trim() : '',
             createdAt: new Date().toISOString(),
             isActive: 1
         };
@@ -178,6 +179,79 @@ app.get('/api/auth/profile/:userId', (req, res) => {
         res.json({ user });
     } catch (error) {
         res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Update user profile
+app.put('/api/auth/profile/:userId', (req, res) => {
+    try {
+        const userId = req.params.userId;
+        const { firstName, lastName, email, profilePic, password } = req.body;
+
+        const existing = db.getUserById(userId);
+        if (!existing) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        if (!firstName || !lastName || !email) {
+            return res.status(400).json({ error: 'First name, last name, and email are required' });
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email.trim())) {
+            return res.status(400).json({ error: 'Please enter a valid email address' });
+        }
+
+        const existingByEmail = db.getUserByEmail(email.trim());
+        if (existingByEmail && existingByEmail.id !== userId) {
+            return res.status(400).json({ error: 'Email address is already in use by another account' });
+        }
+
+        db.updateUserProfile({
+            id: userId,
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+            email: email.trim(),
+            profilePic: profilePic !== undefined ? (profilePic || '') : (existing.profilePic || '')
+        });
+
+        if (password && password.trim().length > 0) {
+            if (password.length < 6) {
+                return res.status(400).json({ error: 'New password must be at least 6 characters' });
+            }
+            const salt = bcrypt.genSaltSync(10);
+            const hashedPassword = bcrypt.hashSync(password, salt);
+            db.updateUserPassword(userId, hashedPassword);
+        }
+
+        const updated = db.getUserById(userId);
+        res.json({
+            message: 'Profile updated successfully',
+            user: updated
+        });
+    } catch (error) {
+        console.error('Update profile error:', error);
+        res.status(500).json({ error: 'Failed to update profile: ' + error.message });
+    }
+});
+
+// Upload avatar directly
+app.post('/api/auth/upload-avatar', upload.single('avatar'), (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No avatar image file was uploaded' });
+        }
+        if (!req.file.mimetype.startsWith('image/')) {
+            return res.status(400).json({ error: 'Uploaded file must be an image (PNG, JPG, WEBP)' });
+        }
+        const fileUrl = `/uploads/custom/${req.file.filename}`;
+        res.json({
+            message: 'Avatar uploaded successfully',
+            url: fileUrl
+        });
+    } catch (error) {
+        console.error('Avatar upload error:', error);
+        res.status(500).json({ error: 'Failed to upload avatar: ' + error.message });
     }
 });
 
@@ -1274,7 +1348,7 @@ app.get('/api/quizzes/:id/take', (req, res) => {
                     const latestScore = previousScores[0];
                     if (latestScore.passed === 0 && !latestScore.retakeAllowed) {
                         return res.status(403).json({
-                            error: 'Retake Authorization Required: You did not reach the passing threshold on your previous attempt. Please request retake authorization from your instructor.',
+                            error: 'To retake this quiz, you need to wait on your professor or ask permission from your professor.',
                             retakeLocked: true,
                             scoreId: latestScore.id
                         });
@@ -1338,6 +1412,24 @@ app.get('/api/scores/:id', (req, res) => {
         if (!score) {
             return res.status(404).json({ error: 'Score report not found' });
         }
+
+        const isStaff = isStaffUser(req);
+        // Academic Protection: If student failed the quiz, remove the answer key and rationales!
+        if (!isStaff && score.passed === 0 && Array.isArray(score.answers)) {
+            score.answers = score.answers.map(a => ({
+                questionId: a.questionId,
+                questionText: a.questionText,
+                options: (a.options || []).map(o => ({ id: o.id, text: o.text })),
+                selectedOptionId: a.selectedOptionId,
+                selectedText: a.selectedText,
+                isCorrect: a.isCorrect,
+                correctOptionId: null,
+                correctText: null,
+                explanation: null
+            }));
+            score.answerKeyProtected = true;
+        }
+
         res.json({ score });
     } catch (error) {
         console.error('Get score error:', error);

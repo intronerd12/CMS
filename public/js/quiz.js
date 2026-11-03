@@ -417,20 +417,36 @@
                     const retakeAllowed = topicProg ? Boolean(topicProg.retakeAllowed) : false;
                     if (isRetry && !retakeAllowed) {
                         actionsHtml = `
-                            <button type="button" class="btn-start-quiz" disabled style="opacity: 0.6; cursor: not-allowed; background: #f1f5f9; color: #94a3b8; border: 1.5px solid #cbd5e1;" title="Retake authorization required from your instructor">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;">
-                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                            <button type="button" class="btn-start-quiz" disabled style="opacity: 0.65; cursor: not-allowed; background: #f1f5f9; color: #64748b; border: 1.5px solid #cbd5e1; width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;" title="To retake this quiz, you need to wait on your professor or ask permission from your professor">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="11" width="18" height="11" rx="2"/>
                                     <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                                 </svg>
-                                🔒 Retake Locked (Ask Instructor)
-                            </button>`;
-                    } else {
+                                <span>🔒 Retake Unavailable</span>
+                            </button>
+                            <div style="font-size: 0.75rem; color: #b45309; background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 0.45rem 0.65rem; margin-top: 0.5rem; line-height: 1.35; display: flex; align-items: flex-start; gap: 6px;">
+                                <span style="font-size: 0.85rem;">⏳</span>
+                                <span>To retake the quiz, you need to wait on your professor or ask permission from your professor.</span>
+                            </div>`;
+                    } else if (isRetry && retakeAllowed) {
                         actionsHtml = `
-                            <button type="button" class="btn-start-quiz" onclick="window.startQuizAttempt('${quiz.id}')">
+                            <button type="button" class="btn-start-quiz btn-primary" onclick="window.startQuizAttempt('${quiz.id}')" style="background: #2563eb; color: #ffffff; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25); width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; font-weight: 700;">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <polygon points="5 3 19 12 5 21 5 3"/>
                                 </svg>
-                                ${isRetry ? '🔄 Retake Quiz (Authorized)' : 'Start Quiz'}
+                                <span>▷ Retake Quiz (Authorized by Professor)</span>
+                            </button>
+                            <div style="font-size: 0.75rem; color: #047857; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 6px; padding: 0.45rem 0.65rem; margin-top: 0.5rem; line-height: 1.35; display: flex; align-items: center; gap: 6px;">
+                                <span>✓</span>
+                                <span>Your professor has granted permission for you to retake this quiz.</span>
+                            </div>`;
+                    } else {
+                        actionsHtml = `
+                            <button type="button" class="btn-start-quiz" onclick="window.startQuizAttempt('${quiz.id}')" style="width: 100%;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polygon points="5 3 19 12 5 21 5 3"/>
+                                </svg>
+                                <span>Start Quiz</span>
                             </button>`;
                     }
                 } else if (isUnlocked && !quiz) {
@@ -857,7 +873,12 @@
         }
 
         try {
-            const res = await fetch(`/api/scores/${scoreId}`);
+            const user = getCurrentUser();
+            const res = await fetch(`/api/scores/${scoreId}`, {
+                headers: {
+                    'x-user-id': user ? user.id : ''
+                }
+            });
             if (!res.ok) throw new Error('Failed to load score record');
             const data = await res.json();
 
@@ -996,72 +1017,28 @@
                         You scored <strong>${percentage}%</strong>. The required passing threshold is <strong>${passReq}%</strong>.
                     </p>
 
-                    ${isRetakeAllowed ? `
-                        <div class="result-notice-box passed" style="background: #ecfdf5; border: 1.5px solid #a7f3d0; color: #065f46;">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink: 0; margin-top: 2px;">
-                                <polyline points="20 6 9 17 4 12"/>
-                            </svg>
-                            <div>
-                                <strong>✓ Retake Authorized by Instructor:</strong> Your faculty member has approved a retake for this assessment. You may review the lecture slides and retake the quiz now.
-                            </div>
-                        </div>
-                    ` : `
-                        <div class="result-notice-box failed">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;">
-                                <circle cx="12" cy="12" r="10"/>
-                                <line x1="12" y1="8" x2="12" y2="12"/>
-                                <line x1="12" y1="16" x2="12.01" y2="16"/>
-                            </svg>
-                            <div>
-                                <strong>Prerequisite & Retake Policy:</strong> You scored <strong>${percentage}%</strong> (passing threshold: <strong>${passReq}%</strong>). In accordance with faculty course regulations, quiz retakes are locked until approved by your instructor. Please contact your instructor to request retake authorization.
-                            </div>
-                        </div>
-                    `}
-
-                    <div class="result-stats-row">
-                        <div class="result-stat-box">
-                            <div class="result-stat-value danger">${score} / ${total}</div>
-                            <div class="result-stat-label">Correct Answers</div>
-                        </div>
-                        <div class="result-stat-box">
-                            <div class="result-stat-value danger">${percentage}%</div>
-                            <div class="result-stat-label">Your Grade</div>
-                        </div>
-                        <div class="result-stat-box">
-                            <div class="result-stat-value">${passReq}%</div>
-                            <div class="result-stat-label">Passing Mark (${passReq}%)</div>
-                        </div>
-                        <div class="result-stat-box">
-                            <div class="result-stat-value">${timeText}</div>
-                            <div class="result-stat-label">Time Spent</div>
-                        </div>
-                    </div>
-
-                    <div class="result-actions-row">
-                        <button type="button" class="btn-repeat-topic" onclick="window.repeatTopicLesson('${result.scoreRecord ? result.scoreRecord.topicId : ''}')">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-                                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-                            </svg>
-                            <span>Repeat Topic (Review Lessons & Presentation)</span>
-                        </button>
                         ${isRetakeAllowed ? `
-                            <button type="button" class="btn-retake-quiz" onclick="window.startQuizAttempt('${activeQuiz ? activeQuiz.id : (result.scoreRecord ? result.scoreRecord.quizId : '')}')">
+                            <button type="button" class="btn-retake-quiz" onclick="window.startQuizAttempt('${activeQuiz ? activeQuiz.id : (result.scoreRecord ? result.scoreRecord.quizId : '')}')" style="background: #2563eb; color: #ffffff; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                     <polyline points="1 4 1 10 7 10"/>
                                     <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
                                 </svg>
-                                <span>Retake Quiz Now (Authorized)</span>
+                                <span>▷ Retake Quiz (Authorized by Professor)</span>
                             </button>
                         ` : `
-                            <button type="button" class="btn-retake-quiz disabled" disabled title="Retake authorization required from your instructor" style="opacity: 0.55; cursor: not-allowed; background: #f8fafc; color: #94a3b8; border: 1.5px solid #cbd5e1;">
+                            <button type="button" class="btn-retake-quiz disabled" disabled title="To retake this quiz, you need to wait on your professor or ask permission from your professor" style="opacity: 0.65; cursor: not-allowed; background: #f8fafc; color: #64748b; border: 1.5px solid #cbd5e1; display: inline-flex; align-items: center; gap: 0.5rem;">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                                    <rect x="3" y="11" width="18" height="11" rx="2"/>
                                     <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                                 </svg>
-                                <span>🔒 Retake Locked by Faculty</span>
+                                <span>🔒 Retake Locked — Ask Professor</span>
                             </button>
                         `}
+                        ${!isRetakeAllowed ? `
+                            <div style="width: 100%; text-align: center; margin-top: 0.5rem; font-size: 0.78rem; color: #b45309; background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 0.5rem 0.85rem;">
+                                ⚠️ To retake the quiz, you need to wait on your professor or ask permission from your professor.
+                            </div>
+                        ` : ''}
                         <button type="button" class="btn-download-cert" onclick="window.openCertificateModal('${scoreId}')">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -1087,7 +1064,28 @@
         let reviewHtml = '';
         if (Array.isArray(result.reviewDetails) && result.reviewDetails.length > 0) {
             reviewHtml = `
-                <h3 class="review-section-title">Question by Question Review</h3>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; margin-bottom: 0.75rem;">
+                    <h3 class="review-section-title" style="margin: 0;">Question by Question Review</h3>
+                    <span class="badge ${isPassed ? 'badge-success' : 'badge-warning'}" style="font-size: 0.75rem;">
+                        ${isPassed ? '✓ Answer Key & Rationales Available' : '🔒 Answer Key Protected'}
+                    </span>
+                </div>
+
+                ${!isPassed ? `
+                    <div class="review-protection-notice" style="background: #fffbeb; border: 1.5px solid #fde68a; border-left: 4px solid #f59e0b; padding: 1rem 1.25rem; border-radius: 8px; margin-bottom: 1.5rem; display: flex; align-items: flex-start; gap: 0.75rem;">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" style="flex-shrink: 0; margin-top: 2px;">
+                            <rect x="3" y="11" width="18" height="11" rx="2"/>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                        </svg>
+                        <div>
+                            <strong style="color: #92400e; font-size: 0.95rem;">Answer Key & Explanations Protected</strong>
+                            <p style="margin: 0.25rem 0 0 0; font-size: 0.8125rem; color: #78350f; line-height: 1.45;">
+                                Because you did not reach the passing threshold (${passReq}%), the correct answers and faculty explanations are hidden. Please review the lecture presentation and notes for this topic, and ask your professor for retake authorization.
+                            </p>
+                        </div>
+                    </div>
+                ` : ''}
+
                 <div class="review-list">
                     ${result.reviewDetails.map((item, i) => `
                         <div class="review-card ${item.isCorrect ? 'correct' : 'incorrect'}">
@@ -1103,14 +1101,20 @@
                                 <strong>Your Answer:</strong> ${item.selectedText || 'No answer submitted'}
                             </div>
 
-                            ${!item.isCorrect ? `
+                            ${isPassed && !item.isCorrect && item.correctText ? `
                                 <div class="review-answer-row review-correct-answer">
                                     <strong>Correct Answer:</strong> ${item.correctText}
                                 </div>` : ''}
 
-                            ${item.explanation ? `
+                            ${isPassed && item.explanation ? `
                                 <div class="review-explanation tiptap-content">
                                     <strong>Explanation:</strong> ${item.explanation}
+                                </div>` : ''}
+
+                            ${!isPassed && !item.isCorrect ? `
+                                <div style="font-size: 0.75rem; color: #94a3b8; font-style: italic; margin-top: 0.35rem; display: flex; align-items: center; gap: 4px;">
+                                    <span>🔒</span>
+                                    <span>Correct answer hidden until assessment is passed.</span>
                                 </div>` : ''}
                         </div>
                     `).join('')}

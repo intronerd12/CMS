@@ -82,6 +82,7 @@ db.exec(`
         firstName TEXT NOT NULL,
         lastName TEXT NOT NULL,
         role TEXT NOT NULL CHECK(role IN ('student', 'faculty')),
+        profilePic TEXT DEFAULT '',
         createdAt TEXT NOT NULL,
         isActive INTEGER NOT NULL DEFAULT 1
     );
@@ -190,6 +191,7 @@ function ensureColumn(table, column, definition) {
     }
 }
 
+ensureColumn('users', 'profilePic', 'TEXT DEFAULT ""');
 ensureColumn('subjects', 'description', 'TEXT');
 ensureColumn('subjects', 'updatedAt', 'TEXT');
 ensureColumn('subjects', 'joinCode', 'TEXT');
@@ -654,11 +656,23 @@ function enrichTopic(topic) {
 
 const stmtGetUserByUsername = db.prepare('SELECT * FROM users WHERE username = ?');
 const stmtGetUserByEmail = db.prepare('SELECT * FROM users WHERE email = ?');
-const stmtGetUserById = db.prepare('SELECT id, username, email, firstName, lastName, role, createdAt, isActive FROM users WHERE id = ?');
-const stmtGetAllUsers = db.prepare('SELECT id, username, email, firstName, lastName, role, createdAt, isActive FROM users ORDER BY createdAt DESC');
+const stmtGetUserById = db.prepare('SELECT id, username, email, firstName, lastName, role, profilePic, createdAt, isActive FROM users WHERE id = ?');
+const stmtGetAllUsers = db.prepare('SELECT id, username, email, firstName, lastName, role, profilePic, createdAt, isActive FROM users ORDER BY createdAt DESC');
 const stmtInsertUser = db.prepare(`
-    INSERT INTO users (id, username, email, password, firstName, lastName, role, createdAt, isActive)
-    VALUES (@id, @username, @email, @password, @firstName, @lastName, @role, @createdAt, @isActive)
+    INSERT INTO users (id, username, email, password, firstName, lastName, role, profilePic, createdAt, isActive)
+    VALUES (@id, @username, @email, @password, @firstName, @lastName, @role, @profilePic, @createdAt, @isActive)
+`);
+
+const stmtUpdateUserProfile = db.prepare(`
+    UPDATE users 
+    SET firstName = @firstName, lastName = @lastName, email = @email, profilePic = @profilePic 
+    WHERE id = @id
+`);
+
+const stmtUpdateUserPassword = db.prepare(`
+    UPDATE users 
+    SET password = @password 
+    WHERE id = @id
 `);
 
 const stmtGetAllSubjects = db.prepare('SELECT * FROM subjects ORDER BY createdAt DESC');
@@ -810,7 +824,9 @@ module.exports = {
     getUserByEmail: (email) => stmtGetUserByEmail.get(email),
     getUserById: (id) => stmtGetUserById.get(id),
     getAllUsers: () => stmtGetAllUsers.all(),
-    createUser: (userData) => stmtInsertUser.run(userData),
+    createUser: (userData) => stmtInsertUser.run({ profilePic: '', ...userData }),
+    updateUserProfile: (userData) => stmtUpdateUserProfile.run(userData),
+    updateUserPassword: (id, password) => stmtUpdateUserPassword.run({ id, password }),
 
     // Subjects
     getSubjectsForFaculty: (facultyId, includeUnpublished = true) => {
@@ -1373,6 +1389,13 @@ module.exports = {
         const scoreId = uuidv4();
         const completedAt = new Date().toISOString();
 
+        // Consume any previous retake permission - every new quiz attempt requires fresh faculty permission if failed
+        try {
+            db.prepare('UPDATE scores SET retakeAllowed = 0 WHERE quizId = ? AND studentId = ?').run(quizId, studentId);
+        } catch (e) {
+            console.warn('[SQLite] Reset retakeAllowed notice:', e.message);
+        }
+
         stmtInsertScore.run({
             id: scoreId,
             quizId,
@@ -1401,6 +1424,19 @@ module.exports = {
 
         const scoreRecord = stmtGetScoreById.get(scoreId);
 
+        // Academic Integrity: If student failed the quiz, protect the answer key and rationales
+        const studentReviewDetails = passed === 1 ? reviewDetails : reviewDetails.map(r => ({
+            questionId: r.questionId,
+            questionText: r.questionText,
+            options: (r.options || []).map(o => ({ id: o.id, text: o.text })),
+            selectedOptionId: r.selectedOptionId,
+            selectedText: r.selectedText,
+            isCorrect: r.isCorrect,
+            correctOptionId: null,
+            correctText: null,
+            explanation: null
+        }));
+
         return {
             scoreId,
             score: correctCount,
@@ -1412,7 +1448,7 @@ module.exports = {
             timeSpentSeconds,
             unlockedNextTopic: passed === 1 && !!nextTopic,
             nextTopic,
-            reviewDetails,
+            reviewDetails: studentReviewDetails,
             scoreRecord
         };
     },

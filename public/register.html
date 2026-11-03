@@ -71,6 +71,42 @@
                 </div>
 
                 <form id="registerForm" class="auth-form" novalidate>
+                    <!-- Profile Picture Upload Widget -->
+                    <div class="profile-photo-upload-container">
+                        <div class="avatar-preview-wrapper" onclick="document.getElementById('registerProfilePic').click()" title="Click to choose a profile photo">
+                            <div class="avatar-preview-circle" id="registerAvatarPreview">
+                                <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="12" cy="7" r="4"/>
+                                </svg>
+                            </div>
+                            <div class="avatar-camera-badge" title="Upload Photo">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                                    <circle cx="12" cy="13" r="4"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="avatar-upload-info">
+                            <label class="avatar-upload-label">Profile Photo (Optional)</label>
+                            <span class="avatar-upload-hint">Upload a portrait to use as your profile picture instead of initials</span>
+                            <div class="avatar-upload-actions">
+                                <button type="button" class="btn-avatar-select" onclick="document.getElementById('registerProfilePic').click()">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                        <polyline points="17 8 12 3 7 8"/>
+                                        <line x1="12" y1="3" x2="12" y2="15"/>
+                                    </svg>
+                                    <span>Choose Photo</span>
+                                </button>
+                                <button type="button" class="btn-avatar-remove" id="registerAvatarRemoveBtn" style="display: none;" onclick="window.clearRegisterAvatar()">
+                                    Remove
+                                </button>
+                            </div>
+                        </div>
+                        <input type="file" id="registerProfilePic" accept="image/png, image/jpeg, image/webp" style="display: none;">
+                    </div>
+
                     <div class="form-row">
                         <div class="form-group">
                             <label for="firstName">First Name</label>
