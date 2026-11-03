@@ -1149,69 +1149,163 @@
             const certBox = document.getElementById('printableCertificate');
             if (!modal || !certBox) return;
 
+            const studentFullName = `${s.firstName || ''} ${s.lastName || ''}`.trim() || s.username || 'Honored Student';
             const dateStr = new Date(s.completedAt).toLocaleDateString('en-US', {
                 year: 'numeric',
                 month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
+                day: 'numeric'
             });
 
             const certCode = `CERT-CMS-${s.id.substring(0, 8).toUpperCase()}`;
+            const isPassed = !!s.passed;
+
+            // Set metadata attributes for PDF naming
+            certBox.setAttribute('data-student-name', studentFullName.replace(/[^a-zA-Z0-9]/g, '_'));
+            certBox.setAttribute('data-topic-title', (s.topicTitle || 'Assessment').replace(/[^a-zA-Z0-9]/g, '_'));
+            certBox.setAttribute('data-topic-index', s.topicOrderIndex || '1');
+
+            const cornerSvg = `<svg class="cert-corner" viewBox="0 0 60 60" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <path d="M4 4 h36 c-2 8 -8 14 -16 16 c-8 2 -14 8 -16 16 v-32 z" opacity="0.2"/>
+                <path d="M4 4 h52 v4 h-48 v48 h-4 z"/>
+                <path d="M12 12 h36 v2 h-34 v34 h-2 z" opacity="0.6"/>
+                <circle cx="20" cy="20" r="3"/>
+                <path d="M20 20 Q35 22 38 38" stroke="currentColor" stroke-width="2" fill="none"/>
+            </svg>`;
+
+            const academicCrestSvg = `<svg width="64" height="64" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M60 110 C35 110 18 90 18 60 C18 40 28 24 38 16 C36 28 42 42 50 48 C42 36 44 22 52 14 C48 26 56 38 60 40 C64 38 72 26 68 14 C76 22 78 36 70 48 C78 42 84 28 82 16 C92 24 102 40 102 60 C102 90 85 110 60 110Z" fill="#d4af37" opacity="0.85"/>
+                <path d="M60 22 C78 22 90 28 90 42 C90 74 60 96 60 96 C60 96 30 74 30 42 C30 28 42 22 60 22Z" fill="#0f2347" stroke="#d4af37" stroke-width="3"/>
+                <path d="M60 26 C75 26 86 31 86 43 C86 71 60 90 60 90 C60 90 34 71 34 43 C34 31 45 26 60 26Z" fill="#0b1a30"/>
+                <path d="M45 58 C52 55 58 56 60 58 C62 56 68 55 75 58 V72 C68 69 62 70 60 72 C58 70 52 69 45 72 V58Z" fill="#d4af37"/>
+                <line x1="60" y1="58" x2="60" y2="72" stroke="#0b1a30" stroke-width="1.5"/>
+                <path d="M60 36 C57 41 55 45 57 49 C58 51 60 52 60 52 C60 52 62 51 63 49 C65 45 63 41 60 36Z" fill="#f59e0b"/>
+                <circle cx="60" cy="48" r="2" fill="#ef4444"/>
+                <polygon points="45,42 46.5,45.5 50,45.5 47,47.5 48.5,51 45,49 41.5,51 43,47.5 40,45.5 43.5,45.5" fill="#d4af37"/>
+                <polygon points="75,42 76.5,45.5 80,45.5 77,47.5 78.5,51 75,49 71.5,51 73,47.5 70,45.5 73.5,45.5" fill="#d4af37"/>
+            </svg>`;
+
+            const goldSealSvg = `<svg class="cert-gold-seal" viewBox="0 0 100 115" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M38 68 L24 108 L38 98 L52 108 L44 68 Z" fill="#991b1b" stroke="#f59e0b" stroke-width="1.2"/>
+                <path d="M62 68 L50 108 L64 98 L78 108 L70 68 Z" fill="#7f1d1d" stroke="#f59e0b" stroke-width="1.2"/>
+                <circle cx="50" cy="46" r="42" fill="#d4af37"/>
+                <circle cx="50" cy="46" r="38" stroke="#ffffff" stroke-width="1.5" stroke-dasharray="3 2"/>
+                <circle cx="50" cy="46" r="34" fill="#0f2347" stroke="#f59e0b" stroke-width="2"/>
+                <path id="certSealArc${s.id}" d="M 24 46 A 26 26 0 0 1 76 46 A 26 26 0 0 1 24 46" fill="none"/>
+                <text font-size="6" font-weight="800" fill="#fef08a" letter-spacing="1.1">
+                    <textPath href="#certSealArc${s.id}" startOffset="50%" text-anchor="middle">
+                        ★ OFFICIAL EXCELLENCE SEAL ★
+                    </textPath>
+                </text>
+                <polygon points="50,37 52.5,42 58,42.5 54,46 55,51.5 50,49 45,51.5 46,46 42,42.5 47.5,42" fill="#fef08a"/>
+                <text x="50" y="58" font-size="5" font-weight="700" fill="#ffffff" text-anchor="middle" font-family="'Inter', sans-serif" letter-spacing="0.6">VERIFIED</text>
+            </svg>`;
+
+            const instructorSignSvg = `<svg width="140" height="36" viewBox="0 0 180 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M15 35 C20 15 30 10 38 25 C45 38 48 40 55 22 C60 12 70 18 78 30 C85 40 92 20 105 25 C118 30 130 18 145 22 C155 25 168 15 172 20" stroke="#0f2347" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M25 40 C60 38 120 37 165 35" stroke="#0f2347" stroke-width="1.2" stroke-linecap="round"/>
+                <path d="M42 12 C35 25 32 38 35 44" stroke="#0f2347" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>`;
+
+            const deanSignSvg = `<svg width="140" height="36" viewBox="0 0 180 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M18 42 C15 20 25 12 40 18 C52 24 55 38 48 44 C42 48 38 38 60 24 C80 12 95 28 110 32 C125 36 138 22 150 25 C162 28 170 18 175 22" stroke="#0f2347" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M30 26 C75 24 135 26 168 28" stroke="#0f2347" stroke-width="1.2" stroke-linecap="round"/>
+                <path d="M115 14 C112 28 116 38 122 42" stroke="#0f2347" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>`;
 
             certBox.innerHTML = `
-                <div class="cert-header">
-                    <div class="cert-logo-title">CMS Learning Management System</div>
-                    <div class="cert-doc-type">Official Academic Assessment Grade Slip & Verification</div>
-                    <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.25rem;">College of Computer Studies • IT Professional Curriculum</div>
-                </div>
+                <div class="cert-outer-frame">
+                    <div class="cert-inner-frame">
+                        <!-- Corner Filigrees -->
+                        <div class="cert-corner top-left">${cornerSvg}</div>
+                        <div class="cert-corner top-right">${cornerSvg}</div>
+                        <div class="cert-corner bottom-left">${cornerSvg}</div>
+                        <div class="cert-corner bottom-right">${cornerSvg}</div>
 
-                <div class="cert-grid-info">
-                    <div class="cert-info-item">
-                        <label>Student Name</label>
-                        <span>${s.firstName} ${s.lastName}</span>
-                    </div>
-                    <div class="cert-info-item">
-                        <label>Student Email / Username</label>
-                        <span>${s.email} (${s.username})</span>
-                    </div>
-                    <div class="cert-info-item">
-                        <label>Subject Course</label>
-                        <span>Content Management Systems (IT 315)</span>
-                    </div>
-                    <div class="cert-info-item">
-                        <label>Topic Assessment</label>
-                        <span>Topic ${s.topicOrderIndex}: ${s.topicTitle}</span>
-                    </div>
-                    <div class="cert-info-item">
-                        <label>Assessment Title</label>
-                        <span>${s.quizTitle}</span>
-                    </div>
-                    <div class="cert-info-item">
-                        <label>Date & Timestamp</label>
-                        <span>${dateStr}</span>
-                    </div>
-                </div>
+                        <!-- Faint Security Watermark Background -->
+                        <div class="cert-watermark-bg">${academicCrestSvg}</div>
 
-                <div class="cert-verdict-banner ${s.passed ? 'passed' : 'failed'}">
-                    <div class="cert-verdict-title">${s.passed ? '★ OFFICIALLY PASSED ★' : 'REQUIRES RETAKE'}</div>
-                    <div style="font-size: 1.1rem; font-weight: 700; margin-top: 0.25rem;">
-                        Score: ${s.score} / ${s.totalQuestions} (${s.percentage}%) • Minimum Passing Requirement: ${s.passingScorePercent}%
-                    </div>
-                    <div style="font-size: 0.8125rem; margin-top: 0.35rem;">
-                        ${s.passed ? 'Student has successfully fulfilled the competency requirement for this curriculum topic.' : 'Score does not meet the prerequisite passing score threshold for sequential unlocking.'}
-                    </div>
-                </div>
+                        <div class="cert-content-layer">
+                            <!-- Academic Header & Crest -->
+                            <div class="cert-crest-wrap">${academicCrestSvg}</div>
+                            <div class="cert-institution-name">COLLEGE OF COMPUTER STUDIES & INFORMATION TECHNOLOGY</div>
+                            <div class="cert-institution-sub">CMS LEARNING MANAGEMENT SYSTEM • CURRICULUM ACCREDITATION</div>
 
-                <div class="cert-footer-row">
-                    <div class="cert-verification-seal">
-                        <div>VERIFICATION ID: ${certCode}</div>
-                        <div>SYSTEM ID: ${s.id}</div>
-                        <div>DIGITALLY VERIFIED BY LMS ENGINE</div>
-                    </div>
-                    <div class="cert-sign-line">
-                        <div></div>
-                        <span>Department Chair / Faculty Signature</span>
+                            <div class="cert-main-title ${isPassed ? '' : 'status-failed'}">
+                                ${isPassed ? 'Certificate of Academic Excellence' : 'Official Academic Assessment Record'}
+                            </div>
+
+                            <div class="cert-divider">
+                                <div class="cert-divider-line"></div>
+                                <div class="cert-divider-diamond">◆</div>
+                                <div class="cert-divider-line"></div>
+                            </div>
+
+                            <!-- Presentation & Recipient -->
+                            <div class="cert-presentation-text">
+                                ${isPassed ? 'THIS CREDENTIAL OF DISTINCTION IS PROUDLY CONFERRED UPON' : 'OFFICIAL EXAMINATION TRANSCRIPT RECORDED FOR'}
+                            </div>
+                            <div class="cert-recipient-name">${studentFullName}</div>
+                            <div class="cert-recipient-bar"></div>
+                            <div class="cert-recipient-id">Student ID / Email: ${s.email || s.username || 'student@domain.edu'}</div>
+
+                            <!-- Narrative Statement -->
+                            <div class="cert-body-text">
+                                ${isPassed 
+                                    ? 'for demonstrating distinguished scholastic diligence, conceptual understanding, and verified subject-matter mastery in the formal curriculum assessment for:' 
+                                    : 'for completing the scheduled competency assessment evaluation in the curriculum syllabus for:'}
+                            </div>
+
+                            <!-- Topic & Course Card -->
+                            <div class="cert-topic-card ${isPassed ? '' : 'failed-card'}">
+                                <div>
+                                    <div class="cert-topic-title">Topic ${s.topicOrderIndex || '1'}: ${s.topicTitle || 'Curriculum Assessment'}</div>
+                                    <div class="cert-course-name">Course: Content Management Systems (IT 315) • ${s.quizTitle || 'Assessment Module'}</div>
+                                </div>
+                                <div>
+                                    <span class="cert-status-badge ${isPassed ? 'passed' : 'failed'}">
+                                        ${isPassed ? '★ Mastered / Passed' : '⚠ Requires Retake'}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Metrics Row -->
+                            <div class="cert-metrics-row">
+                                <div class="cert-metric-box">
+                                    <div class="cert-metric-label">Raw Score</div>
+                                    <div class="cert-metric-val">${s.score} / ${s.totalQuestions} Qs</div>
+                                </div>
+                                <div class="cert-metric-box">
+                                    <div class="cert-metric-label">Mastery Grade</div>
+                                    <div class="cert-metric-val" style="color: ${isPassed ? '#059669' : '#dc2626'}">${s.percentage}%</div>
+                                </div>
+                                <div class="cert-metric-box">
+                                    <div class="cert-metric-label">Date Conferred</div>
+                                    <div class="cert-metric-val" style="font-size: 0.88rem; padding-top: 0.15rem;">${dateStr}</div>
+                                </div>
+                            </div>
+
+                            <!-- Footer Signatures & Official 3D Seal -->
+                            <div class="cert-footer-grid">
+                                <div class="cert-sign-col">
+                                    <div class="cert-sign-svg">${instructorSignSvg}</div>
+                                    <div class="cert-sign-rule"></div>
+                                    <div class="cert-signer-name">Prof. Maria Santos</div>
+                                    <div class="cert-signer-role">Lead Course Faculty Instructor</div>
+                                </div>
+
+                                <div class="cert-seal-wrap">
+                                    ${goldSealSvg}
+                                    <div class="cert-seal-code">ID: ${certCode}</div>
+                                </div>
+
+                                <div class="cert-sign-col">
+                                    <div class="cert-sign-svg">${deanSignSvg}</div>
+                                    <div class="cert-sign-rule"></div>
+                                    <div class="cert-signer-name">Dr. Robert Taylor</div>
+                                    <div class="cert-signer-role">Dean, College of Computer Studies</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>`;
 
@@ -1219,6 +1313,70 @@
         } catch (err) {
             console.error('Certificate error:', err);
             showToast('Failed to generate certificate', 'error');
+        }
+    };
+
+    window.downloadCertificatePdf = async function () {
+        const certBox = document.getElementById('printableCertificate');
+        if (!certBox) {
+            showToast('Certificate element not found', 'error');
+            return;
+        }
+
+        const downloadBtn = document.getElementById('certDownloadPdfBtn');
+        const origHtml = downloadBtn ? downloadBtn.innerHTML : '';
+        if (downloadBtn) {
+            downloadBtn.disabled = true;
+            downloadBtn.innerHTML = `
+                <svg class="spin-animation" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10" stroke-opacity="0.25"/>
+                    <path d="M12 2a10 10 0 0 1 10 10"/>
+                </svg>
+                <span>Generating PDF...</span>`;
+        }
+
+        try {
+            const student = certBox.getAttribute('data-student-name') || 'Student';
+            const topic = certBox.getAttribute('data-topic-title') || 'Assessment';
+            const topicIdx = certBox.getAttribute('data-topic-index') || '1';
+            const filename = `CMS-Certificate-${student}-Topic${topicIdx}_${topic}.pdf`;
+
+            if (typeof window.html2pdf !== 'function') {
+                console.warn('html2pdf library not found, falling back to window.print');
+                window.print();
+                return;
+            }
+
+            const opt = {
+                margin: [6, 6, 6, 6],
+                filename: filename,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: {
+                    scale: 2.5,
+                    useCORS: true,
+                    letterRendering: true,
+                    backgroundColor: '#ffffff',
+                    scrollY: 0,
+                    scrollX: 0
+                },
+                jsPDF: {
+                    unit: 'mm',
+                    format: 'a4',
+                    orientation: 'landscape'
+                }
+            };
+
+            await window.html2pdf().set(opt).from(certBox).save();
+            showToast('Certificate PDF downloaded successfully!', 'success');
+        } catch (err) {
+            console.error('Failed to export PDF:', err);
+            showToast('PDF export issue, opening print dialog...', 'warning');
+            window.print();
+        } finally {
+            if (downloadBtn) {
+                downloadBtn.disabled = false;
+                downloadBtn.innerHTML = origHtml;
+            }
         }
     };
 

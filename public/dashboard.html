@@ -1420,19 +1420,33 @@
 
     <!-- ==================== 9. OFFICIAL GRADE SLIP & CERTIFICATE MODAL ==================== -->
     <div id="certificateModal" class="modal-overlay">
-        <div class="modal-container" style="max-width: 860px; max-height: 90vh; display: flex; flex-direction: column;">
+        <div class="modal-container" style="max-width: 980px; max-height: 94vh; display: flex; flex-direction: column;">
             <div class="modal-header no-print">
-                <h3>Official Academic Assessment Record</h3>
-                <div style="display: flex; gap: 0.5rem; align-items: center;">
-                    <button type="button" class="btn btn-primary btn-sm" onclick="window.printOfficialCertificate()">
+                <div style="display: flex; align-items: center; gap: 0.6rem;">
+                    <span style="font-size: 1.35rem;">🎓</span>
+                    <div>
+                        <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700;">Official Academic Certificate of Mastery</h3>
+                        <p style="margin: 0; font-size: 0.75rem; color: var(--color-text-muted);">Verified Institutional Credential & Assessment Transcript</p>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 0.6rem; align-items: center;">
+                    <button type="button" class="btn btn-primary btn-sm" id="certDownloadPdfBtn" onclick="window.downloadCertificatePdf()" style="display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.45rem 0.95rem; font-weight: 600; box-shadow: 0 4px 12px rgba(245, 130, 32, 0.25);">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                        <span>Save as PDF</span>
+                    </button>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="window.printOfficialCertificate()" style="display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.45rem 0.85rem;">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="6 9 6 2 18 2 18 9"/>
                             <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
                             <rect x="6" y="14" width="12" height="8"/>
                         </svg>
-                        <span>Print / Save as PDF</span>
+                        <span>Print</span>
                     </button>
-                    <button type="button" class="modal-close-btn" onclick="closeModal('certificateModal')">
+                    <button type="button" class="modal-close-btn" onclick="closeModal('certificateModal')" title="Close modal">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <line x1="18" y1="6" x2="6" y2="18"/>
                             <line x1="6" y1="6" x2="18" y2="18"/>
@@ -1637,6 +1651,7 @@ Explanation: Drupal 8+ uses Symfony components."></textarea>
     <!-- Toast Notifications Container -->
     <div id="toastContainer" class="toast-container"></div>
 
+    <script src="/js/html2pdf.bundle.min.js"></script>
     <script src="/js/tiptap-bundle.min.js"></script>
     <script src="/js/subjects.js"></script>
     <script src="/js/quiz.js"></script>
