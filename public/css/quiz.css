@@ -889,20 +889,21 @@ select.subject-selector-control:focus {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    background: #f8fafc;
-    border: 1.5px solid #e2e8f0;
-    color: #475569;
+    background: #ffffff;
+    border: 1.5px solid #94a3b8;
+    color: #1e293b;
     border-radius: 10px;
     padding: 0.8rem 1.5rem;
     font-size: 0.95rem;
-    font-weight: 600;
+    font-weight: 700;
     cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
     transition: all 0.2s ease;
 }
 
 .btn-download-cert:hover {
     background: #f1f5f9;
-    border-color: #cbd5e1;
+    border-color: #64748b;
     color: #0f172a;
     transform: translateY(-1px);
 }

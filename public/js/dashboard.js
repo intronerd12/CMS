@@ -15,6 +15,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     currentUser = JSON.parse(userStr);
     initializeDashboard();
+
+    // Asynchronously sync profile to ensure registered name & handle are always up to date
+    if (currentUser && currentUser.id) {
+        fetch(`${API_BASE}/api/auth/profile/${currentUser.id}`)
+            .then(res => res.ok ? res.json() : null)
+            .then(data => {
+                if (data && data.user) {
+                    const fresh = data.user;
+                    sessionStorage.setItem('currentUser', JSON.stringify(fresh));
+                    const freshName = `${fresh.firstName || ''} ${fresh.lastName || ''}`.trim() || fresh.username || 'User';
+                    const nameEl = document.getElementById('userName');
+                    if (nameEl) nameEl.textContent = freshName;
+                    const handleEl = document.getElementById('userHandle');
+                    if (handleEl) handleEl.textContent = fresh.username ? `@${fresh.username}` : '';
+                    const avatarEl = document.getElementById('userAvatar');
+                    if (avatarEl) avatarEl.textContent = (fresh.firstName || fresh.username || 'U').charAt(0).toUpperCase();
+                }
+            })
+            .catch(() => {});
+    }
 });
 
 function initializeDashboard() {
@@ -34,8 +54,13 @@ function initializeDashboard() {
         }
     }
 
-    // Set user info in sidebar
-    document.getElementById('userName').textContent = `${currentUser.firstName} ${currentUser.lastName}`;
+    // Set user info in sidebar - strictly using registered name & handle
+    const fullName = `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || currentUser.username || 'User';
+    document.getElementById('userName').textContent = fullName;
+    const handleEl = document.getElementById('userHandle');
+    if (handleEl) {
+        handleEl.textContent = currentUser.username ? `@${currentUser.username}` : '';
+    }
     const roleEl = document.getElementById('userRole');
     if (roleEl) {
         if (role === 'faculty') {
@@ -46,14 +71,16 @@ function initializeDashboard() {
             roleEl.className = 'user-role role-student';
         }
     }
-    document.getElementById('userAvatar').textContent = currentUser.firstName.charAt(0).toUpperCase();
+    const userInitial = (currentUser.firstName || currentUser.username || 'U').charAt(0).toUpperCase();
+    document.getElementById('userAvatar').textContent = userInitial;
 
     // Set greeting
     const hour = new Date().getHours();
     let greetingText = 'Good morning';
     if (hour >= 12 && hour < 17) greetingText = 'Good afternoon';
     else if (hour >= 17) greetingText = 'Good evening';
-    document.getElementById('greeting').textContent = `${greetingText}, ${currentUser.firstName}!`;
+    const greetingFirstName = currentUser.firstName || currentUser.username || 'User';
+    document.getElementById('greeting').textContent = `${greetingText}, ${greetingFirstName}!`;
 
     // Role-specific subtitle
     const pageSubtitle = document.getElementById('pageSubtitle');
@@ -246,12 +273,13 @@ function setupLogout() {
 async function loadDashboardData() {
     try {
         const role = currentUser ? (currentUser.role || 'student') : 'student';
-        const studentIdParam = (role !== 'faculty' && currentUser && currentUser.id)
-            ? `&studentId=${encodeURIComponent(currentUser.id)}`
-            : '';
+        const userId = currentUser ? currentUser.id : '';
+        const userParam = role === 'faculty' 
+            ? `&facultyId=${encodeURIComponent(userId)}`
+            : `&studentId=${encodeURIComponent(userId)}`;
 
         // Load subjects visible to this user (for students: only joined classes!)
-        const subjectsRes = await fetch(`${API_BASE}/api/subjects?role=${encodeURIComponent(role)}${studentIdParam}`, {
+        const subjectsRes = await fetch(`${API_BASE}/api/subjects?role=${encodeURIComponent(role)}${userParam}`, {
             headers: {
                 'x-user-role': role,
                 'x-user-id': currentUser ? currentUser.id : ''
@@ -272,7 +300,7 @@ async function loadDashboardData() {
         renderDashboardEnrollmentBanner(subjectsList, role);
 
         // Fetch stats & scores
-        const statsRes = await fetch(`${API_BASE}/api/stats?role=${encodeURIComponent(role)}${studentIdParam}`, {
+        const statsRes = await fetch(`${API_BASE}/api/stats?role=${encodeURIComponent(role)}${userParam}`, {
             headers: {
                 'x-user-role': role,
                 'x-user-id': currentUser ? currentUser.id : ''

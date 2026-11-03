@@ -208,6 +208,17 @@ ensureColumn('quizzes', 'updatedAt', 'TEXT');
 ensureColumn('scores', 'topicId', 'TEXT');
 ensureColumn('scores', 'answers', 'TEXT');
 ensureColumn('scores', 'timeSpentSeconds', 'INTEGER DEFAULT 0');
+ensureColumn('scores', 'retakeAllowed', 'INTEGER NOT NULL DEFAULT 0');
+
+// Assign default seed subject IT 315 to prof_santos if createdBy is NULL
+try {
+    const santosUser = db.prepare('SELECT id FROM users WHERE username = ?').get('prof_santos');
+    if (santosUser) {
+        db.prepare('UPDATE subjects SET createdBy = ? WHERE createdBy IS NULL').run(santosUser.id);
+    }
+} catch (e) {
+    console.error('Error assigning seed subject createdBy:', e.message);
+}
 
 // Create indexes on migrated columns
 db.exec(`
@@ -762,6 +773,10 @@ const stmtGetScoresByStudent = db.prepare(`
     WHERE s.studentId = ?
     ORDER BY s.completedAt DESC
 `);
+const stmtGetSubjectsForFaculty = db.prepare('SELECT * FROM subjects WHERE createdBy = ? ORDER BY createdAt DESC');
+const stmtSetScoreRetakeAllowed = db.prepare('UPDATE scores SET retakeAllowed = ? WHERE id = ?');
+const stmtGetScoresForStudentOnQuiz = db.prepare('SELECT * FROM scores WHERE quizId = ? AND studentId = ? ORDER BY completedAt DESC');
+
 const stmtGetAllScoresForSubject = db.prepare(`
     SELECT s.*, q.title AS quizTitle, q.passingScorePercent, t.title AS topicTitle, t.orderIndex AS topicOrderIndex,
            u.firstName, u.lastName, u.email, u.username
@@ -794,6 +809,19 @@ module.exports = {
     createUser: (userData) => stmtInsertUser.run(userData),
 
     // Subjects
+    getSubjectsForFaculty: (facultyId, includeUnpublished = true) => {
+        if (!facultyId) return [];
+        const subjects = stmtGetSubjectsForFaculty.all(facultyId);
+        const topicStmt = includeUnpublished ? stmtGetTopicsBySubjectAll : stmtGetTopicsBySubjectPublished;
+        return subjects.map(s => {
+            const enrolledRow = stmtCountEnrolledStudents.get(s.id);
+            return {
+                ...s,
+                enrolledCount: enrolledRow ? enrolledRow.count : 0,
+                topics: topicStmt.all(s.id).map(enrichTopic)
+            };
+        });
+    },
     getAllSubjects: (includeUnpublished = true) => {
         const subjects = stmtGetAllSubjects.all();
         const topicStmt = includeUnpublished ? stmtGetTopicsBySubjectAll : stmtGetTopicsBySubjectPublished;
@@ -1169,6 +1197,7 @@ module.exports = {
                 attemptsCount: topicScores.length,
                 bestScorePercentage: highestScore,
                 lastAttempt: topicScores[0] || null,
+                retakeAllowed: topicScores[0] ? (topicScores[0].retakeAllowed === 1) : false,
                 requiredPassingScore: topic.quiz ? topic.quiz.passingScorePercent : 75.0
             };
         });
@@ -1413,6 +1442,45 @@ module.exports = {
     getTotalScoresCount: () => {
         const row = stmtGetTotalScoresCount.get();
         return row ? row.count : 0;
+    },
+    setScoreRetakeAllowed: (scoreId, allowed) => {
+        stmtSetScoreRetakeAllowed.run(allowed ? 1 : 0, scoreId);
+        return stmtGetScoreById.get(scoreId);
+    },
+    getScoresForStudentOnQuiz: (quizId, studentId) => {
+        return stmtGetScoresForStudentOnQuiz.all(quizId, studentId);
+    },
+    getFacultyStats: (facultyId) => {
+        const subjects = stmtGetSubjectsForFaculty.all(facultyId);
+        const subjectIds = subjects.map(s => s.id);
+        if (subjectIds.length === 0) {
+            return {
+                totalSubjects: 0,
+                totalTopics: 0,
+                totalQuizzes: 0,
+                totalScores: 0,
+                totalStudents: 0
+            };
+        }
+        const placeholders = subjectIds.map(() => '?').join(',');
+        const totalTopics = db.prepare(`SELECT COUNT(*) AS count FROM topics WHERE subjectId IN (${placeholders})`).get(...subjectIds).count;
+        const totalQuizzes = db.prepare(`SELECT COUNT(*) AS count FROM quizzes WHERE subjectId IN (${placeholders})`).get(...subjectIds).count;
+        const totalScores = db.prepare(`
+            SELECT COUNT(*) AS count FROM scores s
+            JOIN topics t ON s.topicId = t.id
+            WHERE t.subjectId IN (${placeholders})
+        `).get(...subjectIds).count;
+        const totalStudents = db.prepare(`
+            SELECT COUNT(DISTINCT studentId) AS count FROM class_enrollments
+            WHERE subjectId IN (${placeholders})
+        `).get(...subjectIds).count;
+        return {
+            totalSubjects: subjects.length,
+            totalTopics,
+            totalQuizzes,
+            totalScores,
+            totalStudents
+        };
     },
     deleteUser: (id) => db.prepare('DELETE FROM users WHERE id = ?').run(id),
     raw: db

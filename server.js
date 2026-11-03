@@ -52,7 +52,7 @@ function isStaffUser(req) {
 app.use(cors({
     origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-user-role', 'x-requested-with']
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-user-role', 'x-user-id', 'x-requested-with']
 }));
 app.use(express.json());
 app.use('/uploads/custom', express.static(customUploadsDir));
@@ -255,12 +255,15 @@ app.get('/api/topics/:id/download', (req, res) => {
 app.get('/api/subjects', (req, res) => {
     try {
         const isStaff = isStaffUser(req);
+        const userId = req.headers['x-user-id'] || req.query.userId || req.query.studentId || req.query.facultyId;
         if (!isStaff) {
-            const studentId = req.query.studentId || req.headers['x-user-id'];
+            const studentId = req.query.studentId || userId;
             const subjects = studentId ? db.getSubjectsForStudent(studentId) : [];
             return res.json({ subjects });
         }
-        const subjects = db.getAllSubjects(true);
+        // Faculty: return subjects created by this faculty
+        const facultyId = req.query.facultyId || req.query.createdBy || userId;
+        const subjects = facultyId ? db.getSubjectsForFaculty(facultyId, true) : [];
         res.json({ subjects });
     } catch (error) {
         res.status(500).json({ error: 'Server error loading subjects' });
@@ -401,6 +404,7 @@ app.post('/api/subjects', (req, res) => {
             return res.status(400).json({ error: `A subject with code "${trimmedCode}" already exists for ${term}, ${year}` });
         }
 
+        const facultyOwner = createdBy || req.headers['x-user-id'] || req.query.facultyId || null;
         const newSubject = {
             id: uuidv4(),
             name: trimmedName,
@@ -408,7 +412,7 @@ app.post('/api/subjects', (req, res) => {
             term,
             year,
             description: description ? description.trim() : null,
-            createdBy: createdBy || null,
+            createdBy: facultyOwner,
             createdAt: new Date().toISOString()
         };
 
@@ -481,6 +485,19 @@ app.delete('/api/subjects/:id', (req, res) => {
 app.get('/api/subjects/:id/topics', (req, res) => {
     try {
         const isStaff = isStaffUser(req);
+        const studentId = req.query.studentId || req.headers['x-user-id'];
+        if (!isStaff && (!studentId || !db.isStudentEnrolled(studentId, req.params.id))) {
+            return res.status(403).json({
+                error: 'You must join this class with a Class Code from your instructor first.',
+                notEnrolled: true
+            });
+        }
+        const subject = db.getSubjectById(req.params.id, true);
+        if (!subject) return res.status(404).json({ error: 'Subject not found' });
+        const facultyId = req.headers['x-user-id'] || req.query.facultyId;
+        if (isStaff && facultyId && subject.createdBy && subject.createdBy !== facultyId) {
+            return res.status(403).json({ error: 'Unauthorized: You do not have access to this course topics' });
+        }
         const topics = db.getTopicsBySubject(req.params.id, isStaff);
         res.json({ topics });
     } catch (error) {
@@ -834,6 +851,20 @@ app.get('/api/subjects/:id/student-progress/:studentId', (req, res) => {
 // Get all quizzes for a subject
 app.get('/api/subjects/:id/quizzes', (req, res) => {
     try {
+        const isStaff = isStaffUser(req);
+        const studentId = req.query.studentId || req.headers['x-user-id'];
+        if (!isStaff && (!studentId || !db.isStudentEnrolled(studentId, req.params.id))) {
+            return res.status(403).json({
+                error: 'You must join this class with a Class Code from your instructor first.',
+                notEnrolled: true
+            });
+        }
+        const subject = db.getSubjectById(req.params.id, true);
+        if (!subject) return res.status(404).json({ error: 'Subject not found' });
+        const facultyId = req.headers['x-user-id'] || req.query.facultyId;
+        if (isStaff && facultyId && subject.createdBy && subject.createdBy !== facultyId) {
+            return res.status(403).json({ error: 'Unauthorized: You do not have access to this course quizzes' });
+        }
         const quizzes = db.getAllQuizzesBySubject(req.params.id);
         res.json({ quizzes });
     } catch (error) {
@@ -1170,6 +1201,18 @@ app.get('/api/quizzes/:id/take', (req, res) => {
                         notEnrolled: true
                     });
                 }
+                // Check if student has previous failed attempt on this quiz
+                const previousScores = db.getScoresForStudentOnQuiz(id, studentId);
+                if (previousScores.length > 0) {
+                    const latestScore = previousScores[0];
+                    if (latestScore.passed === 0 && !latestScore.retakeAllowed) {
+                        return res.status(403).json({
+                            error: 'Retake Authorization Required: You did not reach the passing threshold on your previous attempt. Please request retake authorization from your instructor.',
+                            retakeLocked: true,
+                            scoreId: latestScore.id
+                        });
+                    }
+                }
                 const topic = db.getTopicById(quizData.quiz.topicId);
                 if (topic && topic.orderIndex > 1) {
                     const progress = db.getStudentTopicProgress(studentId, quizData.quiz.subjectId);
@@ -1235,6 +1278,32 @@ app.get('/api/scores/:id', (req, res) => {
     }
 });
 
+// Grant or Revoke Retake Permission for a Student (Requirement: Faculty-governed Quiz Retakes)
+app.post('/api/scores/:id/retake-permission', (req, res) => {
+    try {
+        const isStaff = isStaffUser(req);
+        if (!isStaff) {
+            return res.status(403).json({ error: 'Only faculty members can grant or revoke quiz retake permissions' });
+        }
+        const { allowRetake } = req.body;
+        const scoreId = req.params.id;
+        const score = db.getScoreById(scoreId);
+        if (!score) {
+            return res.status(404).json({ error: 'Score record not found' });
+        }
+
+        const updated = db.setScoreRetakeAllowed(scoreId, allowRetake ? 1 : 0);
+        res.json({
+            message: allowRetake ? 'Retake permission granted to student' : 'Retake permission revoked',
+            score: updated,
+            retakeAllowed: allowRetake ? 1 : 0
+        });
+    } catch (err) {
+        console.error('Toggle retake error:', err);
+        res.status(500).json({ error: 'Server error updating retake permission' });
+    }
+});
+
 // Get scores for a student
 app.get('/api/scores/student/:studentId', (req, res) => {
     try {
@@ -1249,6 +1318,13 @@ app.get('/api/scores/student/:studentId', (req, res) => {
 // Get subject gradebook for Faculty (Topic Assessment Records - Item 6)
 app.get('/api/subjects/:id/gradebook', (req, res) => {
     try {
+        const isStaff = isStaffUser(req);
+        const facultyId = req.headers['x-user-id'] || req.query.facultyId;
+        const subject = db.getSubjectById(req.params.id);
+        if (!subject) return res.status(404).json({ error: 'Subject not found' });
+        if (isStaff && facultyId && subject.createdBy && subject.createdBy !== facultyId) {
+            return res.status(403).json({ error: 'Unauthorized: You do not have access to this course gradebook' });
+        }
         const scores = db.getAllScoresForSubject(req.params.id);
         res.json({ scores });
     } catch (error) {
@@ -1260,6 +1336,13 @@ app.get('/api/subjects/:id/gradebook', (req, res) => {
 // Get Summary of ALL Quiz scores per student (Master Matrix - Item 8)
 app.get('/api/subjects/:id/matrix', (req, res) => {
     try {
+        const isStaff = isStaffUser(req);
+        const facultyId = req.headers['x-user-id'] || req.query.facultyId;
+        const subject = db.getSubjectById(req.params.id);
+        if (!subject) return res.status(404).json({ error: 'Subject not found' });
+        if (isStaff && facultyId && subject.createdBy && subject.createdBy !== facultyId) {
+            return res.status(403).json({ error: 'Unauthorized: You do not have access to this course matrix' });
+        }
         const matrixData = db.getClassScoresMatrix(req.params.id);
         res.json(matrixData);
     } catch (error) {
@@ -1273,12 +1356,12 @@ app.get('/api/subjects/:id/matrix', (req, res) => {
 app.get('/api/stats', (req, res) => {
     try {
         const isStaff = isStaffUser(req);
-        const studentId = req.query.studentId || req.headers['x-user-id'];
-        if (!isStaff && studentId) {
-            const enrolledSubjects = db.getSubjectsForStudent(studentId);
+        const userId = req.headers['x-user-id'] || req.query.userId || req.query.studentId || req.query.facultyId;
+        if (!isStaff && userId) {
+            const enrolledSubjects = db.getSubjectsForStudent(userId);
             const totalTopics = enrolledSubjects.reduce((sum, s) => sum + (s.topics ? s.topics.length : 0), 0);
             const totalQuizzes = enrolledSubjects.reduce((sum, s) => sum + (s.topics ? s.topics.filter(t => t.hasQuiz).length : 0), 0);
-            const studentScores = db.getScoresByStudent(studentId);
+            const studentScores = db.getScoresByStudent(userId);
             return res.json({
                 totalSubjects: enrolledSubjects.length,
                 totalTopics,
@@ -1287,19 +1370,17 @@ app.get('/api/stats', (req, res) => {
                 totalUsers: 1
             });
         }
-
-        const subjects = db.getAllSubjects();
-        const totalTopics = db.getTotalTopicsCount();
-        const totalQuizzes = db.getTotalQuizzesCount();
-        const totalScores = db.getTotalScoresCount();
-        const users = db.getAllUsers();
+        if (isStaff && userId) {
+            const stats = db.getFacultyStats(userId);
+            return res.json(stats);
+        }
 
         res.json({
-            totalSubjects: subjects.length,
-            totalTopics,
-            totalQuizzes,
-            totalScores,
-            totalUsers: users.length
+            totalSubjects: 0,
+            totalTopics: 0,
+            totalQuizzes: 0,
+            totalScores: 0,
+            totalUsers: 0
         });
     } catch (error) {
         res.status(500).json({ error: 'Server error' });

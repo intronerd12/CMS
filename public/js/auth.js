@@ -97,11 +97,34 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Auto-fill remembered username
-        const remembered = localStorage.getItem('rememberedUsername');
-        if (remembered) {
-            document.getElementById('username').value = remembered;
-            document.getElementById('rememberMe').checked = true;
+        // Auto-fill freshly registered username or remembered username
+        const justRegistered = sessionStorage.getItem('justRegisteredUsername');
+        const justRegisteredName = sessionStorage.getItem('justRegisteredFullName');
+        if (justRegistered) {
+            const userInput = document.getElementById('username');
+            if (userInput) {
+                userInput.value = justRegistered;
+                const passInput = document.getElementById('password');
+                if (passInput) passInput.focus();
+            }
+            if (justRegisteredName) {
+                const infoDiv = document.getElementById('loginError');
+                if (infoDiv) {
+                    infoDiv.style.background = '#ecfdf5';
+                    infoDiv.style.borderColor = '#a7f3d0';
+                    infoDiv.style.color = '#065f46';
+                    infoDiv.textContent = `✓ Account verified for ${justRegisteredName} (@${justRegistered}). Please enter your password to sign in.`;
+                    infoDiv.style.display = 'block';
+                }
+            }
+            sessionStorage.removeItem('justRegisteredUsername');
+            sessionStorage.removeItem('justRegisteredFullName');
+        } else {
+            const remembered = localStorage.getItem('rememberedUsername');
+            if (remembered) {
+                document.getElementById('username').value = remembered;
+                document.getElementById('rememberMe').checked = true;
+            }
         }
     }
 
@@ -186,14 +209,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     throw new Error(data.error || 'Registration failed');
                 }
 
+                // Store registered username to auto-populate login
+                sessionStorage.setItem('justRegisteredUsername', username);
+                sessionStorage.setItem('justRegisteredFullName', `${firstName} ${lastName}`);
+
                 // Show success
-                showSuccess(successDiv, 'Account created successfully! Redirecting to login...');
+                showSuccess(successDiv, `Account created for ${firstName} ${lastName} (@${username})! Redirecting to login...`);
                 registerForm.reset();
 
-                // Redirect after 2 seconds
+                // Redirect after 1.5 seconds
                 setTimeout(() => {
-                    window.location.href = '/';
-                }, 2000);
+                    window.location.href = '/login';
+                }, 1500);
 
             } catch (error) {
                 showError(errorDiv, error.message);

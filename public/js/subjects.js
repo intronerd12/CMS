@@ -88,8 +88,10 @@
         try {
             const role = getUserRole();
             const userId = getCurrentUserId();
-            const studentParam = (!isTeacherOrAdmin() && userId) ? `&studentId=${encodeURIComponent(userId)}` : '';
-            const res = await fetch(`/api/subjects?role=${encodeURIComponent(role)}${studentParam}`, {
+            const userParam = isTeacherOrAdmin() 
+                ? (userId ? `&facultyId=${encodeURIComponent(userId)}` : '')
+                : (userId ? `&studentId=${encodeURIComponent(userId)}` : '');
+            const res = await fetch(`/api/subjects?role=${encodeURIComponent(role)}${userParam}`, {
                 headers: {
                     'x-user-role': role,
                     'x-user-id': userId
@@ -109,8 +111,10 @@
         try {
             const role = getUserRole();
             const userId = getCurrentUserId();
-            const studentParam = (!isTeacherOrAdmin() && userId) ? `&studentId=${encodeURIComponent(userId)}` : '';
-            const res = await fetch(`/api/subjects/${id}?role=${encodeURIComponent(role)}${studentParam}`, {
+            const userParam = isTeacherOrAdmin() 
+                ? (userId ? `&facultyId=${encodeURIComponent(userId)}` : '')
+                : (userId ? `&studentId=${encodeURIComponent(userId)}` : '');
+            const res = await fetch(`/api/subjects/${id}?role=${encodeURIComponent(role)}${userParam}`, {
                 headers: {
                     'x-user-role': role,
                     'x-user-id': userId
@@ -475,7 +479,11 @@
 
             const res = await fetch(url, {
                 method,
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'x-user-role': getUserRole(),
+                    'x-user-id': getCurrentUserId()
+                },
                 body: JSON.stringify(payload)
             });
 
