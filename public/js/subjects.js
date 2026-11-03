@@ -928,6 +928,13 @@
                                     <polyline points="6 9 12 15 18 9"/>
                                 </svg>
                             </button>
+                            <button class="btn-icon-control" onclick="window.openSlideCreatorModal('${topic.id}')" title="Slide Studio (TipTap)">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="2" y="3" width="20" height="14" rx="2"/>
+                                    <line x1="8" y1="21" x2="16" y2="21"/>
+                                    <line x1="12" y1="17" x2="12" y2="21"/>
+                                </svg>
+                            </button>
                             <button class="btn-icon-control" onclick="openEditTopicModal('${topic.id}')" title="Edit Topic">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M12 20h9"/>
@@ -1291,7 +1298,17 @@
         const numLabel = `Slide ${(idx || 0) + 1}${total ? ` / ${total}` : ''}`;
 
         let bodyHtml = '';
-        if (layout === 'image' || (slide.imageUrl && (!bullets || bullets.length === 0))) {
+        if (slide.richContent) {
+            bodyHtml = `
+                <div class="slide-html-content">
+                    <h3 class="slide-html-title">${escapeHtml(slide.title || 'Untitled Slide')}</h3>
+                    ${subtitle ? `<div class="slide-html-subtitle">${escapeHtml(subtitle)}</div>` : ''}
+                    <div class="slide-html-rich-content tiptap-content" style="color: inherit; background: transparent; padding: 0.5rem 0;">
+                        ${slide.richContent}
+                    </div>
+                </div>
+            `;
+        } else if (layout === 'image' || (slide.imageUrl && (!bullets || bullets.length === 0))) {
             bodyHtml = `
                 <div class="slide-image-fullscreen-box" style="width: 100%; height: 100%; min-height: 380px; display: flex; align-items: center; justify-content: center; background: #0b0f19; border-radius: 12px; overflow: hidden; padding: 0.5rem;">
                     <img src="${slide.imageUrl}" alt="${escapeHtml(slide.title || 'Slide')}" style="max-width: 100%; max-height: 520px; object-fit: contain; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
@@ -1448,6 +1465,10 @@
         }
 
         // Quiz button in viewer
+        const editStudioBtn = document.getElementById('viewerEditStudioBtn');
+        if (editStudioBtn) {
+            editStudioBtn.style.display = isTeacherOrAdmin() ? 'inline-flex' : 'none';
+        }
         const quizBtn = document.getElementById('viewerQuizBtn');
         if (quizBtn) {
             if (topic.hasQuiz && topic.quiz) {
@@ -2292,6 +2313,420 @@
         if (currentSubjectId) {
             await fetchSubjectDetails(currentSubjectId);
             renderTOC();
+        }
+    };
+
+
+    // =========================================================================
+    // TIPTAP PRESENTATION STUDIO IMPLEMENTATION (FULL CRUD)
+    // =========================================================================
+    let studioTopicId = null;
+    let studioSlides = [];
+    let studioActiveIndex = 0;
+    let studioTipTapInstance = null;
+
+    window.openSlideStudioFromTopicModal = function () {
+        const topicIdInput = document.getElementById('topicIdInput');
+        const topicId = topicIdInput ? topicIdInput.value : null;
+        if (!topicId) {
+            showToast('Please save or create the lesson first before launching Slide Studio', 'info');
+            return;
+        }
+        closeModal('topicModal');
+        window.openSlideCreatorModal(topicId);
+    };
+
+    window.launchStudioFromViewer = function () {
+        if (slideViewer && slideViewer.topic) {
+            const topicId = slideViewer.topic.id;
+            window.closeSlideViewer();
+            window.openSlideCreatorModal(topicId);
+        }
+    };
+
+    window.openSlideCreatorModal = async function (topicId) {
+        studioTopicId = topicId;
+        studioActiveIndex = 0;
+        studioSlides = [];
+
+        let topicTitle = 'Lesson Presentation';
+        if (currentSubject && currentSubject.topics) {
+            const t = currentSubject.topics.find(item => item.id === topicId);
+            if (t) topicTitle = t.title || 'Lesson Presentation';
+        }
+
+        const titleEl = document.getElementById('slideCreatorTopicTitle');
+        if (titleEl) titleEl.textContent = `Presentation Studio — ${topicTitle}`;
+
+        try {
+            const res = await fetch(`/api/topics/${topicId}/slides`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.topic && data.topic.title) {
+                    topicTitle = data.topic.title;
+                    if (titleEl) titleEl.textContent = `Presentation Studio — ${topicTitle}`;
+                }
+                if (Array.isArray(data.slides) && data.slides.length > 0) {
+                    studioSlides = data.slides.map((s, idx) => ({
+                        slideNumber: idx + 1,
+                        title: s.title || `Slide ${idx + 1}`,
+                        subtitle: s.subtitle || '',
+                        layout: s.layout || 'bullets',
+                        theme: s.theme || 'indigo',
+                        richContent: s.richContent || (Array.isArray(s.bullets) && s.bullets.length > 0 
+                            ? `<ul>${s.bullets.map(b => `<li>${escapeHtml(b)}</li>`).join('')}</ul>`
+                            : `<p>${escapeHtml(s.title || 'Slide Content')}</p>`),
+                        bullets: Array.isArray(s.bullets) ? s.bullets : [],
+                        notes: s.notes || '',
+                        imageUrl: s.imageUrl || null
+                    }));
+                }
+            }
+        } catch (err) {
+            console.warn('Could not fetch topic presentation:', err);
+        }
+
+        // If no slides exist, seed initial professional slides
+        if (studioSlides.length === 0) {
+            studioSlides = [
+                {
+                    slideNumber: 1,
+                    title: topicTitle,
+                    subtitle: 'Course Presentation Module',
+                    layout: 'title',
+                    theme: 'indigo',
+                    richContent: `<p>Welcome to <strong>${escapeHtml(topicTitle)}</strong>.</p><p>Explore foundational concepts, key architectural components, and practical workflows.</p>`,
+                    bullets: [],
+                    notes: 'Introduce topic overview and key goals for today.'
+                },
+                {
+                    slideNumber: 2,
+                    title: 'Core Architecture & Key Concepts',
+                    subtitle: 'Foundational Principles',
+                    layout: 'bullets',
+                    theme: 'indigo',
+                    richContent: `<ul><li><strong>Architecture Pattern:</strong> Modular, scalable, and secure design</li><li><strong>Component Breakdown:</strong> Separation of data and presentation layers</li><li><strong>Key Takeaway:</strong> Master these principles for the sequential quiz</li></ul>`,
+                    bullets: ['Modular design', 'Separation of concerns', 'Sequential quiz readiness'],
+                    notes: 'Highlight the difference between presentation and data tiers.'
+                }
+            ];
+        }
+
+        const deleteDeckBtn = document.getElementById('studioDeleteDeckBtn');
+        if (deleteDeckBtn) {
+            deleteDeckBtn.style.display = studioSlides.length > 0 ? 'inline-flex' : 'none';
+        }
+
+        renderStudioFilmstrip();
+        renderStudioActiveSlide();
+        openModal('slideCreatorModal');
+    };
+
+    function renderStudioFilmstrip() {
+        const listEl = document.getElementById('slideStudioFilmstripList');
+        if (!listEl) return;
+
+        listEl.innerHTML = studioSlides.map((s, idx) => {
+            const isActive = idx === studioActiveIndex;
+            return `
+                <div class="slide-thumb-item ${isActive ? 'active' : ''}" onclick="window.studioSelectSlide(${idx})">
+                    <span class="slide-thumb-badge">#${idx + 1}</span>
+                    <div class="slide-thumb-meta">
+                        <div class="slide-thumb-title">${escapeHtml(s.title || `Slide ${idx + 1}`)}</div>
+                        <div class="slide-thumb-sub">${escapeHtml(s.layout || 'bullets')} • ${escapeHtml(s.theme || 'indigo')}</div>
+                    </div>
+                    <div class="slide-thumb-actions" onclick="event.stopPropagation()">
+                        <button type="button" class="slide-thumb-btn" onclick="window.studioDuplicateSlide(${idx})" title="Duplicate Slide">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                        </button>
+                        ${studioSlides.length > 1 ? `
+                            <button type="button" class="slide-thumb-btn delete" onclick="window.studioDeleteSlide(${idx})" title="Delete Slide">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function renderStudioActiveSlide() {
+        const slide = studioSlides[studioActiveIndex];
+        if (!slide) return;
+
+        const titleInput = document.getElementById('studioSlideTitleInput');
+        const subInput = document.getElementById('studioSlideSubtitleInput');
+        const layoutSelect = document.getElementById('studioSlideLayoutSelect');
+        const themeSelect = document.getElementById('studioSlideThemeSelect');
+        const notesInput = document.getElementById('studioSlideNotesInput');
+
+        if (titleInput) titleInput.value = slide.title || '';
+        if (subInput) subInput.value = slide.subtitle || '';
+        if (layoutSelect) layoutSelect.value = slide.layout || 'bullets';
+        if (themeSelect) themeSelect.value = slide.theme || 'indigo';
+        if (notesInput) notesInput.value = slide.notes || '';
+
+        // Destroy previous TipTap instance if exists
+        if (studioTipTapInstance && typeof studioTipTapInstance.destroy === 'function') {
+            try { studioTipTapInstance.destroy(); } catch (e) {}
+            studioTipTapInstance = null;
+        }
+
+        const editorContainer = document.getElementById('studioTipTapEditor');
+        const toolbarContainer = document.getElementById('studioTipTapToolbar');
+
+        if (editorContainer && window.TipTap && typeof window.TipTap.createTipTapEditor === 'function') {
+            editorContainer.innerHTML = '';
+            if (toolbarContainer) {
+                toolbarContainer.innerHTML = window.TipTap.renderToolbarHtml('studioTipTapToolbarInner', { compact: false });
+            }
+
+            const initialHtml = slide.richContent || `<p>${escapeHtml(slide.title || 'Slide Content')}</p>`;
+            studioTipTapInstance = window.TipTap.createTipTapEditor({
+                element: editorContainer,
+                toolbar: document.getElementById('studioTipTapToolbarInner') || toolbarContainer,
+                content: initialHtml,
+                placeholder: 'Type slide body content, add bullet lists, code blocks, or bold headings...',
+                compact: false,
+                onChange: (html) => {
+                    if (studioSlides[studioActiveIndex]) {
+                        studioSlides[studioActiveIndex].richContent = html;
+                        updateStudioLivePreview();
+                    }
+                }
+            });
+        }
+
+        updateStudioLivePreview();
+    }
+
+    function updateStudioLivePreview() {
+        const slide = studioSlides[studioActiveIndex];
+        if (!slide) return;
+
+        const pill = document.getElementById('studioSlideNumberPill');
+        if (pill) {
+            pill.textContent = `Slide ${studioActiveIndex + 1} of ${studioSlides.length}`;
+        }
+
+        const frame = document.getElementById('studioLivePreviewFrame');
+        if (!frame) return;
+
+        const theme = slide.theme || 'indigo';
+        frame.className = `slide-preview-frame slide-theme-${theme}`;
+
+        const title = escapeHtml(slide.title || 'Untitled Slide');
+        const sub = escapeHtml(slide.subtitle || '');
+        const rich = slide.richContent || '<p>Slide Content</p>';
+
+        frame.innerHTML = `
+            <h2>${title}</h2>
+            ${sub ? `<div class="slide-preview-sub">${sub}</div>` : ''}
+            <div class="slide-preview-body">
+                ${rich}
+            </div>
+        `;
+    }
+
+    window.studioSelectSlide = function (idx) {
+        if (idx < 0 || idx >= studioSlides.length) return;
+        studioActiveIndex = idx;
+        renderStudioFilmstrip();
+        renderStudioActiveSlide();
+    };
+
+    window.updateStudioCurrentSlideTitle = function (val) {
+        if (!studioSlides[studioActiveIndex]) return;
+        studioSlides[studioActiveIndex].title = val;
+        renderStudioFilmstrip();
+        updateStudioLivePreview();
+    };
+
+    window.updateStudioCurrentSlideSubtitle = function (val) {
+        if (!studioSlides[studioActiveIndex]) return;
+        studioSlides[studioActiveIndex].subtitle = val;
+        updateStudioLivePreview();
+    };
+
+    window.updateStudioCurrentSlideLayout = function (val) {
+        if (!studioSlides[studioActiveIndex]) return;
+        studioSlides[studioActiveIndex].layout = val;
+        renderStudioFilmstrip();
+        updateStudioLivePreview();
+    };
+
+    window.updateStudioCurrentSlideTheme = function (val) {
+        if (!studioSlides[studioActiveIndex]) return;
+        studioSlides[studioActiveIndex].theme = val;
+        renderStudioFilmstrip();
+        updateStudioLivePreview();
+    };
+
+    window.updateStudioCurrentSlideNotes = function (val) {
+        if (!studioSlides[studioActiveIndex]) return;
+        studioSlides[studioActiveIndex].notes = val;
+    };
+
+    window.studioAddNewSlide = function () {
+        const newSlide = {
+            slideNumber: studioSlides.length + 1,
+            title: `Slide ${studioSlides.length + 1}`,
+            subtitle: '',
+            layout: 'bullets',
+            theme: studioSlides[studioActiveIndex]?.theme || 'indigo',
+            richContent: '<ul><li>Key point 1</li><li>Key point 2</li></ul>',
+            bullets: [],
+            notes: ''
+        };
+        studioSlides.push(newSlide);
+        studioActiveIndex = studioSlides.length - 1;
+        renderStudioFilmstrip();
+        renderStudioActiveSlide();
+    };
+
+    window.studioDuplicateSlide = function (idx) {
+        const source = studioSlides[idx];
+        if (!source) return;
+        const copy = JSON.parse(JSON.stringify(source));
+        copy.title = `${source.title || 'Slide'} (Copy)`;
+        studioSlides.splice(idx + 1, 0, copy);
+        studioSlides.forEach((s, i) => { s.slideNumber = i + 1; });
+        studioActiveIndex = idx + 1;
+        renderStudioFilmstrip();
+        renderStudioActiveSlide();
+    };
+
+    window.studioDeleteSlide = function (idx) {
+        if (studioSlides.length <= 1) {
+            showToast('A presentation deck must have at least 1 slide', 'warning');
+            return;
+        }
+        studioSlides.splice(idx, 1);
+        studioSlides.forEach((s, i) => { s.slideNumber = i + 1; });
+        studioActiveIndex = Math.min(studioActiveIndex, studioSlides.length - 1);
+        renderStudioFilmstrip();
+        renderStudioActiveSlide();
+    };
+
+    window.studioAutoGenerateDeck = function () {
+        let topicTitle = 'Topic Module';
+        if (currentSubject && currentSubject.topics) {
+            const t = currentSubject.topics.find(item => item.id === studioTopicId);
+            if (t) topicTitle = t.title || 'Topic Module';
+        }
+
+        studioSlides = [
+            {
+                slideNumber: 1,
+                title: topicTitle,
+                subtitle: 'Curriculum Presentation Deck',
+                layout: 'title',
+                theme: 'indigo',
+                richContent: `<p>Comprehensive overview of <strong>${escapeHtml(topicTitle)}</strong>.</p><p>Covers technical architecture, industry standards, and hands-on implementation.</p>`,
+                notes: 'Welcome class and establish learning objectives.'
+            },
+            {
+                slideNumber: 2,
+                title: 'Architecture & Core Mechanics',
+                subtitle: 'System Design Overview',
+                layout: 'two-column',
+                theme: 'emerald',
+                richContent: `<ul><li><strong>Data Tier:</strong> Database entities, content taxonomy & metadata</li><li><strong>Business Logic:</strong> Workflow permissions, validation hooks</li><li><strong>Rendering Tier:</strong> Themes, responsive templates & REST/GraphQL APIs</li></ul>`,
+                notes: 'Contrast monolithic CMS design with headless decoupled architecture.'
+            },
+            {
+                slideNumber: 3,
+                title: 'Code Pattern & Implementation',
+                subtitle: 'Production Configuration',
+                layout: 'code',
+                theme: 'slate',
+                richContent: `<pre class="tiptap-code-block"><code>// Production Module Configuration
+export const moduleConfig = {
+    topic: "${escapeHtml(topicTitle)}",
+    status: "Active",
+    caching: "Edge-Accelerated",
+    securityLevel: "Enterprise"
+};</code></pre><p>Enforces decoupled architecture and least-privilege role validation.</p>`,
+                notes: 'Explain why edge caching and type safety prevent deployment regressions.'
+            },
+            {
+                slideNumber: 4,
+                title: 'Security, Performance & Best Practices',
+                subtitle: 'Hardening & Optimization',
+                layout: 'callout',
+                theme: 'purple',
+                richContent: `<blockquote>"Always separate content authoring governance from edge delivery pipelines."</blockquote><ul><li>Sanitize all user submissions to prevent XSS and SQL injection</li><li>Implement Redis or Memcached object-caching layers</li><li>Regularly audit plugin dependencies and version updates</li></ul>`,
+                notes: 'Emphasize that questions on the sequential quiz test these exact security practices.'
+            },
+            {
+                slideNumber: 5,
+                title: 'Summary & Quiz Checklist',
+                subtitle: 'Ready for Assessment',
+                layout: 'bullets',
+                theme: 'amber',
+                richContent: `<ul><li>Reviewed core concepts for ${escapeHtml(topicTitle)}</li><li>Walked through configuration and security best practices</li><li><strong>Next Step:</strong> Take the topic quiz (≥ 75% passing grade required to unlock next topic)!</li></ul>`,
+                notes: 'Direct students to take the sequential topic quiz.'
+            }
+        ];
+
+        studioActiveIndex = 0;
+        renderStudioFilmstrip();
+        renderStudioActiveSlide();
+        showToast(`Generated 5-slide structured deck for "${topicTitle}"!`, 'success');
+    };
+
+    window.studioDeleteDeck = async function () {
+        if (!studioTopicId) return;
+        if (!confirm('Are you sure you want to delete this presentation deck from the lesson?')) return;
+        try {
+            const res = await fetch(`/api/topics/${studioTopicId}/slides`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Failed to delete presentation deck');
+            showToast('Presentation deck removed', 'success');
+            closeModal('slideCreatorModal');
+            if (typeof window.refreshCurrentSubjectAfterSave === 'function') {
+                await window.refreshCurrentSubjectAfterSave();
+            }
+        } catch (err) {
+            showToast(err.message, 'error');
+        }
+    };
+
+    window.studioSaveDeck = async function () {
+        if (!studioTopicId) return;
+        try {
+            const saveBtn = document.getElementById('studioSaveDeckBtn');
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.textContent = 'Saving...';
+            }
+
+            const res = await fetch(`/api/topics/${studioTopicId}/slides`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    slides: studioSlides,
+                    presentationKey: 'custom'
+                })
+            });
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Failed to save presentation deck');
+
+            showToast('Presentation deck saved & published successfully!', 'success');
+            closeModal('slideCreatorModal');
+
+            if (typeof window.refreshCurrentSubjectAfterSave === 'function') {
+                await window.refreshCurrentSubjectAfterSave();
+            }
+        } catch (err) {
+            console.error('Save presentation error:', err);
+            showToast(err.message, 'error');
+        } finally {
+            const saveBtn = document.getElementById('studioSaveDeckBtn');
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg><span>Save & Publish Presentation</span>';
+            }
         }
     };
 

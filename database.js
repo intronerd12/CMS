@@ -1041,8 +1041,11 @@ module.exports = {
         return { ...quiz, questions };
     },
     createQuiz: (quizData, questions = []) => {
-        if (!questions || questions.length < 1 || questions.length > 20) {
-            throw new Error(`Quiz must have between 1 and 20 questions (max 20 questions). You provided ${questions ? questions.length : 0}.`);
+        const resolvedQuestions = Array.isArray(questions) && questions.length > 0
+            ? questions
+            : (Array.isArray(quizData.questions) ? quizData.questions : []);
+        if (!resolvedQuestions || resolvedQuestions.length < 1 || resolvedQuestions.length > 20) {
+            throw new Error(`Quiz must have between 1 and 20 questions (max 20 questions). You provided ${resolvedQuestions ? resolvedQuestions.length : 0}.`);
         }
         const now = new Date().toISOString();
         const quizId = quizData.id || uuidv4();
@@ -1062,7 +1065,7 @@ module.exports = {
                 updatedAt: now
             });
 
-            questions.forEach((q, idx) => {
+            resolvedQuestions.forEach((q, idx) => {
                 stmtInsertQuestion.run({
                     id: uuidv4(),
                     quizId,
@@ -1230,6 +1233,13 @@ module.exports = {
     // ==================== QUIZ GRADING & RECORDING ====================
 
     submitQuizAttempt: (quizId, studentId, studentAnswers = {}, timeSpentSeconds = 0) => {
+        if (typeof quizId === 'object' && quizId) {
+            const opts = quizId;
+            quizId = opts.quizId;
+            studentId = opts.studentId;
+            studentAnswers = opts.answers || opts.studentAnswers || {};
+            timeSpentSeconds = opts.timeSpentSeconds || 0;
+        }
         const quiz = stmtGetQuizById.get(quizId);
         if (!quiz) throw new Error('Quiz not found');
 

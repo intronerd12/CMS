@@ -23,6 +23,16 @@
     // Active Quiz Builder State
     let builderQuestions = [];
     let editingQuizId = null;
+    let builderTipTapEditors = [];
+
+    function destroyBuilderTipTapEditors() {
+        if (Array.isArray(builderTipTapEditors)) {
+            builderTipTapEditors.forEach(ed => {
+                try { if (ed && typeof ed.destroy === 'function') ed.destroy(); } catch (e) {}
+            });
+        }
+        builderTipTapEditors = [];
+    }
 
     // Helpers
     function getCurrentUser() {
@@ -568,7 +578,16 @@
         if (!q) return;
 
         document.getElementById('questionCounterLabel').textContent = `Question ${index + 1} of ${activeQuestions.length}`;
-        document.getElementById('questionTextBox').textContent = q.questionText;
+        const qBox = document.getElementById('questionTextBox');
+        if (qBox) {
+            if (q.questionText && q.questionText.includes('<')) {
+                qBox.innerHTML = q.questionText;
+                qBox.classList.add('tiptap-content');
+            } else {
+                qBox.textContent = q.questionText || '';
+                qBox.classList.remove('tiptap-content');
+            }
+        }
 
         const optionsContainer = document.getElementById('theaterOptionsList');
         const selectedOptId = studentAnswers[q.id];
@@ -2804,6 +2823,7 @@
 
         const letters = ['A', 'B', 'C', 'D', 'E', 'F'];
 
+        destroyBuilderTipTapEditors();
         container.innerHTML = builderQuestions.map((q, qIndex) => {
             return `
                 <div class="card quiz-builder-q-card" style="margin-bottom: 1rem; padding: 1.25rem; border: 1px solid #e2e8f0; border-radius: 14px;" id="builderQCard-${qIndex}">
@@ -2838,9 +2858,15 @@
                         </div>
                     </div>
 
-                    <div class="form-group" style="margin-bottom: 0.75rem;">
-                        <label style="font-size: 0.75rem; font-weight: 700; color: #334155; display: block; margin-bottom: 0.3rem;">Question Stem</label>
-                        <input type="text" class="form-control" placeholder="Enter multiple choice question prompt..." value="${escapeHtml(q.questionText)}" oninput="window.updateBuilderQText(${qIndex}, this.value)" required>
+                    <div class="form-group quiz-q-editor-section" style="margin-bottom: 0.85rem;">
+                        <div class="quiz-q-editor-label">
+                            <span>Question Prompt / Stem (TipTap Rich Text)</span>
+                            <span style="font-size: 0.68rem; color: #6366f1; font-weight: 600;">Supports Code Snippets, Bold, Lists &amp; Formatting</span>
+                        </div>
+                        <div class="tiptap-editor-wrapper">
+                            <div id="qPromptToolbar-${qIndex}"></div>
+                            <div id="qPromptEditor-${qIndex}" style="min-height: 80px;"></div>
+                        </div>
                     </div>
 
                     <div style="font-size: 0.75rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--color-text-muted);">
@@ -2864,12 +2890,68 @@
                         }).join('')}
                     </div>
 
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label style="font-size: 0.72rem; font-weight: 700; color: #64748b; display: block; margin-bottom: 0.25rem;">Answer Rationale / Explanation (Shown after submission)</label>
-                        <input type="text" class="form-control" style="font-size: 0.8125rem;" placeholder="Explain why the correct choice is right..." value="${escapeHtml(q.explanation)}" oninput="window.updateBuilderExplanation(${qIndex}, this.value)">
+                    <div class="form-group quiz-q-editor-section" style="margin-bottom: 0;">
+                        <div class="quiz-q-editor-label">
+                            <span>Answer Rationale / Explanation (Shown after submission)</span>
+                            <span style="font-size: 0.68rem; color: #64748b;">TipTap Rich Text</span>
+                        </div>
+                        <div class="tiptap-editor-wrapper">
+                            <div id="qExplainToolbar-${qIndex}"></div>
+                            <div id="qExplainEditor-${qIndex}" style="min-height: 55px;"></div>
+                        </div>
                     </div>
                 </div>`;
         }).join('');
+
+        initBuilderTipTapEditors();
+    }
+
+    function initBuilderTipTapEditors() {
+        if (!window.TipTap || typeof window.TipTap.createTipTapEditor !== 'function') return;
+
+        builderQuestions.forEach((q, qIndex) => {
+            const promptEl = document.getElementById(`qPromptEditor-${qIndex}`);
+            const promptTb = document.getElementById(`qPromptToolbar-${qIndex}`);
+            if (promptEl) {
+                if (promptTb) {
+                    promptTb.innerHTML = window.TipTap.renderToolbarHtml(`qPromptTbInner-${qIndex}`, { compact: true });
+                }
+                const promptEd = window.TipTap.createTipTapEditor({
+                    element: promptEl,
+                    toolbar: document.getElementById(`qPromptTbInner-${qIndex}`) || promptTb,
+                    content: q.questionText || '',
+                    placeholder: 'Enter question prompt, code snippet, or scenario...',
+                    compact: true,
+                    onChange: (html) => {
+                        if (builderQuestions[qIndex]) {
+                            builderQuestions[qIndex].questionText = html;
+                        }
+                    }
+                });
+                if (promptEd) builderTipTapEditors.push(promptEd);
+            }
+
+            const explainEl = document.getElementById(`qExplainEditor-${qIndex}`);
+            const explainTb = document.getElementById(`qExplainToolbar-${qIndex}`);
+            if (explainEl) {
+                if (explainTb) {
+                    explainTb.innerHTML = window.TipTap.renderToolbarHtml(`qExplainTbInner-${qIndex}`, { compact: true });
+                }
+                const explainEd = window.TipTap.createTipTapEditor({
+                    element: explainEl,
+                    toolbar: document.getElementById(`qExplainTbInner-${qIndex}`) || explainTb,
+                    content: q.explanation || '',
+                    placeholder: 'Explain why the correct answer is right...',
+                    compact: true,
+                    onChange: (html) => {
+                        if (builderQuestions[qIndex]) {
+                            builderQuestions[qIndex].explanation = html;
+                        }
+                    }
+                });
+                if (explainEd) builderTipTapEditors.push(explainEd);
+            }
+        });
     }
 
     function escapeHtml(str) {
