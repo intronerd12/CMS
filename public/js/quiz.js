@@ -1468,6 +1468,44 @@
     };
 
     // ============================================
+    // SHARED ACADEMIC GRAPHICS & SVGS
+    // For Certificate Modal & High-Fidelity PDF Generation
+    // ============================================
+    const SHARED_ACADEMIC_CREST_SVG = `<svg width="56" height="56" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M60 110 C35 110 18 90 18 60 C18 40 28 24 38 16 C36 28 42 42 50 48 C42 36 44 22 52 14 C48 26 56 38 60 40 C64 38 72 26 68 14 C76 22 78 36 70 48 C78 42 84 28 82 16 C92 24 102 40 102 60 C102 90 85 110 60 110Z" fill="#d4af37" opacity="0.85"/>
+        <path d="M60 22 C78 22 90 28 90 42 C90 74 60 96 60 96 C60 96 30 74 30 42 C30 28 42 22 60 22Z" fill="#0f2347" stroke="#d4af37" stroke-width="3"/>
+        <path d="M60 26 C75 26 86 31 86 43 C86 71 60 90 60 90 C60 90 34 71 34 43 C34 31 45 26 60 26Z" fill="#0b1a30"/>
+        <path d="M45 58 C52 55 58 56 60 58 C62 56 68 55 75 58 V72 C68 69 62 70 60 72 C58 70 52 69 45 72 V58Z" fill="#d4af37"/>
+        <line x1="60" y1="58" x2="60" y2="72" stroke="#0b1a30" stroke-width="1.5"/>
+        <path d="M60 36 C57 41 55 45 57 49 C58 51 60 52 60 52 C60 52 62 51 63 49 C65 45 63 41 60 36Z" fill="#f59e0b"/>
+        <circle cx="60" cy="48" r="2" fill="#ef4444"/>
+        <polygon points="45,42 46.5,45.5 50,45.5 47,47.5 48.5,51 45,49 41.5,51 43,47.5 40,45.5 43.5,45.5" fill="#d4af37"/>
+        <polygon points="75,42 76.5,45.5 80,45.5 77,47.5 78.5,51 75,49 71.5,51 73,47.5 70,45.5 73.5,45.5" fill="#d4af37"/>
+    </svg>`;
+
+    const SHARED_GOLD_SEAL_SVG = `<svg class="cert-gold-seal" viewBox="0 0 100 115" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M38 68 L24 108 L38 98 L52 108 L44 68 Z" fill="#991b1b" stroke="#f59e0b" stroke-width="1.2"/>
+        <path d="M62 68 L50 108 L64 98 L78 108 L70 68 Z" fill="#7f1d1d" stroke="#f59e0b" stroke-width="1.2"/>
+        <circle cx="50" cy="46" r="42" fill="#d4af37"/>
+        <circle cx="50" cy="46" r="38" stroke="#ffffff" stroke-width="1.5" stroke-dasharray="3 2"/>
+        <circle cx="50" cy="46" r="34" fill="#0f2347" stroke="#f59e0b" stroke-width="2"/>
+        <polygon points="50,37 52.5,42 58,42.5 54,46 55,51.5 50,49 45,51.5 46,46 42,42.5 47.5,42" fill="#fef08a"/>
+        <text x="50" y="58" font-size="5" font-weight="700" fill="#ffffff" text-anchor="middle" font-family="'Inter', sans-serif" letter-spacing="0.6">VERIFIED</text>
+    </svg>`;
+
+    const SHARED_INSTRUCTOR_SIGN_SVG = `<svg width="140" height="36" viewBox="0 0 180 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M15 35 C20 15 30 10 38 25 C45 38 48 40 55 22 C60 12 70 18 78 30 C85 40 92 20 105 25 C118 30 130 18 145 22 C155 25 168 15 172 20" stroke="#0f2347" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M25 40 C60 38 120 37 165 35" stroke="#0f2347" stroke-width="1.2" stroke-linecap="round"/>
+        <path d="M42 12 C35 25 32 38 35 44" stroke="#0f2347" stroke-width="1.8" stroke-linecap="round"/>
+    </svg>`;
+
+    const SHARED_DEAN_SIGN_SVG = `<svg width="140" height="36" viewBox="0 0 180 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M18 42 C15 20 25 12 40 18 C52 24 55 38 48 44 C42 48 38 38 60 24 C80 12 95 28 110 32 C125 36 138 22 150 25 C162 28 170 18 175 22" stroke="#0f2347" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M30 26 C75 24 135 26 168 28" stroke="#0f2347" stroke-width="1.2" stroke-linecap="round"/>
+        <path d="M115 14 C112 28 116 38 122 42" stroke="#0f2347" stroke-width="1.6" stroke-linecap="round"/>
+    </svg>`;
+
+    // ============================================
     // OFFICIAL PRINTABLE GRADE SLIP & CERTIFICATE
     // Requirement #5: Result can be downloaded
     // ============================================
@@ -1510,45 +1548,10 @@
                 <path d="M20 20 Q35 22 38 38" stroke="currentColor" stroke-width="2" fill="none"/>
             </svg>`;
 
-            const academicCrestSvg = `<svg width="64" height="64" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M60 110 C35 110 18 90 18 60 C18 40 28 24 38 16 C36 28 42 42 50 48 C42 36 44 22 52 14 C48 26 56 38 60 40 C64 38 72 26 68 14 C76 22 78 36 70 48 C78 42 84 28 82 16 C92 24 102 40 102 60 C102 90 85 110 60 110Z" fill="#d4af37" opacity="0.85"/>
-                <path d="M60 22 C78 22 90 28 90 42 C90 74 60 96 60 96 C60 96 30 74 30 42 C30 28 42 22 60 22Z" fill="#0f2347" stroke="#d4af37" stroke-width="3"/>
-                <path d="M60 26 C75 26 86 31 86 43 C86 71 60 90 60 90 C60 90 34 71 34 43 C34 31 45 26 60 26Z" fill="#0b1a30"/>
-                <path d="M45 58 C52 55 58 56 60 58 C62 56 68 55 75 58 V72 C68 69 62 70 60 72 C58 70 52 69 45 72 V58Z" fill="#d4af37"/>
-                <line x1="60" y1="58" x2="60" y2="72" stroke="#0b1a30" stroke-width="1.5"/>
-                <path d="M60 36 C57 41 55 45 57 49 C58 51 60 52 60 52 C60 52 62 51 63 49 C65 45 63 41 60 36Z" fill="#f59e0b"/>
-                <circle cx="60" cy="48" r="2" fill="#ef4444"/>
-                <polygon points="45,42 46.5,45.5 50,45.5 47,47.5 48.5,51 45,49 41.5,51 43,47.5 40,45.5 43.5,45.5" fill="#d4af37"/>
-                <polygon points="75,42 76.5,45.5 80,45.5 77,47.5 78.5,51 75,49 71.5,51 73,47.5 70,45.5 73.5,45.5" fill="#d4af37"/>
-            </svg>`;
-
-            const goldSealSvg = `<svg class="cert-gold-seal" viewBox="0 0 100 115" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M38 68 L24 108 L38 98 L52 108 L44 68 Z" fill="#991b1b" stroke="#f59e0b" stroke-width="1.2"/>
-                <path d="M62 68 L50 108 L64 98 L78 108 L70 68 Z" fill="#7f1d1d" stroke="#f59e0b" stroke-width="1.2"/>
-                <circle cx="50" cy="46" r="42" fill="#d4af37"/>
-                <circle cx="50" cy="46" r="38" stroke="#ffffff" stroke-width="1.5" stroke-dasharray="3 2"/>
-                <circle cx="50" cy="46" r="34" fill="#0f2347" stroke="#f59e0b" stroke-width="2"/>
-                <path id="certSealArc${s.id}" d="M 24 46 A 26 26 0 0 1 76 46 A 26 26 0 0 1 24 46" fill="none"/>
-                <text font-size="6" font-weight="800" fill="#fef08a" letter-spacing="1.1">
-                    <textPath href="#certSealArc${s.id}" startOffset="50%" text-anchor="middle">
-                        ★ OFFICIAL EXCELLENCE SEAL ★
-                    </textPath>
-                </text>
-                <polygon points="50,37 52.5,42 58,42.5 54,46 55,51.5 50,49 45,51.5 46,46 42,42.5 47.5,42" fill="#fef08a"/>
-                <text x="50" y="58" font-size="5" font-weight="700" fill="#ffffff" text-anchor="middle" font-family="'Inter', sans-serif" letter-spacing="0.6">VERIFIED</text>
-            </svg>`;
-
-            const instructorSignSvg = `<svg width="140" height="36" viewBox="0 0 180 50" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M15 35 C20 15 30 10 38 25 C45 38 48 40 55 22 C60 12 70 18 78 30 C85 40 92 20 105 25 C118 30 130 18 145 22 C155 25 168 15 172 20" stroke="#0f2347" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M25 40 C60 38 120 37 165 35" stroke="#0f2347" stroke-width="1.2" stroke-linecap="round"/>
-                <path d="M42 12 C35 25 32 38 35 44" stroke="#0f2347" stroke-width="1.8" stroke-linecap="round"/>
-            </svg>`;
-
-            const deanSignSvg = `<svg width="140" height="36" viewBox="0 0 180 50" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M18 42 C15 20 25 12 40 18 C52 24 55 38 48 44 C42 48 38 38 60 24 C80 12 95 28 110 32 C125 36 138 22 150 25 C162 28 170 18 175 22" stroke="#0f2347" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M30 26 C75 24 135 26 168 28" stroke="#0f2347" stroke-width="1.2" stroke-linecap="round"/>
-                <path d="M115 14 C112 28 116 38 122 42" stroke="#0f2347" stroke-width="1.6" stroke-linecap="round"/>
-            </svg>`;
+            const academicCrestSvg = SHARED_ACADEMIC_CREST_SVG;
+            const goldSealSvg = SHARED_GOLD_SEAL_SVG;
+            const instructorSignSvg = SHARED_INSTRUCTOR_SIGN_SVG;
+            const deanSignSvg = SHARED_DEAN_SIGN_SVG;
 
             certBox.innerHTML = `
                 <div class="cert-outer-frame">
@@ -1725,6 +1728,37 @@
 
     window.printOfficialCertificate = function () {
         window.print();
+    };
+
+    window.downloadGradeSlipDirectly = async function (scoreId, btnElement) {
+        if (!scoreId) {
+            showToast('Assessment record ID is required', 'warning');
+            return;
+        }
+
+        const origHtml = btnElement ? btnElement.innerHTML : '';
+        if (btnElement) {
+            btnElement.disabled = true;
+            btnElement.innerHTML = `
+                <svg class="spin-animation" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10" stroke-opacity="0.25"/>
+                    <path d="M12 2a10 10 0 0 1 10 10"/>
+                </svg>
+                <span>Downloading...</span>`;
+        }
+
+        try {
+            await window.openCertificateModal(scoreId);
+            await window.downloadCertificatePdf();
+        } catch (err) {
+            console.error('Direct Grade Slip download error:', err);
+            showToast('Could not download grade slip directly', 'error');
+        } finally {
+            if (btnElement) {
+                btnElement.disabled = false;
+                btnElement.innerHTML = origHtml;
+            }
+        }
     };
 
     // ============================================
@@ -2147,7 +2181,7 @@
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
                         <span>Print</span>
                     </button>
-                    <button type="button" class="btn-export-action btn-pdf" onclick="window.printSummaryReport('topic-summary')" title="Save report as PDF">
+                    <button type="button" class="btn-export-action btn-pdf" onclick="window.downloadReportPdf('topic-summary', this)" title="Save report as PDF">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                         <span>PDF</span>
                     </button>
@@ -2241,7 +2275,7 @@
                                             <td>${new Date(s.completedAt).toLocaleDateString()} ${new Date(s.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
                                             <td>
                                                 <button type="button" class="btn btn-secondary btn-sm" onclick="window.viewPastResult('${s.id}')">View</button>
-                                                <button type="button" class="btn btn-secondary btn-sm" onclick="window.openCertificateModal('${s.id}')">Slip</button>
+                                                <button type="button" class="btn btn-secondary btn-sm" onclick="window.downloadGradeSlipDirectly('${s.id}', this)" title="Download Grade Slip PDF">Slip</button>
                                             </td>
                                         </tr>
                                     `).join('')}
@@ -2326,7 +2360,7 @@
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
                         <span>Print</span>
                     </button>
-                    <button type="button" class="btn-export-action btn-pdf" onclick="window.printSummaryReport('master-matrix')" title="Save Master Matrix as PDF">
+                    <button type="button" class="btn-export-action btn-pdf" onclick="window.downloadReportPdf('master-matrix', this)" title="Save Master Matrix as PDF">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                         <span>PDF</span>
                     </button>
@@ -2668,7 +2702,7 @@
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
                         <span>Print</span>
                     </button>
-                    <button type="button" class="btn-export-action btn-pdf" onclick="window.printSummaryReport('master-matrix')" title="Save Master Matrix as PDF">
+                    <button type="button" class="btn-export-action btn-pdf" onclick="window.downloadReportPdf('master-matrix', this)" title="Save Master Matrix as PDF">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                         <span>PDF</span>
                     </button>
@@ -2896,7 +2930,7 @@
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
                         <span>Print</span>
                     </button>
-                    <button type="button" class="btn-export-action btn-pdf" onclick="window.printSummaryReport('student-transcript')" title="Save as PDF">
+                    <button type="button" class="btn-export-action btn-pdf" onclick="window.downloadReportPdf('student-transcript', this)" title="Save as PDF">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                         <span>PDF</span>
                     </button>
@@ -3009,7 +3043,7 @@
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
                         <span>Print</span>
                     </button>
-                    <button type="button" class="btn-export-action btn-pdf" onclick="window.printSummaryReport('student-transcript')" title="Save transcript as PDF">
+                    <button type="button" class="btn-export-action btn-pdf" onclick="window.downloadReportPdf('student-transcript', this)" title="Save transcript as PDF">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                         <span>PDF</span>
                     </button>
@@ -3057,7 +3091,7 @@
                                         <td>${new Date(s.completedAt).toLocaleDateString()}</td>
                                         <td>
                                             <button type="button" class="btn btn-secondary btn-sm" onclick="window.viewPastResult('${s.id}')">View</button>
-                                            <button type="button" class="btn btn-primary btn-sm" onclick="window.openCertificateModal('${s.id}')">Download Slip</button>
+                                            <button type="button" class="btn btn-primary btn-sm" onclick="window.downloadGradeSlipDirectly('${s.id}', this)" title="Download Official Grade Slip PDF">Download Slip</button>
                                         </td>
                                     </tr>
                                 `).join('')}
@@ -3207,8 +3241,489 @@
     };
 
     // ============================================
-    // PRINT & PDF REPORT GENERATOR
-    // Formats academic header, signature block, and crisp layout
+    // OFFICIAL PDF REPORT GENERATOR (HTML2PDF)
+    // Downloads institutional, high-fidelity PDF documents
+    // ============================================
+
+    window.downloadReportPdf = async function (reportType, btnElement) {
+        let origHtml = '';
+        if (btnElement) {
+            origHtml = btnElement.innerHTML;
+            btnElement.disabled = true;
+            btnElement.innerHTML = `
+                <svg class="spin-animation" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10" stroke-opacity="0.25"/>
+                    <path d="M12 2a10 10 0 0 1 10 10"/>
+                </svg>
+                <span>Generating PDF...</span>`;
+        }
+
+        try {
+            if (typeof window.html2pdf !== 'function') {
+                console.warn('html2pdf library not found, falling back to print dialog');
+                showToast('PDF generator library not loaded, opening print dialog...', 'warning');
+                if (typeof window.printSummaryReport === 'function') {
+                    window.printSummaryReport(reportType);
+                } else {
+                    window.print();
+                }
+                return;
+            }
+
+            let renderWrapper = document.getElementById('reportPdfRenderWrapper');
+            if (!renderWrapper) {
+                renderWrapper = document.createElement('div');
+                renderWrapper.id = 'reportPdfRenderWrapper';
+                document.body.appendChild(renderWrapper);
+            }
+
+            const dateStr = new Date().toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            const dateIso = new Date().toISOString().slice(0, 10);
+            let filename = `CMS-Report-${dateIso}.pdf`;
+            let orientation = 'portrait';
+            let templateHtml = '';
+
+            if (reportType === 'student-transcript') {
+                if (!rawStudentScores || rawStudentScores.length === 0) {
+                    showToast('No assessment attempts recorded yet to export', 'warning');
+                    return;
+                }
+
+                const user = getCurrentUser() || {};
+                const studentFullName = `${user.lastName ? user.lastName + ', ' : ''}${user.firstName || user.username || 'Student'}`;
+                const studentEmail = user.email || 'student@domain.edu';
+                const studentUsername = user.username || 'student';
+                const transcriptCode = 'TRX-' + (user.id ? String(user.id).slice(-6) : Math.random().toString(36).substring(2, 8)).toUpperCase() + '-' + Date.now().toString(36).toUpperCase();
+
+                const totalAttempts = rawStudentScores.length;
+                const passedCount = rawStudentScores.filter(s => s.passed).length;
+                const sumScore = rawStudentScores.reduce((acc, s) => acc + (Number(s.percentage) || 0), 0);
+                const avgGrade = totalAttempts > 0 ? (sumScore / totalAttempts).toFixed(1) : '0';
+                const standing = Number(avgGrade) >= 90 ? "President's Honors List" : (Number(avgGrade) >= 75 ? "Satisfactory Progress" : "Academic Review Required");
+
+                filename = `CMS-OfficialTranscript-${(user.lastName || 'Student').replace(/[^a-zA-Z0-9]/g, '_')}_${(user.firstName || 'Record').replace(/[^a-zA-Z0-9]/g, '_')}-${dateIso}.pdf`;
+                orientation = 'portrait';
+
+                templateHtml = `
+                    <div class="pdf-portrait-doc">
+                        <div class="pdf-doc-outer">
+                            <div class="pdf-header-section">
+                                <div class="pdf-crest-box">${SHARED_ACADEMIC_CREST_SVG}</div>
+                                <div class="pdf-title-box">
+                                    <div class="pdf-inst-name">COLLEGE OF COMPUTER STUDIES &amp; INFORMATION TECHNOLOGY</div>
+                                    <div class="pdf-inst-sub">CMS LEARNING MANAGEMENT SYSTEM • CURRICULUM ACCREDITATION DIVISION</div>
+                                    <div class="pdf-main-heading">Official Student Assessment Transcript</div>
+                                </div>
+                            </div>
+
+                            <div class="pdf-meta-banner">
+                                <div class="pdf-meta-item">
+                                    <div class="pdf-meta-label">Student Name</div>
+                                    <div class="pdf-meta-value" title="${escapeHtml(studentFullName)}">${escapeHtml(studentFullName)}</div>
+                                </div>
+                                <div class="pdf-meta-item">
+                                    <div class="pdf-meta-label">Account / ID</div>
+                                    <div class="pdf-meta-value" title="${escapeHtml(studentUsername)}">${escapeHtml(studentUsername)}</div>
+                                </div>
+                                <div class="pdf-meta-item">
+                                    <div class="pdf-meta-label">Course Subject</div>
+                                    <div class="pdf-meta-value">IT 315 — CMS</div>
+                                </div>
+                                <div class="pdf-meta-item">
+                                    <div class="pdf-meta-label">Date Generated</div>
+                                    <div class="pdf-meta-value">${dateStr}</div>
+                                </div>
+                            </div>
+
+                            <div class="pdf-kpi-row">
+                                <div class="pdf-kpi-card">
+                                    <div class="pdf-kpi-val">${totalAttempts}</div>
+                                    <div class="pdf-kpi-lbl">Total Attempts</div>
+                                </div>
+                                <div class="pdf-kpi-card">
+                                    <div class="pdf-kpi-val" style="color: #059669;">${passedCount}</div>
+                                    <div class="pdf-kpi-lbl">Assessments Passed</div>
+                                </div>
+                                <div class="pdf-kpi-card">
+                                    <div class="pdf-kpi-val" style="color: #0f2347;">${avgGrade}%</div>
+                                    <div class="pdf-kpi-lbl">Cumulative Average</div>
+                                </div>
+                                <div class="pdf-kpi-card">
+                                    <div class="pdf-kpi-val" style="font-size: 11px; padding-top: 4px; color: ${Number(avgGrade) >= 75 ? '#059669' : '#dc2626'};">${standing}</div>
+                                    <div class="pdf-kpi-lbl">Scholastic Standing</div>
+                                </div>
+                            </div>
+
+                            <table class="pdf-data-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 14%;">Topic #</th>
+                                        <th style="width: 38%;">Curriculum Assessment Module</th>
+                                        <th style="width: 12%; text-align: center;">Raw Score</th>
+                                        <th style="width: 12%; text-align: center;">Grade %</th>
+                                        <th style="width: 12%; text-align: center;">Status</th>
+                                        <th style="width: 12%; text-align: right;">Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${rawStudentScores.map(s => `
+                                        <tr>
+                                            <td><strong>Topic ${s.topicOrderIndex || '1'}</strong></td>
+                                            <td>
+                                                <strong>${escapeHtml(s.topicTitle || 'Assessment')}</strong>
+                                                ${s.quizTitle ? `<br><small style="color: #64748b; font-size: 8px;">${escapeHtml(s.quizTitle)}</small>` : ''}
+                                            </td>
+                                            <td style="text-align: center;">${s.score} / ${s.totalQuestions}</td>
+                                            <td style="text-align: center;">
+                                                <strong style="color: ${s.passed ? '#059669' : '#dc2626'};">${s.percentage}%</strong>
+                                            </td>
+                                            <td style="text-align: center;">
+                                                <span class="pdf-pill ${s.passed ? 'pdf-pill-passed' : 'pdf-pill-failed'}">
+                                                    ${s.passed ? 'PASSED ✓' : 'NEEDS RETAKE'}
+                                                </span>
+                                            </td>
+                                            <td style="text-align: right; font-size: 8.5px; color: #475569;">
+                                                ${new Date(s.completedAt).toLocaleDateString()}
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+
+                            <div class="pdf-footer-signatures">
+                                <div class="pdf-sig-col">
+                                    <div class="pdf-sig-svg">${SHARED_INSTRUCTOR_SIGN_SVG}</div>
+                                    <div class="pdf-sig-rule"></div>
+                                    <div class="pdf-sig-name">Prof. Maria Santos</div>
+                                    <div class="pdf-sig-title">Lead Course Faculty Instructor</div>
+                                </div>
+                                <div class="pdf-seal-box">
+                                    ${SHARED_GOLD_SEAL_SVG}
+                                    <div style="font-size: 6.5px; color: #64748b; font-weight: 700; margin-top: 2px;">${transcriptCode}</div>
+                                </div>
+                                <div class="pdf-sig-col">
+                                    <div class="pdf-sig-svg">${SHARED_DEAN_SIGN_SVG}</div>
+                                    <div class="pdf-sig-rule"></div>
+                                    <div class="pdf-sig-name">Dr. Robert Taylor</div>
+                                    <div class="pdf-sig-title">Dean, College of Computer Studies</div>
+                                </div>
+                            </div>
+
+                            <div class="pdf-bottom-notice">
+                                Official Academic Transcript • CMS Learning Management System • Verified Institutional Accreditation Record • Ref: ${transcriptCode}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (reportType === 'topic-summary') {
+                const scores = getFilteredAndSortedTopicScores();
+                if (scores.length === 0) {
+                    showToast('No matching assessment records to export', 'warning');
+                    return;
+                }
+
+                const totalRecords = scores.length;
+                const totalPassed = scores.filter(s => s.passed === 1 || s.passed === true).length;
+                const passRate = totalRecords > 0 ? Math.round((totalPassed / totalRecords) * 100) : 0;
+                const sumPercentage = scores.reduce((acc, s) => acc + (Number(s.percentage) || 0), 0);
+                const avgGrade = totalRecords > 0 ? (sumPercentage / totalRecords).toFixed(1) : '0';
+                const uniqueStudents = new Set(scores.map(s => s.userId || s.username)).size;
+                const reportCode = 'REP-TOPIC-' + Date.now().toString(36).toUpperCase();
+
+                filename = `CMS-TopicAssessment-Summary-${dateIso}.pdf`;
+                orientation = 'portrait';
+
+                templateHtml = `
+                    <div class="pdf-portrait-doc">
+                        <div class="pdf-doc-outer">
+                            <div class="pdf-header-section">
+                                <div class="pdf-crest-box">${SHARED_ACADEMIC_CREST_SVG}</div>
+                                <div class="pdf-title-box">
+                                    <div class="pdf-inst-name">COLLEGE OF COMPUTER STUDIES &amp; INFORMATION TECHNOLOGY</div>
+                                    <div class="pdf-inst-sub">CMS LEARNING MANAGEMENT SYSTEM • FACULTY EVALUATION GRADEBOOK</div>
+                                    <div class="pdf-main-heading">Topic Assessment Summary Report</div>
+                                </div>
+                            </div>
+
+                            <div class="pdf-meta-banner">
+                                <div class="pdf-meta-item">
+                                    <div class="pdf-meta-label">Course Subject</div>
+                                    <div class="pdf-meta-value">IT 315 — CMS</div>
+                                </div>
+                                <div class="pdf-meta-item">
+                                    <div class="pdf-meta-label">Lead Faculty</div>
+                                    <div class="pdf-meta-value">Prof. Maria Santos</div>
+                                </div>
+                                <div class="pdf-meta-item">
+                                    <div class="pdf-meta-label">Filter &amp; Sort</div>
+                                    <div class="pdf-meta-value">${escapeHtml(summaryTopicFilter)} • ${escapeHtml(summarySort)}</div>
+                                </div>
+                                <div class="pdf-meta-item">
+                                    <div class="pdf-meta-label">Date Generated</div>
+                                    <div class="pdf-meta-value">${dateStr}</div>
+                                </div>
+                            </div>
+
+                            <div class="pdf-kpi-row">
+                                <div class="pdf-kpi-card">
+                                    <div class="pdf-kpi-val">${totalRecords}</div>
+                                    <div class="pdf-kpi-lbl">Total Attempts</div>
+                                </div>
+                                <div class="pdf-kpi-card">
+                                    <div class="pdf-kpi-val">${uniqueStudents}</div>
+                                    <div class="pdf-kpi-lbl">Students Evaluated</div>
+                                </div>
+                                <div class="pdf-kpi-card">
+                                    <div class="pdf-kpi-val" style="color: #059669;">${passRate}%</div>
+                                    <div class="pdf-kpi-lbl">Pass Rate (${totalPassed}/${totalRecords})</div>
+                                </div>
+                                <div class="pdf-kpi-card">
+                                    <div class="pdf-kpi-val" style="color: #0f2347;">${avgGrade}%</div>
+                                    <div class="pdf-kpi-lbl">Class Average Grade</div>
+                                </div>
+                            </div>
+
+                            <table class="pdf-data-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 25%;">Student (Surname First)</th>
+                                        <th style="width: 32%;">Topic Assessment</th>
+                                        <th style="width: 11%; text-align: center;">Raw Score</th>
+                                        <th style="width: 10%; text-align: center;">Grade %</th>
+                                        <th style="width: 11%; text-align: center;">Verdict</th>
+                                        <th style="width: 11%; text-align: right;">Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${scores.map(s => `
+                                        <tr>
+                                            <td>
+                                                <strong style="color: #0f2347;">${escapeHtml(s.lastName)}, ${escapeHtml(s.firstName)}</strong>
+                                                <br><small style="color: #64748b; font-size: 8px;">${escapeHtml(s.username)}</small>
+                                            </td>
+                                            <td>
+                                                <strong>Topic ${s.topicOrderIndex}: ${escapeHtml(s.topicTitle)}</strong>
+                                                <br><small style="color: #64748b; font-size: 8px;">${escapeHtml(s.quizTitle)}</small>
+                                            </td>
+                                            <td style="text-align: center;">${s.score} / ${s.totalQuestions}</td>
+                                            <td style="text-align: center;">
+                                                <strong style="color: ${s.passed ? '#059669' : '#dc2626'};">${s.percentage}%</strong>
+                                            </td>
+                                            <td style="text-align: center;">
+                                                <span class="pdf-pill ${s.passed ? 'pdf-pill-passed' : 'pdf-pill-failed'}">
+                                                    ${s.passed ? 'PASSED ✓' : 'FAILED'}
+                                                </span>
+                                            </td>
+                                            <td style="text-align: right; font-size: 8.5px; color: #475569;">
+                                                ${new Date(s.completedAt).toLocaleDateString()}
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+
+                            <div class="pdf-footer-signatures">
+                                <div class="pdf-sig-col">
+                                    <div class="pdf-sig-svg">${SHARED_INSTRUCTOR_SIGN_SVG}</div>
+                                    <div class="pdf-sig-rule"></div>
+                                    <div class="pdf-sig-name">Prof. Maria Santos</div>
+                                    <div class="pdf-sig-title">Lead Course Faculty Instructor</div>
+                                </div>
+                                <div class="pdf-seal-box">
+                                    ${SHARED_GOLD_SEAL_SVG}
+                                    <div style="font-size: 6.5px; color: #64748b; font-weight: 700; margin-top: 2px;">${reportCode}</div>
+                                </div>
+                                <div class="pdf-sig-col">
+                                    <div class="pdf-sig-svg">${SHARED_DEAN_SIGN_SVG}</div>
+                                    <div class="pdf-sig-rule"></div>
+                                    <div class="pdf-sig-name">Dr. Robert Taylor</div>
+                                    <div class="pdf-sig-title">Dean, College of Computer Studies</div>
+                                </div>
+                            </div>
+
+                            <div class="pdf-bottom-notice">
+                                Official Faculty Gradebook Summary • Verified CMS Accreditation Ledger • Ref: ${reportCode}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (reportType === 'master-matrix') {
+                const matrixList = getFilteredAndSortedMatrix();
+                const topics = (rawFacultyMatrix && rawFacultyMatrix.topics) || [];
+                if (matrixList.length === 0) {
+                    showToast('No student records found in matrix to export', 'warning');
+                    return;
+                }
+
+                const totalEnrolled = matrixList.length;
+                const totalCompleted = matrixList.filter(s => s.isCompleted).length;
+                const cohortSum = matrixList.reduce((acc, s) => acc + (Number(s.overallAverage) || 0), 0);
+                const cohortAvg = totalEnrolled > 0 ? (cohortSum / totalEnrolled).toFixed(1) : '0';
+                const matrixCode = 'MTX-' + Date.now().toString(36).toUpperCase();
+
+                filename = `CMS-MasterPerformanceMatrix-Topics1-14-${dateIso}.pdf`;
+                orientation = 'landscape';
+
+                templateHtml = `
+                    <div class="pdf-landscape-doc">
+                        <div class="pdf-doc-outer">
+                            <div class="pdf-header-section">
+                                <div class="pdf-crest-box">${SHARED_ACADEMIC_CREST_SVG}</div>
+                                <div class="pdf-title-box">
+                                    <div class="pdf-inst-name">COLLEGE OF COMPUTER STUDIES &amp; INFORMATION TECHNOLOGY</div>
+                                    <div class="pdf-inst-sub">CMS LEARNING MANAGEMENT SYSTEM • CUMULATIVE CURRICULUM PERFORMANCE LEDGER</div>
+                                    <div class="pdf-main-heading">Summary of ALL Quiz Scores per Student — Master Matrix (Topics 1 - 14)</div>
+                                </div>
+                            </div>
+
+                            <div class="pdf-meta-banner">
+                                <div class="pdf-meta-item">
+                                    <div class="pdf-meta-label">Course Subject</div>
+                                    <div class="pdf-meta-value">IT 315 — Content Management Systems</div>
+                                </div>
+                                <div class="pdf-meta-item">
+                                    <div class="pdf-meta-label">Course Instructor</div>
+                                    <div class="pdf-meta-value">Prof. Maria Santos</div>
+                                </div>
+                                <div class="pdf-meta-item">
+                                    <div class="pdf-meta-label">Cohort Enrolled</div>
+                                    <div class="pdf-meta-value">${totalEnrolled} Students Enrolled</div>
+                                </div>
+                                <div class="pdf-meta-item">
+                                    <div class="pdf-meta-label">Date Generated</div>
+                                    <div class="pdf-meta-value">${dateStr}</div>
+                                </div>
+                            </div>
+
+                            <div class="pdf-kpi-row">
+                                <div class="pdf-kpi-card">
+                                    <div class="pdf-kpi-val">${totalEnrolled}</div>
+                                    <div class="pdf-kpi-lbl">Total Enrolled</div>
+                                </div>
+                                <div class="pdf-kpi-card">
+                                    <div class="pdf-kpi-val" style="color: #059669;">${totalCompleted}</div>
+                                    <div class="pdf-kpi-lbl">Curriculum Completed</div>
+                                </div>
+                                <div class="pdf-kpi-card">
+                                    <div class="pdf-kpi-val" style="color: #0f2347;">${cohortAvg}%</div>
+                                    <div class="pdf-kpi-lbl">Class Average Grade</div>
+                                </div>
+                                <div class="pdf-kpi-card">
+                                    <div class="pdf-kpi-val">14 Modules</div>
+                                    <div class="pdf-kpi-lbl">Curriculum Scope</div>
+                                </div>
+                            </div>
+
+                            <table class="pdf-data-table" style="font-size: 8px; margin-top: 14px;">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 17%; font-size: 8px;">Student (Surname First)</th>
+                                        ${topics.map(t => `<th style="text-align: center; width: 4.8%; font-size: 7.5px; padding: 4px 1px;">T${t.orderIndex}</th>`).join('')}
+                                        <th style="text-align: center; width: 6%; font-size: 7.5px;">Passed</th>
+                                        <th style="text-align: center; width: 6%; font-size: 7.5px;">Average</th>
+                                        <th style="text-align: center; width: 6%; font-size: 7.5px;">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${matrixList.map(st => `
+                                        <tr>
+                                            <td>
+                                                <strong style="color: #0f2347; font-size: 8.5px;">${escapeHtml(st.lastName)}, ${escapeHtml(st.firstName)}</strong>
+                                                <br><small style="color: #64748b; font-size: 7px;">${escapeHtml(st.username)}</small>
+                                            </td>
+                                            ${(st.topicResults || []).map(r => `
+                                                <td style="text-align: center; font-size: 7.5px; padding: 3px 1px;">
+                                                    ${r.score !== null ? `
+                                                        <span style="font-weight: 700; color: ${r.passed ? '#059669' : '#dc2626'};">${r.score}%</span>
+                                                    ` : `<span style="color: #cbd5e1;">—</span>`}
+                                                </td>
+                                            `).join('')}
+                                            <td style="text-align: center; font-weight: 700;">${st.passedCount}/${st.totalTopics}</td>
+                                            <td style="text-align: center; font-weight: 700; color: #0f2347;">${st.overallAverage}%</td>
+                                            <td style="text-align: center;">
+                                                <span class="pdf-pill ${st.isCompleted ? 'pdf-pill-passed' : 'pdf-pill-locked'}" style="font-size: 7px; padding: 1px 4px;">
+                                                    ${st.isCompleted ? 'COMPLETED' : 'PROGRESS'}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+
+                            <div class="pdf-footer-signatures">
+                                <div class="pdf-sig-col">
+                                    <div class="pdf-sig-svg">${SHARED_INSTRUCTOR_SIGN_SVG}</div>
+                                    <div class="pdf-sig-rule"></div>
+                                    <div class="pdf-sig-name">Prof. Maria Santos</div>
+                                    <div class="pdf-sig-title">Lead Course Faculty Instructor</div>
+                                </div>
+                                <div class="pdf-seal-box">
+                                    ${SHARED_GOLD_SEAL_SVG}
+                                    <div style="font-size: 6.5px; color: #64748b; font-weight: 700; margin-top: 2px;">${matrixCode}</div>
+                                </div>
+                                <div class="pdf-sig-col">
+                                    <div class="pdf-sig-svg">${SHARED_DEAN_SIGN_SVG}</div>
+                                    <div class="pdf-sig-rule"></div>
+                                    <div class="pdf-sig-name">Dr. Robert Taylor</div>
+                                    <div class="pdf-sig-title">Dean, College of Computer Studies</div>
+                                </div>
+                            </div>
+
+                            <div class="pdf-bottom-notice">
+                                Master Cumulative Evaluation Matrix • Official CMS Accreditation Record • Ref: ${matrixCode}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderWrapper.innerHTML = templateHtml;
+
+            const opt = {
+                margin: [4, 4, 4, 4],
+                filename: filename,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: {
+                    scale: 2,
+                    useCORS: true,
+                    letterRendering: true,
+                    backgroundColor: '#ffffff',
+                    scrollY: 0,
+                    scrollX: 0
+                },
+                jsPDF: {
+                    unit: 'mm',
+                    format: 'a4',
+                    orientation: orientation
+                },
+                pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+            };
+
+            await window.html2pdf().set(opt).from(renderWrapper.firstElementChild).save();
+            renderWrapper.innerHTML = '';
+            showToast(`PDF downloaded: ${filename}`, 'success');
+        } catch (err) {
+            console.error('Failed to download report PDF:', err);
+            showToast('PDF generation issue, opening print dialog...', 'warning');
+            if (typeof window.printSummaryReport === 'function') {
+                window.printSummaryReport(reportType);
+            } else {
+                window.print();
+            }
+        } finally {
+            if (btnElement) {
+                btnElement.disabled = false;
+                btnElement.innerHTML = origHtml;
+            }
+        }
+    };
+
+    // ============================================
+    // PRINT REPORT GENERATOR (PHYSICAL PRINTER FALLBACK)
     // ============================================
 
     window.printSummaryReport = function (reportType) {
