@@ -991,13 +991,13 @@ app.post('/api/quizzes', (req, res) => {
         let resolvedSubjectId = subjectId;
 
         if (targetTopic) {
-            resolvedSubjectId = targetTopic.subjectId;
+            resolvedSubjectId = targetTopic.subjectId || resolvedSubjectId;
         } else {
             // Check if topicId matches by title
             const matchedByTitle = db.db.prepare('SELECT * FROM topics WHERE title = ? OR title LIKE ? LIMIT 1').get(topicId, `%${topicId}%`);
             if (matchedByTitle) {
                 targetTopic = matchedByTitle;
-                resolvedSubjectId = matchedByTitle.subjectId;
+                resolvedSubjectId = matchedByTitle.subjectId || resolvedSubjectId;
             } else {
                 let candidateSubject = (resolvedSubjectId ? db.getSubjectById(resolvedSubjectId) : null) || db.getAllSubjects()[0];
                 if (!candidateSubject) {
@@ -1005,7 +1005,7 @@ app.post('/api/quizzes', (req, res) => {
                 }
                 resolvedSubjectId = candidateSubject.id;
                 const autoTopicTitle = title.replace(/\s*Quiz.*$/i, '').trim() || 'Curriculum Lesson';
-                db.createTopic({
+                targetTopic = db.createTopic({
                     id: topicId,
                     subjectId: resolvedSubjectId,
                     title: autoTopicTitle,
@@ -1013,14 +1013,14 @@ app.post('/api/quizzes', (req, res) => {
                     orderIndex: (candidateSubject.topics ? candidateSubject.topics.length : 0) + 1,
                     isPublished: 1
                 });
-                targetTopic = db.getTopicById(topicId);
             }
         }
 
-        const parentSubject = db.getSubjectById(resolvedSubjectId);
+        const parentSubject = db.getSubjectById(resolvedSubjectId) || db.getAllSubjects()[0];
         if (!parentSubject) {
             return res.status(400).json({ error: 'Course subject record not found for this quiz' });
         }
+        resolvedSubjectId = parentSubject.id;
 
         if (!Array.isArray(questions) || questions.length < 1 || questions.length > 20) {
             return res.status(400).json({
@@ -1032,26 +1032,17 @@ app.post('/api/quizzes', (req, res) => {
         for (let i = 0; i < questions.length; i++) {
             const q = questions[i];
             const cleanText = (q.questionText || '').replace(/<[^>]*>/g, '').trim();
-            if (!cleanText && (!q.questionText || !q.questionText.trim())) {
-                return res.status(400).json({ error: `Question #${i + 1} is missing question text` });
+            const hasMedia = /<img|<svg|<video|<audio/i.test(q.questionText || '');
+            if (!cleanText && !hasMedia && (!q.questionText || !q.questionText.trim())) {
+                return res.status(400).json({ error: `Question #${i + 1} is missing question prompt` });
             }
             if (!Array.isArray(q.options) || q.options.length < 2) {
                 return res.status(400).json({ error: `Question #${i + 1} must have multiple-choice options` });
             }
-            if (!q.correctAnswer) {
-                q.correctAnswer = q.options[0].id;
-            }
-        }
-
-        // Validate each question has text, at least 2 options, and a correct answer
-        for (let i = 0; i < questions.length; i++) {
-            const q = questions[i];
-            const cleanText = (q.questionText || '').replace(/<[^>]*>/g, '').trim();
-            if (!cleanText && (!q.questionText || !q.questionText.trim())) {
-                return res.status(400).json({ error: `Question #${i + 1} is missing question text` });
-            }
-            if (!Array.isArray(q.options) || q.options.length < 2) {
-                return res.status(400).json({ error: `Question #${i + 1} must have multiple-choice options` });
+            for (let j = 0; j < q.options.length; j++) {
+                if (!q.options[j].text || !q.options[j].text.trim()) {
+                    return res.status(400).json({ error: `Question #${i + 1}, Choice ${j + 1} is missing text` });
+                }
             }
             if (!q.correctAnswer) {
                 q.correctAnswer = q.options[0].id;
@@ -1063,6 +1054,8 @@ app.post('/api/quizzes', (req, res) => {
         if (existing) {
             const updatedQuiz = db.updateQuiz({
                 id: existing.id,
+                topicId: targetTopic.id,
+                subjectId: resolvedSubjectId,
                 title: title.trim(),
                 description: description ? description.trim() : null,
                 timeLimitMinutes: Number(timeLimitMinutes) || 10,
@@ -1090,16 +1083,12 @@ app.post('/api/quizzes', (req, res) => {
     }
 });
 
-// Update Quiz (Faculty only) - Validates 10 <= questions <= 30
+// Update Quiz (Faculty only) - Validates 1 <= questions <= 20
 app.put('/api/quizzes/:id', (req, res) => {
     try {
         const { id } = req.params;
-        const current = db.getQuizById(id);
-        if (!current) {
-            return res.status(404).json({ error: 'Quiz not found' });
-        }
-
-        const { title, description, timeLimitMinutes, passingScorePercent, shuffleChoices, questions } = req.body;
+        let current = db.getQuizById(id);
+        const { title, description, timeLimitMinutes, passingScorePercent, shuffleChoices, questions, topicId, subjectId } = req.body;
 
         if (!title || !title.trim()) {
             return res.status(400).json({ error: 'Quiz title is required' });
@@ -1115,25 +1104,54 @@ app.put('/api/quizzes/:id', (req, res) => {
         for (let i = 0; i < questions.length; i++) {
             const q = questions[i];
             const cleanText = (q.questionText || '').replace(/<[^>]*>/g, '').trim();
-            if (!cleanText && (!q.questionText || !q.questionText.trim())) {
-                return res.status(400).json({ error: `Question #${i + 1} is missing question text` });
+            const hasMedia = /<img|<svg|<video|<audio/i.test(q.questionText || '');
+            if (!cleanText && !hasMedia && (!q.questionText || !q.questionText.trim())) {
+                return res.status(400).json({ error: `Question #${i + 1} is missing question prompt` });
             }
             if (!Array.isArray(q.options) || q.options.length < 2) {
                 return res.status(400).json({ error: `Question #${i + 1} must have multiple-choice options` });
+            }
+            for (let j = 0; j < q.options.length; j++) {
+                if (!q.options[j].text || !q.options[j].text.trim()) {
+                    return res.status(400).json({ error: `Question #${i + 1}, Choice ${j + 1} is missing text` });
+                }
             }
             if (!q.correctAnswer) {
                 q.correctAnswer = q.options[0].id;
             }
         }
 
-        const updatedQuiz = db.updateQuiz({
-            id,
-            title: title.trim(),
-            description: description ? description.trim() : null,
-            timeLimitMinutes: Number(timeLimitMinutes) || 10,
-            passingScorePercent: Number(passingScorePercent) || 75.0,
-            shuffleChoices: shuffleChoices !== false
-        }, questions);
+        if (!current && topicId) {
+            const topicQuiz = db.getQuizByTopicId(topicId);
+            if (topicQuiz) current = topicQuiz;
+        }
+
+        let updatedQuiz;
+        if (current) {
+            updatedQuiz = db.updateQuiz({
+                id: current.id,
+                topicId: topicId || current.topicId,
+                subjectId: subjectId || current.subjectId,
+                title: title.trim(),
+                description: description ? description.trim() : null,
+                timeLimitMinutes: Number(timeLimitMinutes) || 10,
+                passingScorePercent: Number(passingScorePercent) || 75.0,
+                shuffleChoices: shuffleChoices !== false
+            }, questions);
+        } else {
+            // Fallback create if not found
+            updatedQuiz = db.createQuiz({
+                id,
+                topicId,
+                subjectId,
+                title: title.trim(),
+                description: description ? description.trim() : null,
+                timeLimitMinutes: Number(timeLimitMinutes) || 10,
+                passingScorePercent: Number(passingScorePercent) || 75.0,
+                shuffleChoices: shuffleChoices !== false,
+                createdBy: req.headers['x-user-id'] || null
+            }, questions);
+        }
 
         res.json({ message: 'Quiz updated successfully', quiz: updatedQuiz });
     } catch (error) {

@@ -738,14 +738,14 @@ const stmtGetQuizzesBySubject = db.prepare(`
     SELECT q.*, t.title AS topicTitle, t.orderIndex AS topicOrderIndex,
            (SELECT COUNT(*) FROM quiz_questions WHERE quizId = q.id) AS questionCount
     FROM quizzes q
-    JOIN topics t ON q.topicId = t.id
+    LEFT JOIN topics t ON q.topicId = t.id
     WHERE q.subjectId = ?
-    ORDER BY t.orderIndex ASC
+    ORDER BY COALESCE(t.orderIndex, 999) ASC
 `);
 const stmtGetQuizById = db.prepare(`
-    SELECT q.*, t.title AS topicTitle, t.orderIndex AS topicOrderIndex, t.subjectId
+    SELECT q.*, t.title AS topicTitle, t.orderIndex AS topicOrderIndex, COALESCE(q.subjectId, t.subjectId) AS subjectId
     FROM quizzes q
-    JOIN topics t ON q.topicId = t.id
+    LEFT JOIN topics t ON q.topicId = t.id
     WHERE q.id = ?
 `);
 const stmtGetQuizByTopicId = db.prepare('SELECT * FROM quizzes WHERE topicId = ?');
@@ -756,8 +756,15 @@ const stmtInsertQuiz = db.prepare(`
     VALUES (@id, @topicId, @subjectId, @title, @description, @timeLimitMinutes, @passingScorePercent, @shuffleChoices, @createdBy, @createdAt, @updatedAt)
 `);
 const stmtUpdateQuiz = db.prepare(`
-    UPDATE quizzes SET title = @title, description = @description, timeLimitMinutes = @timeLimitMinutes,
-        passingScorePercent = @passingScorePercent, shuffleChoices = @shuffleChoices, updatedAt = @updatedAt
+    UPDATE quizzes SET 
+        title = @title, 
+        description = @description, 
+        timeLimitMinutes = @timeLimitMinutes,
+        passingScorePercent = @passingScorePercent, 
+        shuffleChoices = @shuffleChoices,
+        topicId = CASE WHEN @topicId IS NOT NULL THEN @topicId ELSE topicId END,
+        subjectId = CASE WHEN @subjectId IS NOT NULL THEN @subjectId ELSE subjectId END,
+        updatedAt = @updatedAt
     WHERE id = @id
 `);
 const stmtDeleteQuiz = db.prepare('DELETE FROM quizzes WHERE id = ?');
@@ -1176,27 +1183,42 @@ module.exports = {
         let targetTopic = stmtGetTopicById.get(quizData.topicId);
         let resolvedSubjectId = quizData.subjectId;
 
+        // Ensure subject exists or fallback to first subject
+        const subjectRow = resolvedSubjectId ? stmtGetSubjectById.get(resolvedSubjectId) : null;
+        if (!subjectRow) {
+            const firstSubject = stmtGetAllSubjects.all()[0];
+            if (firstSubject) {
+                resolvedSubjectId = firstSubject.id;
+            }
+        }
+
         if (targetTopic) {
-            resolvedSubjectId = targetTopic.subjectId;
+            resolvedSubjectId = targetTopic.subjectId || resolvedSubjectId;
         } else {
-            let candidateSubject = (resolvedSubjectId ? stmtGetSubjectById.get(resolvedSubjectId) : null) || stmtGetAllSubjects.all()[0];
-            if (candidateSubject) {
-                resolvedSubjectId = candidateSubject.id;
-                stmtInsertTopic.run({
-                    id: quizData.topicId,
-                    subjectId: resolvedSubjectId,
-                    title: quizData.title ? quizData.title.replace(/\s*Quiz.*$/i, '').trim() || 'Curriculum Lesson' : 'Curriculum Lesson',
-                    description: quizData.description || null,
-                    orderIndex: 99,
-                    presentationKey: null,
-                    outline: null,
-                    slidesContent: null,
-                    customFile: null,
-                    isPublished: 1,
-                    summary: null,
-                    content: null,
-                    createdAt: now
-                });
+            const nextOrder = stmtGetMaxTopicOrder.get(resolvedSubjectId).m + 1;
+            stmtInsertTopic.run({
+                id: quizData.topicId,
+                subjectId: resolvedSubjectId,
+                title: quizData.title ? quizData.title.replace(/\s*Quiz.*$/i, '').trim() || 'Curriculum Lesson' : 'Curriculum Lesson',
+                description: quizData.description || null,
+                orderIndex: nextOrder,
+                presentationKey: null,
+                outline: null,
+                slidesContent: null,
+                customFile: null,
+                isPublished: 1,
+                summary: null,
+                content: null,
+                createdAt: now
+            });
+        }
+
+        // Verify createdBy user exists if provided to prevent FK failures
+        let validCreatedBy = null;
+        if (quizData.createdBy) {
+            const userRow = stmtGetUserById.get(quizData.createdBy);
+            if (userRow) {
+                validCreatedBy = quizData.createdBy;
             }
         }
 
@@ -1210,7 +1232,7 @@ module.exports = {
                 timeLimitMinutes: quizData.timeLimitMinutes || 10,
                 passingScorePercent: quizData.passingScorePercent || 75.0,
                 shuffleChoices: quizData.shuffleChoices !== undefined ? (quizData.shuffleChoices ? 1 : 0) : 1,
-                createdBy: quizData.createdBy || null,
+                createdBy: validCreatedBy,
                 createdAt: now,
                 updatedAt: now
             });
@@ -1239,6 +1261,12 @@ module.exports = {
         }
         const now = new Date().toISOString();
 
+        // If quiz record not found in database, seamlessly create it
+        const existing = stmtGetQuizById.get(quizData.id);
+        if (!existing) {
+            return module.exports.createQuiz(quizData, questions);
+        }
+
         db.transaction(() => {
             stmtUpdateQuiz.run({
                 id: quizData.id,
@@ -1247,6 +1275,8 @@ module.exports = {
                 timeLimitMinutes: quizData.timeLimitMinutes || 10,
                 passingScorePercent: quizData.passingScorePercent || 75.0,
                 shuffleChoices: quizData.shuffleChoices !== undefined ? (quizData.shuffleChoices ? 1 : 0) : 1,
+                topicId: quizData.topicId || null,
+                subjectId: quizData.subjectId || null,
                 updatedAt: now
             });
 

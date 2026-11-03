@@ -3405,18 +3405,20 @@
         document.getElementById('quizPassingScoreInput').value = '75';
         document.getElementById('quizTimeLimitInput').value = '10';
 
-        // Initialize with 10 default template questions (Max: 20)
-        builderQuestions = Array.from({ length: 10 }).map((_, i) => ({
-            questionText: `Question ${i + 1}: `,
-            options: [
-                { id: 'opt_1', text: '' },
-                { id: 'opt_2', text: '' },
-                { id: 'opt_3', text: '' },
-                { id: 'opt_4', text: '' }
-            ],
-            correctAnswer: 'opt_1',
-            explanation: ''
-        }));
+        // Initialize with 1 clean question with valid initial choices (Max: 20)
+        builderQuestions = [
+            {
+                questionText: `Question 1: What is the primary purpose and architectural concept of ${topic ? topic.title : 'this curriculum lesson'}?`,
+                options: [
+                    { id: 'opt_1', text: `Primary core framework and architecture of ${topic ? topic.title : 'the lesson'}` },
+                    { id: 'opt_2', text: 'Secondary configuration setting' },
+                    { id: 'opt_3', text: 'Auxiliary client-side layout rule' },
+                    { id: 'opt_4', text: 'Deprecated legacy library component' }
+                ],
+                correctAnswer: 'opt_1',
+                explanation: `Option A encapsulates the fundamental architecture of ${topic ? topic.title : 'the topic'}.`
+            }
+        ];
 
         renderBuilderQuestions();
         openModal('quizModal');
@@ -3511,7 +3513,7 @@
                                 Question #${qIndex + 1}
                             </span>
                             <span style="font-size: 0.74rem; color: #64748b;">
-                                Correct Key: <strong style="color: #059669;">Option ${letters[Math.max(0, q.options.findIndex(o => o.id === q.correctAnswer))] || 'A'}</strong>
+                                Correct Key: <strong class="builder-correct-key-label" style="color: #059669;">Option ${letters[Math.max(0, q.options.findIndex(o => o.id === q.correctAnswer))] || 'A'}</strong>
                             </span>
                         </div>
 
@@ -3554,12 +3556,12 @@
                         ${q.options.map((opt, optIndex) => {
                             const isCorrect = q.correctAnswer === opt.id;
                             return `
-                                <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.55rem; border-radius: 10px; background: ${isCorrect ? '#ecfdf5' : '#f8fafc'}; border: 1px solid ${isCorrect ? '#6ee7b7' : '#e2e8f0'};">
+                                <div class="builder-opt-row" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.55rem; border-radius: 10px; background: ${isCorrect ? '#ecfdf5' : '#f8fafc'}; border: 1px solid ${isCorrect ? '#6ee7b7' : '#e2e8f0'};">
                                     <label style="display: flex; align-items: center; gap: 0.35rem; font-weight: 800; font-size: 0.8125rem; cursor: pointer; color: ${isCorrect ? '#047857' : '#334155'}; min-width: 44px;">
                                         <input type="radio" name="correctOpt-${qIndex}" value="${opt.id}" ${isCorrect ? 'checked' : ''} onchange="window.updateBuilderCorrect(${qIndex}, '${opt.id}')">
                                         <span>${letters[optIndex] || (optIndex + 1)}:</span>
                                     </label>
-                                    <input type="text" class="form-control" style="flex: 1; background: #fff;" placeholder="Choice ${letters[optIndex] || (optIndex + 1)} text..." value="${escapeHtml(opt.text)}" oninput="window.updateBuilderOptText(${qIndex}, ${optIndex}, this.value)" required>
+                                    <input type="text" class="form-control builder-opt-input" data-opt-index="${optIndex}" style="flex: 1; background: #fff;" placeholder="Choice ${letters[optIndex] || (optIndex + 1)} text..." value="${escapeHtml(opt.text)}" oninput="window.updateBuilderOptText(${qIndex}, ${optIndex}, this.value)" required>
                                     ${q.options.length > 2 ? `
                                         <button type="button" class="btn btn-secondary btn-sm" onclick="window.removeBuilderOption(${qIndex}, ${optIndex})" title="Remove choice" style="padding: 0.2rem 0.45rem; color: #dc2626;">×</button>
                                     ` : ''}
@@ -3776,7 +3778,25 @@
     window.updateBuilderCorrect = function (qIndex, optId) {
         if (builderQuestions[qIndex]) {
             builderQuestions[qIndex].correctAnswer = optId;
-            renderBuilderQuestions();
+            const card = document.getElementById(`builderQCard-${qIndex}`);
+            if (card) {
+                const rows = card.querySelectorAll('.builder-opt-row');
+                rows.forEach(row => {
+                    const radio = row.querySelector(`input[name="correctOpt-${qIndex}"]`);
+                    const isChecked = radio && radio.value === optId;
+                    if (radio) radio.checked = isChecked;
+                    row.style.background = isChecked ? '#ecfdf5' : '#f8fafc';
+                    row.style.borderColor = isChecked ? '#6ee7b7' : '#e2e8f0';
+                    const lbl = row.querySelector('label');
+                    if (lbl) lbl.style.color = isChecked ? '#047857' : '#334155';
+                });
+                const keyBadge = card.querySelector('.builder-correct-key-label');
+                if (keyBadge) {
+                    const letters = ['A', 'B', 'C', 'D', 'E', 'F'];
+                    const optIdx = builderQuestions[qIndex].options.findIndex(o => o.id === optId);
+                    keyBadge.textContent = `Option ${letters[Math.max(0, optIdx)] || 'A'}`;
+                }
+            }
         }
     };
 
@@ -4063,6 +4083,9 @@ Explanation: Headless CMS delivers content via REST or GraphQL APIs to any front
         const passingScorePercent = Number(document.getElementById('quizPassingScoreInput').value) || 75;
         const timeLimitMinutes = Number(document.getElementById('quizTimeLimitInput').value) || 10;
 
+        const saveBtn = document.querySelector('#quizModal .modal-footer .btn-primary');
+        const originalBtnHtml = saveBtn ? saveBtn.innerHTML : '';
+
         if (!topicId) {
             showToast('Please select a curriculum topic for this quiz', 'warning');
             return;
@@ -4073,49 +4096,104 @@ Explanation: Headless CMS delivers content via REST or GraphQL APIs to any front
             return;
         }
 
-        if (builderQuestions.length < 1 || builderQuestions.length > 20) {
-            showToast(`Quiz can have between 1 and 20 questions. Currently: ${builderQuestions.length}`, 'error');
-            return;
-        }
+        // 1. Synchronize option input values directly from DOM
+        builderQuestions.forEach((q, qIndex) => {
+            const cardEl = document.getElementById(`builderQCard-${qIndex}`);
+            if (cardEl) {
+                const optInputs = cardEl.querySelectorAll('input.builder-opt-input, input[type="text"]');
+                optInputs.forEach((inputEl, optIdx) => {
+                    if (q.options[optIdx]) {
+                        q.options[optIdx].text = inputEl.value.trim();
+                    }
+                });
+            }
+        });
 
-        // Synchronize rich content from active TipTap editors
+        // 2. Synchronize rich content from active TipTap editors
         if (Array.isArray(builderTipTapEditors)) {
             builderQuestions.forEach((q, qIndex) => {
                 const promptEl = document.getElementById(`qPromptEditor-${qIndex}`);
                 if (promptEl) {
-                    const promptEd = builderTipTapEditors.find(ed => ed && ed.options && ed.options.element === promptEl);
+                    const promptEd = builderTipTapEditors.find(ed => ed && (
+                        (ed.options && ed.options.element === promptEl) ||
+                        (ed.view && ed.view.dom && promptEl.contains(ed.view.dom))
+                    ));
                     if (promptEd && typeof promptEd.getHTML === 'function') {
-                        q.questionText = promptEd.getHTML();
+                        const html = promptEd.getHTML();
+                        if (html && html !== '<p></p>' && html !== '<p><br></p>') {
+                            q.questionText = html;
+                        }
                     }
                 }
                 const explainEl = document.getElementById(`qExplainEditor-${qIndex}`);
                 if (explainEl) {
-                    const explainEd = builderTipTapEditors.find(ed => ed && ed.options && ed.options.element === explainEl);
+                    const explainEd = builderTipTapEditors.find(ed => ed && (
+                        (ed.options && ed.options.element === explainEl) ||
+                        (ed.view && ed.view.dom && explainEl.contains(ed.view.dom))
+                    ));
                     if (explainEd && typeof explainEd.getHTML === 'function') {
-                        q.explanation = explainEd.getHTML();
+                        const html = explainEd.getHTML();
+                        if (html && html !== '<p></p>' && html !== '<p><br></p>') {
+                            q.explanation = html;
+                        }
                     }
                 }
             });
         }
 
+        // 3. Auto-prune blank questions at the end
+        while (builderQuestions.length > 1) {
+            const last = builderQuestions[builderQuestions.length - 1];
+            const cleanStem = (last.questionText || '').replace(/<[^>]*>/g, '').trim();
+            const hasOptionText = Array.isArray(last.options) && last.options.some(o => o.text && o.text.trim().length > 0);
+            const isDefaultStem = /^Question\s+\d+\s*:\s*$/i.test(cleanStem);
+            if ((!cleanStem || isDefaultStem) && !hasOptionText) {
+                builderQuestions.pop();
+            } else {
+                break;
+            }
+        }
+
+        if (builderQuestions.length < 1 || builderQuestions.length > 20) {
+            showToast(`Quiz can have between 1 and 20 questions. Currently: ${builderQuestions.length}`, 'error');
+            return;
+        }
+
+        const letters = ['A', 'B', 'C', 'D', 'E', 'F'];
         for (let i = 0; i < builderQuestions.length; i++) {
             const q = builderQuestions[i];
             const cleanStem = (q.questionText || '').replace(/<[^>]*>/g, '').trim();
-            if (!cleanStem && (!q.questionText || !q.questionText.trim())) {
+            const hasMedia = /<img|<svg|<video|<audio/i.test(q.questionText || '');
+            if (!cleanStem && !hasMedia && (!q.questionText || !q.questionText.trim())) {
                 showToast(`Please enter question text for Question #${i + 1}`, 'warning');
                 window.scrollToBuilderQuestion(i);
                 return;
             }
+            if (!Array.isArray(q.options) || q.options.length < 2) {
+                showToast(`Question #${i + 1} must have at least 2 multiple-choice options`, 'warning');
+                window.scrollToBuilderQuestion(i);
+                return;
+            }
             for (let j = 0; j < q.options.length; j++) {
-                if (!q.options[j].text.trim()) {
-                    showToast(`Please enter text for Question #${i + 1}, Option ${j + 1}`, 'warning');
+                if (!q.options[j].text || !q.options[j].text.trim()) {
+                    showToast(`Please enter text for Question #${i + 1}, Choice ${letters[j] || (j + 1)}`, 'warning');
                     window.scrollToBuilderQuestion(i);
                     return;
                 }
             }
-            if (!q.correctAnswer) {
+            if (!q.correctAnswer || !q.options.some(o => o.id === q.correctAnswer)) {
                 q.correctAnswer = q.options[0].id;
             }
+        }
+
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = `
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation: spin 1s linear infinite;">
+                    <circle cx="12" cy="12" r="10" stroke-opacity="0.25"/>
+                    <path d="M12 2a10 10 0 0 1 10 10" stroke-opacity="1"/>
+                </svg>
+                <span>Saving Quiz...</span>`;
         }
 
         const user = getCurrentUser();
@@ -4145,20 +4223,37 @@ Explanation: Headless CMS delivers content via REST or GraphQL APIs to any front
                 body: JSON.stringify(payload)
             });
 
+            const data = await res.json();
             if (!res.ok) {
-                const data = await res.json();
                 throw new Error(data.error || 'Failed to save quiz');
             }
 
-            showToast(editingQuizId ? 'Quiz updated successfully!' : 'Quiz created successfully!', 'success');
+            showToast(editingQuizId ? '✓ Quiz assessment updated successfully!' : '✓ Quiz assessment created successfully!', 'success');
             closeModal('quizModal');
-            await loadQuizzesForSubject(currentSubjectId || subjectId);
+
+            // Refresh Quizzes and Subject views
+            const targetSubjectId = currentSubjectId || subjectId;
+            await loadQuizzesForSubject(targetSubjectId);
             if (typeof window.refreshCurrentSubjectAfterSave === 'function') {
-                window.refreshCurrentSubjectAfterSave();
+                await window.refreshCurrentSubjectAfterSave();
+            }
+            if (typeof window.fetchSubjectDetails === 'function' && targetSubjectId) {
+                await window.fetchSubjectDetails(targetSubjectId);
+            }
+            if (typeof window.renderTOC === 'function') {
+                window.renderTOC();
+            }
+            if (typeof window.loadDashboardData === 'function') {
+                window.loadDashboardData();
             }
         } catch (err) {
             console.error('Save quiz error:', err);
             showToast(err.message, 'error');
+        } finally {
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = originalBtnHtml;
+            }
         }
     };
 
