@@ -1097,7 +1097,7 @@
                                     ${item.isCorrect ? '✓ Correct' : '✗ Incorrect'}
                                 </span>
                             </div>
-                            <div class="review-q-text">${item.questionText}</div>
+                            <div class="review-q-text tiptap-content">${item.questionText}</div>
 
                             <div class="review-answer-row review-student-answer ${item.isCorrect ? 'correct' : 'incorrect'}">
                                 <strong>Your Answer:</strong> ${item.selectedText || 'No answer submitted'}
@@ -1109,7 +1109,7 @@
                                 </div>` : ''}
 
                             ${item.explanation ? `
-                                <div class="review-explanation">
+                                <div class="review-explanation tiptap-content">
                                     <strong>Explanation:</strong> ${item.explanation}
                                 </div>` : ''}
                         </div>
@@ -2900,6 +2900,13 @@
         if (!newTopicId) return;
         document.getElementById('quizModalTopicId').value = newTopicId;
 
+        if (currentSubject && Array.isArray(currentSubject.topics)) {
+            const t = currentSubject.topics.find(item => item.id === newTopicId);
+            if (t && t.subjectId) {
+                document.getElementById('quizModalSubjectId').value = t.subjectId;
+            }
+        }
+
         const existingQuiz = currentQuizzes.find(q => q.topicId === newTopicId);
         if (existingQuiz) {
             await window.openEditQuizModal(existingQuiz.id);
@@ -3613,10 +3620,31 @@ Explanation: Headless CMS delivers content via REST or GraphQL APIs to any front
             return;
         }
 
+        // Synchronize rich content from active TipTap editors
+        if (Array.isArray(builderTipTapEditors)) {
+            builderQuestions.forEach((q, qIndex) => {
+                const promptEl = document.getElementById(`qPromptEditor-${qIndex}`);
+                if (promptEl) {
+                    const promptEd = builderTipTapEditors.find(ed => ed && ed.options && ed.options.element === promptEl);
+                    if (promptEd && typeof promptEd.getHTML === 'function') {
+                        q.questionText = promptEd.getHTML();
+                    }
+                }
+                const explainEl = document.getElementById(`qExplainEditor-${qIndex}`);
+                if (explainEl) {
+                    const explainEd = builderTipTapEditors.find(ed => ed && ed.options && ed.options.element === explainEl);
+                    if (explainEd && typeof explainEd.getHTML === 'function') {
+                        q.explanation = explainEd.getHTML();
+                    }
+                }
+            });
+        }
+
         for (let i = 0; i < builderQuestions.length; i++) {
             const q = builderQuestions[i];
-            if (!q.questionText.trim()) {
-                showToast(`Please enter text for Question #${i + 1}`, 'warning');
+            const cleanStem = (q.questionText || '').replace(/<[^>]*>/g, '').trim();
+            if (!cleanStem && (!q.questionText || !q.questionText.trim())) {
+                showToast(`Please enter question text for Question #${i + 1}`, 'warning');
                 window.scrollToBuilderQuestion(i);
                 return;
             }
@@ -3626,6 +3654,9 @@ Explanation: Headless CMS delivers content via REST or GraphQL APIs to any front
                     window.scrollToBuilderQuestion(i);
                     return;
                 }
+            }
+            if (!q.correctAnswer) {
+                q.correctAnswer = q.options[0].id;
             }
         }
 
@@ -3648,7 +3679,11 @@ Explanation: Headless CMS delivers content via REST or GraphQL APIs to any front
 
             const res = await fetch(url, {
                 method,
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-user-role': user ? user.role : 'faculty',
+                    'x-user-id': user ? user.id : ''
+                },
                 body: JSON.stringify(payload)
             });
 

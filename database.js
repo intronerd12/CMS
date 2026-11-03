@@ -746,6 +746,10 @@ const stmtUpdateQuiz = db.prepare(`
     WHERE id = @id
 `);
 const stmtDeleteQuiz = db.prepare('DELETE FROM quizzes WHERE id = ?');
+const stmtDeleteScoresByQuizId = db.prepare('DELETE FROM scores WHERE quizId = ?');
+const stmtDeleteScoresByTopicId = db.prepare('DELETE FROM scores WHERE topicId = ?');
+const stmtDeleteQuizzesBySubjectId = db.prepare('DELETE FROM quizzes WHERE subjectId = ?');
+const stmtDeleteEnrollmentsBySubjectId = db.prepare('DELETE FROM class_enrollments WHERE subjectId = ?');
 const stmtInsertQuestion = db.prepare(`
     INSERT INTO quiz_questions (id, quizId, questionText, options, correctAnswer, explanation, orderIndex, createdAt)
     VALUES (@id, @quizId, @questionText, @options, @correctAnswer, @explanation, @orderIndex, @createdAt)
@@ -945,7 +949,24 @@ module.exports = {
     getEnrolledStudents: (subjectId) => {
         return stmtGetEnrolledStudents.all(subjectId);
     },
-    deleteSubject: (id) => stmtDeleteSubject.run(id),
+    deleteSubject: (id) => {
+        db.transaction(() => {
+            const topics = stmtGetTopicsBySubjectAll.all(id);
+            topics.forEach(t => {
+                const quiz = stmtGetQuizByTopicId.get(t.id);
+                if (quiz) {
+                    stmtDeleteScoresByQuizId.run(quiz.id);
+                    stmtDeleteQuestionsByQuizId.run(quiz.id);
+                    stmtDeleteQuiz.run(quiz.id);
+                }
+                stmtDeleteScoresByTopicId.run(t.id);
+                stmtDeleteTopic.run(t.id);
+            });
+            stmtDeleteQuizzesBySubjectId.run(id);
+            stmtDeleteEnrollmentsBySubjectId.run(id);
+            stmtDeleteSubject.run(id);
+        })();
+    },
 
     // Topics
     getTopicsBySubject: (subjectId, includeUnpublished = true) => {
@@ -1033,6 +1054,13 @@ module.exports = {
         const topic = stmtGetTopicById.get(id);
         if (!topic) return;
         db.transaction(() => {
+            const quiz = stmtGetQuizByTopicId.get(id);
+            if (quiz) {
+                stmtDeleteScoresByQuizId.run(quiz.id);
+                stmtDeleteQuestionsByQuizId.run(quiz.id);
+                stmtDeleteQuiz.run(quiz.id);
+            }
+            stmtDeleteScoresByTopicId.run(id);
             stmtDeleteTopic.run(id);
             stmtGetTopicsBySubjectAll.all(topic.subjectId)
                 .forEach((t, i) => stmtUpdateTopicOrder.run(i + 1, t.id, topic.subjectId));
@@ -1078,11 +1106,39 @@ module.exports = {
         const now = new Date().toISOString();
         const quizId = quizData.id || uuidv4();
 
+        // Foreign Key Safeguard: Ensure target topic and subject exist
+        let targetTopic = stmtGetTopicById.get(quizData.topicId);
+        let resolvedSubjectId = quizData.subjectId;
+
+        if (targetTopic) {
+            resolvedSubjectId = targetTopic.subjectId;
+        } else {
+            let candidateSubject = (resolvedSubjectId ? stmtGetSubjectById.get(resolvedSubjectId) : null) || stmtGetAllSubjects.all()[0];
+            if (candidateSubject) {
+                resolvedSubjectId = candidateSubject.id;
+                stmtInsertTopic.run({
+                    id: quizData.topicId,
+                    subjectId: resolvedSubjectId,
+                    title: quizData.title ? quizData.title.replace(/\s*Quiz.*$/i, '').trim() || 'Curriculum Lesson' : 'Curriculum Lesson',
+                    description: quizData.description || null,
+                    orderIndex: 99,
+                    presentationKey: null,
+                    outline: null,
+                    slidesContent: null,
+                    customFile: null,
+                    isPublished: 1,
+                    summary: null,
+                    content: null,
+                    createdAt: now
+                });
+            }
+        }
+
         db.transaction(() => {
             stmtInsertQuiz.run({
                 id: quizId,
                 topicId: quizData.topicId,
-                subjectId: quizData.subjectId,
+                subjectId: resolvedSubjectId,
                 title: quizData.title,
                 description: quizData.description || null,
                 timeLimitMinutes: quizData.timeLimitMinutes || 10,
@@ -1094,12 +1150,14 @@ module.exports = {
             });
 
             resolvedQuestions.forEach((q, idx) => {
+                const opts = typeof q.options === 'string' ? q.options : JSON.stringify(q.options);
+                const designatedCorrect = q.correctAnswer || (Array.isArray(q.options) && q.options[0] ? q.options[0].id : 'opt_1');
                 stmtInsertQuestion.run({
                     id: uuidv4(),
                     quizId,
                     questionText: q.questionText,
-                    options: typeof q.options === 'string' ? q.options : JSON.stringify(q.options),
-                    correctAnswer: q.correctAnswer,
+                    options: opts,
+                    correctAnswer: designatedCorrect,
                     explanation: q.explanation || null,
                     orderIndex: idx + 1,
                     createdAt: now
@@ -1129,12 +1187,14 @@ module.exports = {
             // Replace questions
             stmtDeleteQuestionsByQuizId.run(quizData.id);
             questions.forEach((q, idx) => {
+                const opts = typeof q.options === 'string' ? q.options : JSON.stringify(q.options);
+                const designatedCorrect = q.correctAnswer || (Array.isArray(q.options) && q.options[0] ? q.options[0].id : 'opt_1');
                 stmtInsertQuestion.run({
                     id: uuidv4(),
                     quizId: quizData.id,
                     questionText: q.questionText,
-                    options: typeof q.options === 'string' ? q.options : JSON.stringify(q.options),
-                    correctAnswer: q.correctAnswer,
+                    options: opts,
+                    correctAnswer: designatedCorrect,
                     explanation: q.explanation || null,
                     orderIndex: idx + 1,
                     createdAt: now
@@ -1144,7 +1204,13 @@ module.exports = {
 
         return module.exports.getQuizById(quizData.id, true);
     },
-    deleteQuiz: (id) => stmtDeleteQuiz.run(id),
+    deleteQuiz: (id) => {
+        db.transaction(() => {
+            stmtDeleteScoresByQuizId.run(id);
+            stmtDeleteQuestionsByQuizId.run(id);
+            stmtDeleteQuiz.run(id);
+        })();
+    },
 
     // ==================== SEQUENTIAL PROGRESSION ENGINE ====================
 

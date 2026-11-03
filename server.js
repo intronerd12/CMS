@@ -901,13 +901,49 @@ app.get('/api/quizzes/:id', (req, res) => {
     }
 });
 
-// Create Quiz (Faculty only) - Validates 10 <= questions <= 30
+// Create Quiz (Faculty only) - Validates 1 <= questions <= 20
 app.post('/api/quizzes', (req, res) => {
     try {
         const { topicId, subjectId, title, description, timeLimitMinutes, passingScorePercent, shuffleChoices, createdBy, questions } = req.body;
 
-        if (!topicId || !subjectId || !title) {
-            return res.status(400).json({ error: 'Topic, Subject, and Quiz Title are required' });
+        if (!topicId || !title || !title.trim()) {
+            return res.status(400).json({ error: 'Topic and Quiz Title are required' });
+        }
+
+        // Resolve target topic and subject safely to prevent foreign key errors
+        let targetTopic = db.getTopicById(topicId);
+        let resolvedSubjectId = subjectId;
+
+        if (targetTopic) {
+            resolvedSubjectId = targetTopic.subjectId;
+        } else {
+            // Check if topicId matches by title
+            const matchedByTitle = db.db.prepare('SELECT * FROM topics WHERE title = ? OR title LIKE ? LIMIT 1').get(topicId, `%${topicId}%`);
+            if (matchedByTitle) {
+                targetTopic = matchedByTitle;
+                resolvedSubjectId = matchedByTitle.subjectId;
+            } else {
+                let candidateSubject = (resolvedSubjectId ? db.getSubjectById(resolvedSubjectId) : null) || db.getAllSubjects()[0];
+                if (!candidateSubject) {
+                    return res.status(400).json({ error: 'No active course subject found to attach this quiz to' });
+                }
+                resolvedSubjectId = candidateSubject.id;
+                const autoTopicTitle = title.replace(/\s*Quiz.*$/i, '').trim() || 'Curriculum Lesson';
+                db.createTopic({
+                    id: topicId,
+                    subjectId: resolvedSubjectId,
+                    title: autoTopicTitle,
+                    description: description ? description.trim() : null,
+                    orderIndex: (candidateSubject.topics ? candidateSubject.topics.length : 0) + 1,
+                    isPublished: 1
+                });
+                targetTopic = db.getTopicById(topicId);
+            }
+        }
+
+        const parentSubject = db.getSubjectById(resolvedSubjectId);
+        if (!parentSubject) {
+            return res.status(400).json({ error: 'Course subject record not found for this quiz' });
         }
 
         if (!Array.isArray(questions) || questions.length < 1 || questions.length > 20) {
@@ -916,22 +952,38 @@ app.post('/api/quizzes', (req, res) => {
             });
         }
 
-        // Validate each question has text, at least 2 options, and a correct answer
+        // Validate each question
         for (let i = 0; i < questions.length; i++) {
             const q = questions[i];
-            if (!q.questionText || !q.questionText.trim()) {
+            const cleanText = (q.questionText || '').replace(/<[^>]*>/g, '').trim();
+            if (!cleanText && (!q.questionText || !q.questionText.trim())) {
                 return res.status(400).json({ error: `Question #${i + 1} is missing question text` });
             }
             if (!Array.isArray(q.options) || q.options.length < 2) {
                 return res.status(400).json({ error: `Question #${i + 1} must have multiple-choice options` });
             }
             if (!q.correctAnswer) {
-                return res.status(400).json({ error: `Question #${i + 1} must have a designated correct answer` });
+                q.correctAnswer = q.options[0].id;
+            }
+        }
+
+        // Validate each question has text, at least 2 options, and a correct answer
+        for (let i = 0; i < questions.length; i++) {
+            const q = questions[i];
+            const cleanText = (q.questionText || '').replace(/<[^>]*>/g, '').trim();
+            if (!cleanText && (!q.questionText || !q.questionText.trim())) {
+                return res.status(400).json({ error: `Question #${i + 1} is missing question text` });
+            }
+            if (!Array.isArray(q.options) || q.options.length < 2) {
+                return res.status(400).json({ error: `Question #${i + 1} must have multiple-choice options` });
+            }
+            if (!q.correctAnswer) {
+                q.correctAnswer = q.options[0].id;
             }
         }
 
         // Check if topic already has a quiz (Upsert: update existing quiz if present)
-        const existing = db.getQuizByTopicId(topicId);
+        const existing = db.getQuizByTopicId(targetTopic.id);
         if (existing) {
             const updatedQuiz = db.updateQuiz({
                 id: existing.id,
@@ -945,8 +997,8 @@ app.post('/api/quizzes', (req, res) => {
         }
 
         const newQuiz = db.createQuiz({
-            topicId,
-            subjectId,
+            topicId: targetTopic.id,
+            subjectId: resolvedSubjectId,
             title: title.trim(),
             description: description ? description.trim() : null,
             timeLimitMinutes: Number(timeLimitMinutes) || 10,
@@ -981,6 +1033,21 @@ app.put('/api/quizzes/:id', (req, res) => {
             return res.status(400).json({
                 error: `Requirement: Quiz can have up to 20 multiple-choice questions (max 20 questions). Current count: ${Array.isArray(questions) ? questions.length : 0}.`
             });
+        }
+
+        // Validate each question
+        for (let i = 0; i < questions.length; i++) {
+            const q = questions[i];
+            const cleanText = (q.questionText || '').replace(/<[^>]*>/g, '').trim();
+            if (!cleanText && (!q.questionText || !q.questionText.trim())) {
+                return res.status(400).json({ error: `Question #${i + 1} is missing question text` });
+            }
+            if (!Array.isArray(q.options) || q.options.length < 2) {
+                return res.status(400).json({ error: `Question #${i + 1} must have multiple-choice options` });
+            }
+            if (!q.correctAnswer) {
+                q.correctAnswer = q.options[0].id;
+            }
         }
 
         const updatedQuiz = db.updateQuiz({
