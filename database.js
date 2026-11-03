@@ -826,7 +826,13 @@ module.exports = {
     getUserById: (id) => stmtGetUserById.get(id),
     getAllUsers: () => stmtGetAllUsers.all(),
     createUser: (userData) => {
-        const fullUser = { profilePic: '', isActive: 1, ...userData };
+        const fullUser = {
+            id: userData.id || uuidv4(),
+            profilePic: '',
+            isActive: 1,
+            createdAt: new Date().toISOString(),
+            ...userData
+        };
         const res = stmtInsertUser.run(fullUser);
         try {
             const usersJsonPath = path.join(__dirname, 'data', 'users.json');

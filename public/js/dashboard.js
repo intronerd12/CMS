@@ -277,6 +277,11 @@ async function loadDashboardData() {
             ? `&facultyId=${encodeURIComponent(userId)}`
             : `&studentId=${encodeURIComponent(userId)}`;
 
+        const statSubjectsEl = document.getElementById('statSubjects');
+        const statTopicsEl = document.getElementById('statTopics');
+        const statQuizzesEl = document.getElementById('statQuizzes');
+        const statAvgScoreEl = document.getElementById('statAvgScore');
+
         // Load subjects visible to this user (for students: only joined classes!)
         const subjectsRes = await fetch(`${API_BASE}/api/subjects?role=${encodeURIComponent(role)}${userParam}`, {
             headers: {
@@ -286,48 +291,73 @@ async function loadDashboardData() {
         });
         const subjectsData = await subjectsRes.json();
         const subjectsList = subjectsData.subjects || [];
-        document.getElementById('statSubjects').textContent = subjectsList.length;
-
-        // Count topics across visible subjects
-        let totalTopics = 0;
-        subjectsList.forEach(s => {
-            totalTopics += (s.topics ? s.topics.length : 0);
-        });
-        document.getElementById('statTopics').textContent = totalTopics;
 
         // Render Class Join Code & Enrollment Banner on Dashboard
         renderDashboardEnrollmentBanner(subjectsList, role);
 
-        // Fetch stats & scores
-        const statsRes = await fetch(`${API_BASE}/api/stats?role=${encodeURIComponent(role)}${userParam}`, {
-            headers: {
-                'x-user-role': role,
-                'x-user-id': currentUser ? currentUser.id : ''
+        if (role === 'student') {
+            // User requirement: If newly registered or not enrolled in any classes, all dashboard datas show 0
+            if (subjectsList.length === 0) {
+                if (statSubjectsEl) statSubjectsEl.textContent = '0';
+                if (statTopicsEl) statTopicsEl.textContent = '0';
+                if (statQuizzesEl) statQuizzesEl.textContent = '0';
+                if (statAvgScoreEl) statAvgScoreEl.textContent = '0%';
+                return;
             }
-        });
-        if (statsRes.ok) {
-            const stats = await statsRes.json();
-            const statQuizzesEl = document.getElementById('statQuizzes');
-            const statAvgScoreEl = document.getElementById('statAvgScore');
-            if (role === 'student' && currentUser && currentUser.id) {
-                const scRes = await fetch(`${API_BASE}/api/scores/student/${currentUser.id}`);
-                if (scRes.ok) {
-                    const scData = await scRes.json();
-                    const scores = scData.scores || [];
-                    if (statQuizzesEl) {
-                        statQuizzesEl.textContent = scores.filter(s => s.passed === 1).length;
-                    }
-                    if (statAvgScoreEl) {
-                        if (scores.length > 0) {
-                            const avg = Math.round(scores.reduce((acc, s) => acc + Number(s.percentage || 0), 0) / scores.length);
-                            statAvgScoreEl.textContent = `${avg}%`;
-                        } else {
-                            statAvgScoreEl.textContent = '—';
-                        }
+
+            // Student is enrolled in at least one class: compute proper enrolled metrics
+            if (statSubjectsEl) statSubjectsEl.textContent = subjectsList.length;
+
+            let totalTopics = 0;
+            subjectsList.forEach(s => {
+                totalTopics += (s.topics ? s.topics.length : 0);
+            });
+            if (statTopicsEl) statTopicsEl.textContent = totalTopics;
+
+            const enrolledSubjectIds = new Set(subjectsList.map(s => s.id));
+            const scRes = await fetch(`${API_BASE}/api/scores/student/${currentUser.id}`);
+            if (scRes.ok) {
+                const scData = await scRes.json();
+                const allScores = scData.scores || [];
+                const enrolledScores = allScores.filter(s => enrolledSubjectIds.has(s.subjectId));
+
+                if (statQuizzesEl) {
+                    statQuizzesEl.textContent = enrolledScores.filter(s => s.passed === 1).length;
+                }
+                if (statAvgScoreEl) {
+                    if (enrolledScores.length > 0) {
+                        const avg = Math.round(enrolledScores.reduce((acc, s) => acc + Number(s.percentage || 0), 0) / enrolledScores.length);
+                        statAvgScoreEl.textContent = `${avg}%`;
+                    } else {
+                        statAvgScoreEl.textContent = '0%';
                     }
                 }
-            } else {
+            }
+        } else {
+            // Faculty view
+            if (statSubjectsEl) statSubjectsEl.textContent = subjectsList.length;
+            let totalTopics = 0;
+            subjectsList.forEach(s => {
+                totalTopics += (s.topics ? s.topics.length : 0);
+            });
+            if (statTopicsEl) statTopicsEl.textContent = totalTopics;
+
+            const statsRes = await fetch(`${API_BASE}/api/stats?role=faculty${userParam}`, {
+                headers: {
+                    'x-user-role': 'faculty',
+                    'x-user-id': currentUser ? currentUser.id : ''
+                }
+            });
+            if (statsRes.ok) {
+                const stats = await statsRes.json();
                 if (statQuizzesEl) statQuizzesEl.textContent = stats.totalQuizzes || 0;
+                if (statAvgScoreEl) {
+                    statAvgScoreEl.textContent = `${stats.totalStudents || 0}`;
+                    const labelEl = statAvgScoreEl.nextElementSibling;
+                    if (labelEl && labelEl.classList.contains('stat-label')) {
+                        labelEl.textContent = 'Enrolled Students';
+                    }
+                }
             }
         }
     } catch (error) {

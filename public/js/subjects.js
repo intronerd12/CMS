@@ -2238,8 +2238,9 @@
                                             <div style="font-size: 0.76rem; color: #64748b;">@${escapeHtml(st.username)} • ${escapeHtml(st.email)}</div>
                                         </div>
                                     </div>
-                                    <button type="button" class="btn btn-secondary btn-sm" style="color: #dc2626; border-color: #fecaca; background: #fef2f2;" onclick="window.removeStudentFromRoster('${subjectId}', '${st.id}', '${escapeHtml(st.firstName + ' ' + st.lastName)}')">
-                                        Remove
+                                    <button type="button" class="btn btn-secondary btn-sm" style="color: #dc2626; border-color: #fecaca; background: #fef2f2; font-weight: 600; padding: 0.35rem 0.75rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer;" onclick="window.promptRemoveStudentFromRoster('${subjectId}', '${st.id}', '${escapeHtml(st.firstName + ' ' + st.lastName)}', '${escapeHtml(st.username || '')}', '${escapeHtml(st.email || '')}', '${escapeHtml((st.firstName || 'S').charAt(0).toUpperCase())}')">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                        <span>Remove</span>
                                     </button>
                                 </div>
                             `).join('')}
@@ -2283,13 +2284,47 @@
         }
     };
 
-    window.removeStudentFromRoster = async function (subjectId, studentId, studentName) {
-        if (!confirm(`Remove ${studentName} from this class?`)) return;
+    let pendingRemoveSubjectId = null;
+    let pendingRemoveStudentId = null;
+    let pendingRemoveStudentName = '';
+
+    window.promptRemoveStudentFromRoster = function (subjectId, studentId, studentName, studentUsername, studentEmail, avatarLetter) {
+        pendingRemoveSubjectId = subjectId;
+        pendingRemoveStudentId = studentId;
+        pendingRemoveStudentName = studentName;
+
+        const nameEl = document.getElementById('confirmRemoveStudentName');
+        const metaEl = document.getElementById('confirmRemoveStudentMeta');
+        const avatarEl = document.getElementById('confirmRemoveStudentAvatar');
+
+        if (nameEl) nameEl.textContent = studentName || 'Student';
+        if (metaEl) metaEl.textContent = `@${studentUsername || 'student'} • ${studentEmail || ''}`;
+        if (avatarEl) avatarEl.textContent = avatarLetter || (studentName ? studentName.charAt(0).toUpperCase() : 'S');
+
+        openModal('confirmRemoveStudentModal');
+    };
+
+    window.executeRemoveStudentFromRoster = async function () {
+        if (!pendingRemoveSubjectId || !pendingRemoveStudentId) return;
+
+        const btn = document.getElementById('confirmRemoveStudentSubmitBtn');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span>Removing...</span>';
+        }
+
         try {
+            const subjectId = pendingRemoveSubjectId;
+            const studentId = pendingRemoveStudentId;
+            const studentName = pendingRemoveStudentName;
+
             const res = await fetch(`/api/subjects/${subjectId}/students/${studentId}`, { method: 'DELETE' });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Failed to remove student');
-            showToast(data.message || 'Student removed', 'info');
+
+            closeModal('confirmRemoveStudentModal');
+            showToast(`✓ Student ${studentName} removed from class roster`, 'info');
+
             await loadActiveClassRoster(subjectId);
             await fetchSubjects();
             if (currentSubjectId === subjectId) {
@@ -2302,7 +2337,16 @@
             }
         } catch (err) {
             showToast(err.message, 'error');
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg><span>Yes, Remove Student</span>`;
+            }
         }
+    };
+
+    window.removeStudentFromRoster = function (subjectId, studentId, studentName) {
+        window.promptRemoveStudentFromRoster(subjectId, studentId, studentName, '', '', '');
     };
 
     window.confirmDeleteTopicPresentation = async function (topicId, topicTitle) {

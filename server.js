@@ -1518,9 +1518,19 @@ app.get('/api/stats', (req, res) => {
         const userId = req.headers['x-user-id'] || req.query.userId || req.query.studentId || req.query.facultyId;
         if (!isStaff && userId) {
             const enrolledSubjects = db.getSubjectsForStudent(userId);
+            if (enrolledSubjects.length === 0) {
+                return res.json({
+                    totalSubjects: 0,
+                    totalTopics: 0,
+                    totalQuizzes: 0,
+                    totalScores: 0,
+                    totalUsers: 1
+                });
+            }
+            const enrolledIds = new Set(enrolledSubjects.map(s => s.id));
             const totalTopics = enrolledSubjects.reduce((sum, s) => sum + (s.topics ? s.topics.length : 0), 0);
             const totalQuizzes = enrolledSubjects.reduce((sum, s) => sum + (s.topics ? s.topics.filter(t => t.hasQuiz).length : 0), 0);
-            const studentScores = db.getScoresByStudent(userId);
+            const studentScores = db.getScoresByStudent(userId).filter(s => enrolledIds.has(s.subjectId));
             return res.json({
                 totalSubjects: enrolledSubjects.length,
                 totalTopics,
