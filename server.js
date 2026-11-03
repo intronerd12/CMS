@@ -63,7 +63,8 @@ app.use(cors({
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'x-user-role', 'x-user-id', 'x-requested-with']
 }));
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use('/uploads/custom', express.static(customUploadsDir));
 app.use(express.static(path.join(__dirname, 'public')));
 

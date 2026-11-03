@@ -484,6 +484,11 @@ function seedAndMigrate() {
                     INSERT OR IGNORE INTO users (id, username, email, password, firstName, lastName, role, profilePic, createdAt, isActive)
                     VALUES (@id, @username, @email, @password, @firstName, @lastName, @role, @profilePic, @createdAt, @isActive)
                 `);
+                const updateUserPic = db.prepare(`
+                    UPDATE users 
+                    SET profilePic = @profilePic 
+                    WHERE (id = @id OR username = @username) AND (@profilePic != '') AND (profilePic IS NULL OR profilePic = '')
+                `);
                 const insertMany = db.transaction((users) => {
                     for (const u of users) {
                         insertUser.run({
@@ -498,9 +503,45 @@ function seedAndMigrate() {
                             createdAt: u.createdAt || new Date().toISOString(),
                             isActive: u.isActive === false ? 0 : 1
                         });
+                        if (u.profilePic && u.profilePic.trim().length > 0) {
+                            updateUserPic.run({
+                                id: u.id || '',
+                                username: u.username || '',
+                                profilePic: u.profilePic.trim()
+                            });
+                        }
                     }
                 });
                 insertMany(jsonUsers);
+
+                // Sync any updated profile pics from SQLite back to users.json so git/disk keeps them
+                const dbUsers = db.prepare('SELECT id, username, email, firstName, lastName, role, profilePic, createdAt, isActive FROM users ORDER BY createdAt DESC').all();
+                let changed = false;
+                for (const dbu of dbUsers) {
+                    const found = jsonUsers.find(u => u.id === dbu.id || (u.username && u.username.toLowerCase() === dbu.username.toLowerCase()));
+                    if (found) {
+                        if (dbu.profilePic && !found.profilePic) {
+                            found.profilePic = dbu.profilePic;
+                            changed = true;
+                        }
+                    } else {
+                        jsonUsers.push({
+                            id: dbu.id,
+                            username: dbu.username,
+                            email: dbu.email,
+                            firstName: dbu.firstName,
+                            lastName: dbu.lastName,
+                            role: dbu.role,
+                            profilePic: dbu.profilePic || '',
+                            createdAt: dbu.createdAt,
+                            isActive: dbu.isActive
+                        });
+                        changed = true;
+                    }
+                }
+                if (changed) {
+                    fs.writeFileSync(usersJsonPath, JSON.stringify(jsonUsers, null, 2), 'utf8');
+                }
             }
         } catch (err) {
             console.error('[SQLite] Migration error for users.json:', err.message);
@@ -943,11 +984,14 @@ module.exports = {
             const usersJsonPath = path.join(__dirname, 'data', 'users.json');
             if (fs.existsSync(usersJsonPath)) {
                 const list = JSON.parse(fs.readFileSync(usersJsonPath, 'utf8'));
-                const idx = list.findIndex(u => u.id === userData.id);
+                const idx = list.findIndex(u => u.id === userData.id || (userData.username && u.username && u.username.toLowerCase() === userData.username.toLowerCase()));
                 if (idx !== -1) {
                     list[idx] = { ...list[idx], ...userData };
-                    fs.writeFileSync(usersJsonPath, JSON.stringify(list, null, 2), 'utf8');
+                } else {
+                    const full = stmtGetUserById.get(userData.id);
+                    if (full) list.push(full);
                 }
+                fs.writeFileSync(usersJsonPath, JSON.stringify(list, null, 2), 'utf8');
             }
         } catch (_) {}
         return res;

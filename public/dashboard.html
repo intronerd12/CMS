@@ -815,17 +815,13 @@
                         </label>
                         <div style="display: flex; gap: 0.75rem; align-items: center; margin-top: 0.65rem; flex-wrap: wrap;">
                             <input type="file" id="topicFileInput" accept=".pptx,.ppt,.pdf" style="display: none;" onchange="window.handleTopicCustomUpload(this.files[0])">
-                            <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('topicFileInput').click()" style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600; padding: 0.45rem 0.85rem;">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('topicFileInput').click()" style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600; padding: 0.5rem 1rem;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                                     <polyline points="17 8 12 3 7 8"/>
                                     <line x1="12" y1="3" x2="12" y2="15"/>
                                 </svg>
-                                <span>Upload Presentation (.pptx)</span>
-                            </button>
-                            <button type="button" class="btn btn-primary btn-sm" id="topicOpenStudioBtn" onclick="window.openSlideStudioFromTopicModal()" style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600; padding: 0.45rem 0.85rem;">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                                <span>Create / Edit with TipTap</span>
+                                <span>Upload Presentation (.pptx, .ppt, .pdf)</span>
                             </button>
                             <span id="topicFileUploadStatus" style="font-size: 0.8125rem; color: var(--color-text-muted);">No custom file chosen</span>
                         </div>
@@ -1057,10 +1053,6 @@
                         <polyline points="14 2 14 8 20 8"/>
                     </svg>
                     <span>Syllabus Notes</span>
-                </button>
-                <button type="button" id="viewerEditStudioBtn" class="viewer-btn faculty-only" style="background: rgba(99, 102, 241, 0.25); border-color: rgba(99, 102, 241, 0.5); color: #fff; font-weight: 700; display: none;" onclick="window.launchStudioFromViewer()">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                    <span>Edit in Studio (TipTap)</span>
                 </button>
                 <button type="button" id="viewerQuizBtn" class="viewer-btn" style="background: rgba(16, 185, 129, 0.25); border-color: rgba(16, 185, 129, 0.5); color: #fff; font-weight: 700; display: none;" onclick="window.launchQuizFromViewer()">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

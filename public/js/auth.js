@@ -77,6 +77,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Store user in session
                 sessionStorage.setItem('currentUser', JSON.stringify(data.user));
+                if (data.user && data.user.profilePic) {
+                    localStorage.setItem('userAvatar_' + (data.user.username || data.user.id), data.user.profilePic);
+                    localStorage.setItem('userAvatar_' + data.user.id, data.user.profilePic);
+                }
 
                 // Remember me
                 if (document.getElementById('rememberMe')?.checked) {
@@ -150,14 +154,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
                     const size = Math.min(img.width, img.height);
-                    const targetSize = Math.min(size, 256);
+                    const targetSize = Math.min(size, 200);
                     canvas.width = targetSize;
                     canvas.height = targetSize;
                     const ctx = canvas.getContext('2d');
                     const sx = (img.width - size) / 2;
                     const sy = (img.height - size) / 2;
                     ctx.drawImage(img, sx, sy, size, size, 0, 0, targetSize, targetSize);
-                    selectedRegisterAvatar = canvas.toDataURL('image/jpeg', 0.88);
+                    selectedRegisterAvatar = canvas.toDataURL('image/jpeg', 0.82);
 
                     const previewEl = document.getElementById('registerAvatarPreview');
                     if (previewEl) {
@@ -278,6 +282,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Store registered username to auto-populate login
                 sessionStorage.setItem('justRegisteredUsername', username);
                 sessionStorage.setItem('justRegisteredFullName', `${firstName} ${lastName}`);
+                if (selectedRegisterAvatar) {
+                    localStorage.setItem('userAvatar_' + username, selectedRegisterAvatar);
+                    if (data.user && data.user.id) {
+                        localStorage.setItem('userAvatar_' + data.user.id, selectedRegisterAvatar);
+                    }
+                }
 
                 // Show success
                 showSuccess(successDiv, `Account created for ${firstName} ${lastName} (@${username})! Redirecting to login...`);

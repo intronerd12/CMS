@@ -14,15 +14,51 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     currentUser = JSON.parse(userStr);
+
+    // Instant offline/cached avatar hydration from localStorage
+    if (currentUser) {
+        const cachedPic = localStorage.getItem('userAvatar_' + (currentUser.username || currentUser.id)) ||
+                          localStorage.getItem('userAvatar_' + currentUser.id);
+        if (cachedPic && !currentUser.profilePic) {
+            currentUser.profilePic = cachedPic;
+            sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
+        }
+    }
+
     initializeDashboard();
 
-    // Asynchronously sync profile to ensure registered name & handle are always up to date
+    // Asynchronously sync profile to ensure registered name, handle, and cloud avatar are always up to date
     if (currentUser && currentUser.id) {
         fetch(`${API_BASE}/api/auth/profile/${currentUser.id}`)
             .then(res => res.ok ? res.json() : null)
             .then(data => {
                 if (data && data.user) {
                     const fresh = data.user;
+                    
+                    // If cloud DB has profilePic, cache it
+                    if (fresh.profilePic && fresh.profilePic.trim().length > 0) {
+                        localStorage.setItem('userAvatar_' + (fresh.username || fresh.id), fresh.profilePic);
+                        localStorage.setItem('userAvatar_' + fresh.id, fresh.profilePic);
+                    } else {
+                        // If cloud DB returned empty avatar, check if client has cached avatar and restore to cloud
+                        const cached = localStorage.getItem('userAvatar_' + (fresh.username || fresh.id)) ||
+                                       localStorage.getItem('userAvatar_' + fresh.id);
+                        if (cached && cached.trim().length > 0) {
+                            fresh.profilePic = cached;
+                            // Silently re-hydrate the cloud database
+                            fetch(`${API_BASE}/api/auth/profile/${fresh.id}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    firstName: fresh.firstName,
+                                    lastName: fresh.lastName,
+                                    email: fresh.email,
+                                    profilePic: cached
+                                })
+                            }).catch(() => {});
+                        }
+                    }
+
                     sessionStorage.setItem('currentUser', JSON.stringify(fresh));
                     currentUser = fresh;
                     const freshName = `${fresh.firstName || ''} ${fresh.lastName || ''}`.trim() || fresh.username || 'User';
@@ -607,14 +643,14 @@ window.openProfileSettingsModal = function () {
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
                     const size = Math.min(img.width, img.height);
-                    const targetSize = Math.min(size, 256);
+                    const targetSize = Math.min(size, 200);
                     canvas.width = targetSize;
                     canvas.height = targetSize;
                     const ctx = canvas.getContext('2d');
                     const sx = (img.width - size) / 2;
                     const sy = (img.height - size) / 2;
                     ctx.drawImage(img, sx, sy, size, size, 0, 0, targetSize, targetSize);
-                    pendingProfileAvatar = canvas.toDataURL('image/jpeg', 0.88);
+                    pendingProfileAvatar = canvas.toDataURL('image/jpeg', 0.82);
                     renderModalAvatarPreview();
                 };
                 img.src = event.target.result;
@@ -787,6 +823,13 @@ window.executeProfileUpdate = async function () {
 
         currentUser = data.user;
         sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
+        if (currentUser.profilePic && currentUser.profilePic.trim().length > 0) {
+            localStorage.setItem('userAvatar_' + (currentUser.username || currentUser.id), currentUser.profilePic);
+            localStorage.setItem('userAvatar_' + currentUser.id, currentUser.profilePic);
+        } else {
+            localStorage.removeItem('userAvatar_' + (currentUser.username || currentUser.id));
+            localStorage.removeItem('userAvatar_' + currentUser.id);
+        }
 
         const fullName = `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || currentUser.username || 'User';
         const nameEl = document.getElementById('userName');

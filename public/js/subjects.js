@@ -1501,7 +1501,7 @@
         // Quiz button in viewer
         const editStudioBtn = document.getElementById('viewerEditStudioBtn');
         if (editStudioBtn) {
-            editStudioBtn.style.display = isTeacherOrAdmin() ? 'inline-flex' : 'none';
+            editStudioBtn.style.display = 'none';
         }
         const quizBtn = document.getElementById('viewerQuizBtn');
         if (quizBtn) {
@@ -2414,22 +2414,12 @@
     let studioTipTapInstance = null;
 
     window.openSlideStudioFromTopicModal = function () {
-        const topicIdInput = document.getElementById('topicIdInput');
-        const topicId = topicIdInput ? topicIdInput.value : null;
-        if (!topicId) {
-            showToast('Please save or create the lesson first before launching Slide Studio', 'info');
-            return;
-        }
-        closeModal('topicModal');
-        window.openSlideCreatorModal(topicId);
+        const fileInput = document.getElementById('topicFileInput');
+        if (fileInput) fileInput.click();
     };
 
     window.launchStudioFromViewer = function () {
-        if (slideViewer && slideViewer.topic) {
-            const topicId = slideViewer.topic.id;
-            window.closeSlideViewer();
-            window.openSlideCreatorModal(topicId);
-        }
+        showToast('To update slides, please upload an updated PowerPoint (.pptx) or PDF presentation.', 'info');
     };
 
     window.openSlideCreatorModal = async function (topicId) {
