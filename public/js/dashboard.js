@@ -531,13 +531,23 @@ let pendingProfileAvatar = null;
 function renderUserAvatar(user) {
     if (!user) return;
     const avatarEl = document.getElementById('userAvatar');
-    if (!avatarEl) return;
+    const topbarAvatarEl = document.getElementById('topbarAvatar');
+    const userInitial = (user.firstName || user.username || 'U').charAt(0).toUpperCase();
 
-    if (user.profilePic && typeof user.profilePic === 'string' && user.profilePic.trim().length > 0) {
-        avatarEl.innerHTML = `<img src="${user.profilePic}" alt="${user.firstName || 'User'}" class="user-avatar-img" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
-    } else {
-        const userInitial = (user.firstName || user.username || 'U').charAt(0).toUpperCase();
-        avatarEl.textContent = userInitial;
+    if (avatarEl) {
+        if (user.profilePic && typeof user.profilePic === 'string' && user.profilePic.trim().length > 0) {
+            avatarEl.innerHTML = `<img src="${user.profilePic}" alt="${user.firstName || 'User'}" class="user-avatar-img" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
+        } else {
+            avatarEl.textContent = userInitial;
+        }
+    }
+
+    if (topbarAvatarEl) {
+        if (user.profilePic && typeof user.profilePic === 'string' && user.profilePic.trim().length > 0) {
+            topbarAvatarEl.innerHTML = `<img src="${user.profilePic}" alt="${user.firstName || 'User'}" class="user-avatar-img" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
+        } else {
+            topbarAvatarEl.textContent = userInitial;
+        }
     }
 }
 window.renderUserAvatar = renderUserAvatar;

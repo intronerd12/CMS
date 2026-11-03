@@ -2230,15 +2230,15 @@
                             ${students.map((st, idx) => `
                                 <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px;">
                                     <div style="display: flex; align-items: center; gap: 0.75rem;">
-                                        <div style="width: 34px; height: 34px; border-radius: 50%; background: #eef2ff; color: #4f46e5; font-weight: 800; font-size: 0.85rem; display: flex; align-items: center; justify-content: center;">
-                                            ${escapeHtml((st.firstName || 'S').charAt(0).toUpperCase())}
+                                        <div style="width: 36px; height: 36px; border-radius: 50%; background: #eef2ff; color: #4f46e5; font-weight: 800; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; border: 1.5px solid #e0e7ff;">
+                                            ${st.profilePic && st.profilePic.trim().length > 0 ? `<img src="${st.profilePic}" alt="${escapeHtml(st.firstName)}" style="width: 100%; height: 100%; object-fit: cover;">` : escapeHtml((st.firstName || 'S').charAt(0).toUpperCase())}
                                         </div>
                                         <div>
                                             <div style="font-weight: 700; color: #0f172a; font-size: 0.9rem;">${idx + 1}. ${escapeHtml(st.lastName)}, ${escapeHtml(st.firstName)}</div>
                                             <div style="font-size: 0.76rem; color: #64748b;">@${escapeHtml(st.username)} • ${escapeHtml(st.email)}</div>
                                         </div>
                                     </div>
-                                    <button type="button" class="btn btn-secondary btn-sm" style="color: #dc2626; border-color: #fecaca; background: #fef2f2; font-weight: 600; padding: 0.35rem 0.75rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer;" onclick="window.promptRemoveStudentFromRoster('${subjectId}', '${st.id}', '${escapeHtml(st.firstName + ' ' + st.lastName)}', '${escapeHtml(st.username || '')}', '${escapeHtml(st.email || '')}', '${escapeHtml((st.firstName || 'S').charAt(0).toUpperCase())}')">
+                                    <button type="button" class="btn btn-secondary btn-sm" style="color: #dc2626; border-color: #fecaca; background: #fef2f2; font-weight: 600; padding: 0.35rem 0.75rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer;" onclick="window.promptRemoveStudentFromRoster('${subjectId}', '${st.id}', '${escapeHtml(st.firstName + ' ' + st.lastName)}', '${escapeHtml(st.username || '')}', '${escapeHtml(st.email || '')}', '${escapeHtml((st.firstName || 'S').charAt(0).toUpperCase())}', '${st.profilePic ? encodeURIComponent(st.profilePic) : ''}')">
                                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                                         <span>Remove</span>
                                     </button>
@@ -2288,7 +2288,7 @@
     let pendingRemoveStudentId = null;
     let pendingRemoveStudentName = '';
 
-    window.promptRemoveStudentFromRoster = function (subjectId, studentId, studentName, studentUsername, studentEmail, avatarLetter) {
+    window.promptRemoveStudentFromRoster = function (subjectId, studentId, studentName, studentUsername, studentEmail, avatarLetter, profilePicUrl) {
         pendingRemoveSubjectId = subjectId;
         pendingRemoveStudentId = studentId;
         pendingRemoveStudentName = studentName;
@@ -2299,7 +2299,17 @@
 
         if (nameEl) nameEl.textContent = studentName || 'Student';
         if (metaEl) metaEl.textContent = `@${studentUsername || 'student'} • ${studentEmail || ''}`;
-        if (avatarEl) avatarEl.textContent = avatarLetter || (studentName ? studentName.charAt(0).toUpperCase() : 'S');
+        if (avatarEl) {
+            let pic = '';
+            if (profilePicUrl) {
+                try { pic = decodeURIComponent(profilePicUrl); } catch (_) { pic = profilePicUrl; }
+            }
+            if (pic && pic.trim().length > 0) {
+                avatarEl.innerHTML = `<img src="${pic}" alt="${escapeHtml(studentName)}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
+            } else {
+                avatarEl.textContent = avatarLetter || (studentName ? studentName.charAt(0).toUpperCase() : 'S');
+            }
+        }
 
         openModal('confirmRemoveStudentModal');
     };

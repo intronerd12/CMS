@@ -701,7 +701,7 @@ const stmtInsertEnrollment = db.prepare(`
 `);
 const stmtDeleteEnrollment = db.prepare('DELETE FROM class_enrollments WHERE subjectId = ? AND studentId = ?');
 const stmtGetEnrolledStudents = db.prepare(`
-    SELECT u.id, u.username, u.email, u.firstName, u.lastName, ce.enrolledAt
+    SELECT u.id, u.username, u.email, u.firstName, u.lastName, u.profilePic, ce.enrolledAt
     FROM class_enrollments ce
     JOIN users u ON ce.studentId = u.id
     WHERE ce.subjectId = ? AND u.role = 'student' AND u.isActive = 1
