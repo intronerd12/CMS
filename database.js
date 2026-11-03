@@ -877,7 +877,12 @@ const stmtGetScoresByStudent = db.prepare(`
     ORDER BY s.completedAt DESC
 `);
 const stmtGetSubjectsForFaculty = db.prepare('SELECT * FROM subjects WHERE createdBy = ? ORDER BY createdAt DESC');
-const stmtSetScoreRetakeAllowed = db.prepare('UPDATE scores SET retakeAllowed = ? WHERE id = ?');
+const stmtSetScoreRetakeAllowed = db.prepare(`
+    UPDATE scores 
+    SET retakeAllowed = ? 
+    WHERE quizId = (SELECT quizId FROM scores WHERE id = ?) 
+      AND studentId = (SELECT studentId FROM scores WHERE id = ?)
+`);
 const stmtGetScoresForStudentOnQuiz = db.prepare('SELECT * FROM scores WHERE quizId = ? AND studentId = ? ORDER BY completedAt DESC');
 
 const stmtGetAllScoresForSubject = db.prepare(`
@@ -1437,7 +1442,7 @@ module.exports = {
                 attemptsCount: topicScores.length,
                 bestScorePercentage: highestScore,
                 lastAttempt: topicScores[0] || null,
-                retakeAllowed: topicScores[0] ? (topicScores[0].retakeAllowed === 1) : false,
+                retakeAllowed: !isPassed && Boolean(topicScores.some(s => s.retakeAllowed === 1)),
                 passedAttempt: passedScore || null,
                 bestAttempt: (topicScores.find(s => s.percentage === highestScore)) || topicScores[0] || null,
                 requiredPassingScore: topic.quiz ? topic.quiz.passingScorePercent : 75.0
@@ -1722,7 +1727,8 @@ module.exports = {
         return row ? row.count : 0;
     },
     setScoreRetakeAllowed: (scoreId, allowed) => {
-        stmtSetScoreRetakeAllowed.run(allowed ? 1 : 0, scoreId);
+        const val = allowed ? 1 : 0;
+        stmtSetScoreRetakeAllowed.run(val, scoreId, scoreId);
         return stmtGetScoreById.get(scoreId);
     },
     getScoresForStudentOnQuiz: (quizId, studentId) => {

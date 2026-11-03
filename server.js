@@ -1385,16 +1385,34 @@ app.get('/api/quizzes/:id/take', (req, res) => {
                         db.enrollStudentInClass(studentId, quizData.quiz.subjectId);
                     } catch (_) {}
                 }
-                // Check if student has previous attempt on this quiz (User requirement: Only a warning if failed, retake anytime)
+                // Check if student has previous attempt on this quiz (Default rule: One attempt only; if failed, retake requires faculty permission)
                 const previousScores = db.getScoresForStudentOnQuiz(id, studentId);
                 if (previousScores.length > 0) {
-                    const latestScore = previousScores[0];
-                    if (latestScore.passed === 0) {
-                        quizData.hasPreviousAttempt = true;
-                        quizData.previousScore = latestScore.percentage;
-                        quizData.previousPassed = false;
-                        quizData.retakeWarning = `You scored ${latestScore.percentage}% on your previous attempt (minimum pass: ${quizData.quiz.passingScorePercent || 75}%). Please review your materials carefully before answering.`;
+                    const hasPassed = previousScores.some(s => s.passed === 1);
+                    if (hasPassed) {
+                        return res.status(403).json({
+                            error: 'You have already passed this quiz assessment. Retakes are not permitted for passed quizzes.',
+                            alreadyPassed: true
+                        });
                     }
+
+                    const latestScore = previousScores[0];
+                    const isRetakeAllowed = latestScore && (latestScore.retakeAllowed === 1 || latestScore.retakeAllowed === true);
+
+                    if (!isRetakeAllowed) {
+                        return res.status(403).json({
+                            error: `Retake Locked: You scored ${latestScore.percentage}% on your previous attempt. Quizzes can only be taken once by default. You must request authorization from your professor to retake this quiz.`,
+                            retakeLocked: true,
+                            previousScore: latestScore.percentage
+                        });
+                    }
+
+                    // Faculty explicitly authorized this retake
+                    quizData.hasPreviousAttempt = true;
+                    quizData.isAuthorizedRetake = true;
+                    quizData.previousScore = latestScore.percentage;
+                    quizData.previousPassed = false;
+                    quizData.retakeWarning = `Your professor has authorized 1 retake for this quiz. Please review your lecture presentation before submitting.`;
                 }
                 const topic = db.getTopicById(quizData.quiz.topicId);
                 if (topic && topic.orderIndex > 1) {
@@ -1431,6 +1449,28 @@ app.post('/api/quizzes/:id/submit', (req, res) => {
         const student = db.getUserById(studentId);
         if (!student) {
             return res.status(404).json({ error: 'Student user not found' });
+        }
+
+        const isStaff = isStaffUser(req);
+        if (!isStaff) {
+            const previousScores = db.getScoresForStudentOnQuiz(id, studentId);
+            if (previousScores.length > 0) {
+                const hasPassed = previousScores.some(s => s.passed === 1);
+                if (hasPassed) {
+                    return res.status(403).json({
+                        error: 'You have already passed this quiz assessment. Retakes are not permitted for passed quizzes.',
+                        alreadyPassed: true
+                    });
+                }
+                const latestScore = previousScores[0];
+                const isRetakeAllowed = latestScore && (latestScore.retakeAllowed === 1 || latestScore.retakeAllowed === true);
+                if (!isRetakeAllowed) {
+                    return res.status(403).json({
+                        error: 'Retake Locked: Quizzes can only be taken once by default. You must request authorization from your professor to retake this quiz.',
+                        retakeLocked: true
+                    });
+                }
+            }
         }
 
         const result = db.submitQuizAttempt(id, studentId, answers || {}, timeSpentSeconds || 0);

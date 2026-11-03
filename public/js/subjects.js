@@ -858,21 +858,34 @@
                                 </svg>
                                 <span>Grade Slip</span>
                             </button>
-                            <button class="btn-deck-action" onclick="window.startQuizFromTopic('${topic.id}', '${topic.quiz ? topic.quiz.id : ''}')" style="background: #f8fafc; color: var(--color-text-main); border: 1px solid #cbd5e1; font-weight: 600;" title="Retake quiz to improve score">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="1 4 1 10 7 10"/>
-                                    <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
-                                </svg>
-                                <span>Retake Quiz</span>
-                            </button>
                         ` : !isStaff && !isLocked ? `
-                            <button class="btn-deck-action" onclick="window.startQuizFromTopic('${topic.id}', '${topic.quiz ? topic.quiz.id : ''}')" style="background: var(--color-primary); color: #ffffff; border: none; font-weight: 700;" title="Take topic quiz">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <circle cx="12" cy="12" r="10"/>
-                                    <polygon points="10 8 16 12 10 16 10 8"/>
-                                </svg>
-                                <span>Take Quiz</span>
-                            </button>
+                            ${topic.status === 'failed_retry' ? (
+                                topic.retakeAllowed ? `
+                                    <button class="btn-deck-action" onclick="window.startQuizFromTopic('${topic.id}', '${topic.quiz ? topic.quiz.id : ''}')" style="background: #2563eb; color: #ffffff; border: none; font-weight: 700;" title="Retake authorized by professor">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polyline points="1 4 1 10 7 10"/>
+                                            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+                                        </svg>
+                                        <span>▷ Retake Quiz (Authorized)</span>
+                                    </button>
+                                ` : `
+                                    <button class="btn-deck-action" onclick="window.showRetakeLockedNoticeModal()" style="background: #f8fafc; color: #94a3b8; border: 1.5px dashed #cbd5e1; cursor: pointer; font-weight: 600;" title="Retake Locked: Ask permission from your professor">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <rect x="3" y="11" width="18" height="11" rx="2"/>
+                                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                                        </svg>
+                                        <span>🔒 Retake Locked</span>
+                                    </button>
+                                `
+                            ) : `
+                                <button class="btn-deck-action" onclick="window.startQuizFromTopic('${topic.id}', '${topic.quiz ? topic.quiz.id : ''}')" style="background: var(--color-primary); color: #ffffff; border: none; font-weight: 700;" title="Take topic quiz">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <polygon points="10 8 16 12 10 16 10 8"/>
+                                    </svg>
+                                    <span>Take Quiz</span>
+                                </button>
+                            `}
                         ` : ''}
 
                         ${sourceUrl && !isLocked ? `

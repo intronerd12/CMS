@@ -375,8 +375,9 @@
                 badgeClass = 'status-passed';
                 badgeText = `✓ Passed (${bestScore}%)`;
             } else if (status === 'failed_retry') {
+                const retakeAuthorized = Boolean(topicProg && topicProg.retakeAllowed);
                 badgeClass = 'status-failed';
-                badgeText = `Retry (${bestScore}%)`;
+                badgeText = retakeAuthorized ? `Retry Allowed (${bestScore}%)` : `Retake Locked (${bestScore}%)`;
             } else if (isUnlocked) {
                 badgeClass = 'status-available';
                 badgeText = 'Ready to Take';
@@ -420,31 +421,44 @@
                         ? topicProg.passedAttempt
                         : ((topicProg && topicProg.bestAttempt) ? topicProg.bestAttempt : lastAttempt);
                     actionsHtml = `
-                        <button type="button" class="btn-view-result" onclick="window.viewPastResult('${targetAttempt ? targetAttempt.id : ''}')">
+                        <button type="button" class="btn-view-result" onclick="window.viewPastResult('${targetAttempt ? targetAttempt.id : ''}')" style="width: 100%; justify-content: center;">
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                                 <polyline points="14 2 14 8 20 8"/>
                             </svg>
-                            View Result & Certificate
-                        </button>
-                        <button type="button" class="btn btn-secondary btn-sm" onclick="window.startQuizAttempt('${quiz ? quiz.id : ''}')" title="Retake to improve score">
-                            Retake
+                            View Result &amp; Certificate
                         </button>`;
                 } else if (isUnlocked && quiz) {
                     const isRetry = status === 'failed_retry';
                     if (isRetry) {
-                        actionsHtml = `
-                            <button type="button" class="btn-start-quiz btn-primary" onclick="window.startQuizAttempt('${quiz.id}')" style="background: #2563eb; color: #ffffff; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25); width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; font-weight: 700;">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="1 4 1 10 7 10"/>
-                                    <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
-                                </svg>
-                                <span>▷ Retake Quiz</span>
-                            </button>
-                            <div style="font-size: 0.78rem; color: #b45309; background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 0.45rem 0.65rem; margin-top: 0.5rem; line-height: 1.35; display: flex; align-items: flex-start; gap: 6px;">
-                                <span style="font-size: 0.85rem;">⚠️</span>
-                                <span>Warning: Previous score was ${bestScore}% (passing mark: 75%). You may retake anytime after reviewing the slides.</span>
-                            </div>`;
+                        const retakeAuthorized = Boolean(topicProg && topicProg.retakeAllowed);
+                        if (retakeAuthorized) {
+                            actionsHtml = `
+                                <button type="button" class="btn-start-quiz btn-primary" onclick="window.startQuizAttempt('${quiz.id}')" style="background: #2563eb; color: #ffffff; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25); width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; font-weight: 700;">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="1 4 1 10 7 10"/>
+                                        <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+                                    </svg>
+                                    <span>▷ Retake Quiz (Authorized by Professor)</span>
+                                </button>
+                                <div style="font-size: 0.78rem; color: #065f46; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 6px; padding: 0.45rem 0.65rem; margin-top: 0.5rem; line-height: 1.35; display: flex; align-items: flex-start; gap: 6px;">
+                                    <span style="font-size: 0.85rem;">✓</span>
+                                    <span>Your professor has authorized 1 retake for this quiz. Previous score: ${bestScore}%.</span>
+                                </div>`;
+                        } else {
+                            actionsHtml = `
+                                <button type="button" class="btn-start-quiz" onclick="window.showRetakeLockedNotice('${escapeHtml(quiz.title)}', ${bestScore})" style="background: #f8fafc; color: #94a3b8; border: 1.5px dashed #cbd5e1; cursor: pointer; width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; font-weight: 600;" title="Retake Locked: Ask permission from your professor">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="3" y="11" width="18" height="11" rx="2"/>
+                                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                                    </svg>
+                                    <span>🔒 Retake Locked (Permission Required)</span>
+                                </button>
+                                <div style="font-size: 0.78rem; color: #9a3412; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 6px; padding: 0.45rem 0.65rem; margin-top: 0.5rem; line-height: 1.35; display: flex; align-items: flex-start; gap: 6px;">
+                                    <span style="font-size: 0.85rem;">ℹ️</span>
+                                    <span>Previous score was ${bestScore}% (passing mark: 75%). Quizzes can only be taken once by default. Please contact your professor to authorize a retake.</span>
+                                </div>`;
+                        }
                     } else {
                         actionsHtml = `
                             <button type="button" class="btn-start-quiz" onclick="window.startQuizAttempt('${quiz.id}')" style="width: 100%;">
@@ -533,8 +547,15 @@
             const res = await fetch(`/api/quizzes/${quizId}/take?studentId=${encodeURIComponent(userId)}${previewFlag}`);
             if (res.status === 403) {
                 const data = await res.json();
+                if (data.alreadyPassed) {
+                    showToast(data.error || 'You have already passed this quiz assessment. Retakes are not permitted for passed quizzes.', 'info');
+                    return;
+                }
                 if (data.retakeLocked) {
-                    showToast(data.error || 'Retake locked by faculty. Please contact your instructor for authorization.', 'warning');
+                    showToast(data.error || 'Retake locked by faculty. Quizzes can only be taken once by default.', 'warning');
+                    if (typeof window.showRetakeLockedNoticeModal === 'function') {
+                        window.showRetakeLockedNoticeModal(data.error);
+                    }
                     return;
                 }
                 if (data.requiredTopicOrder) {
@@ -935,9 +956,13 @@
 
             // Update in rawFacultyScores cache
             if (typeof rawFacultyScores !== 'undefined' && Array.isArray(rawFacultyScores)) {
-                const found = rawFacultyScores.find(item => item.id === scoreId);
-                if (found) {
-                    found.retakeAllowed = allowRetake ? 1 : 0;
+                const target = rawFacultyScores.find(item => item.id === scoreId);
+                if (target) {
+                    rawFacultyScores.forEach(item => {
+                        if (item.quizId === target.quizId && item.studentId === target.studentId) {
+                            item.retakeAllowed = allowRetake ? 1 : 0;
+                        }
+                    });
                 }
             }
 
@@ -1122,18 +1147,18 @@
                                 <div style="flex: 1; min-width: 260px;">
                                     <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 0.35rem;">
                                         <span style="font-weight: 700; color: #065f46; font-size: 0.95rem;">Retake Authorization:</span>
-                                        <span class="badge" style="background: #ecfdf5; color: #047857; border: 1px solid #6ee7b7; font-weight: 700; font-size: 0.75rem; padding: 3px 8px; border-radius: 9999px;">✓ Retake Allowed</span>
+                                        <span class="retake-status-pill allowed">
+                                            <span class="pulse-indicator-green"></span>
+                                            Retake Allowed
+                                        </span>
                                     </div>
                                     <p style="margin: 0; font-size: 0.825rem; color: #047857; line-height: 1.45;">
                                         Permission is currently granted. <strong>${escapeHtml(studentFullName)}</strong> can retake this quiz from their student portal.
                                     </p>
                                 </div>
-                                <button type="button" class="btn" onclick="window.toggleRetakePermissionFromResults('${scoreId}', 0)" style="background: #ffffff; color: #dc2626; border: 1.5px solid #fca5a5; font-weight: 700; padding: 0.65rem 1.25rem; border-radius: 8px; display: inline-flex; align-items: center; gap: 7px; cursor: pointer; font-size: 0.85rem; box-shadow: 0 2px 6px rgba(220,38,38,0.12);">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                                        <rect x="3" y="11" width="18" height="11" rx="2"/>
-                                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                                    </svg>
-                                    <span>🔒 Revoke Retake Permission</span>
+                                <button type="button" class="btn-faculty-retake revoke" onclick="window.toggleRetakePermissionFromResults('${scoreId}', 0)" style="font-size: 0.85rem; padding: 0.55rem 1rem;">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                    <span>Don't Allow (Lock Retake)</span>
                                 </button>
                             </div>
                         ` : `
@@ -1141,18 +1166,18 @@
                                 <div style="flex: 1; min-width: 260px;">
                                     <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 0.35rem;">
                                         <span style="font-weight: 700; color: #1e3a8a; font-size: 0.95rem;">Retake Authorization:</span>
-                                        <span class="badge" style="background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; font-weight: 700; font-size: 0.75rem; padding: 3px 8px; border-radius: 9999px;">🔒 Currently Locked</span>
+                                        <span class="retake-status-pill locked">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                            Retake Locked
+                                        </span>
                                     </div>
                                     <p style="margin: 0; font-size: 0.825rem; color: #1e40af; line-height: 1.45;">
-                                        <strong>${escapeHtml(studentFullName)}</strong>'s retake button is locked. Student is waiting for your authorization. Click below to unlock retake.
+                                        <strong>${escapeHtml(studentFullName)}</strong>'s retake is locked. Quizzes are one-time assessments by default. Click Allow Retake to grant 1 retake opportunity.
                                     </p>
                                 </div>
-                                <button type="button" class="btn btn-primary" onclick="window.toggleRetakePermissionFromResults('${scoreId}', 1)" style="background: #2563eb; color: #ffffff; font-weight: 700; padding: 0.65rem 1.25rem; border-radius: 8px; display: inline-flex; align-items: center; gap: 7px; border: none; cursor: pointer; box-shadow: 0 4px 12px rgba(37,99,235,0.25); font-size: 0.85rem;">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                                        <rect x="3" y="11" width="18" height="11" rx="2"/>
-                                        <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
-                                    </svg>
-                                    <span>🔓 Allow Student to Retake Quiz</span>
+                                <button type="button" class="btn-faculty-retake grant" onclick="window.toggleRetakePermissionFromResults('${scoreId}', 1)" style="font-size: 0.85rem; padding: 0.55rem 1.15rem;">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
+                                    <span>Allow Student to Retake Quiz</span>
                                 </button>
                             </div>
                         `}
@@ -1309,13 +1334,23 @@
                                 <span>Repeat Topic (Review Lessons &amp; Presentation)</span>
                             </button>
 
-                            <button type="button" class="btn-retake-quiz" onclick="window.startQuizAttempt('${activeQuiz ? activeQuiz.id : (scoreRec ? scoreRec.quizId : '')}')" style="background: #2563eb; color: #ffffff; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25); display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 700;">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                    <polyline points="1 4 1 10 7 10"/>
-                                    <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
-                                </svg>
-                                <span>▷ Retake Quiz Now</span>
-                            </button>
+                            ${isRetakeAllowed ? `
+                                <button type="button" class="btn-retake-quiz" onclick="window.startQuizAttempt('${activeQuiz ? activeQuiz.id : (scoreRec ? scoreRec.quizId : '')}')" style="background: #2563eb; color: #ffffff; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25); display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 700;">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="1 4 1 10 7 10"/>
+                                        <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+                                    </svg>
+                                    <span>▷ Retake Quiz (Authorized by Professor)</span>
+                                </button>
+                            ` : `
+                                <button type="button" class="btn-retake-quiz" onclick="window.showRetakeLockedNoticeModal()" style="background: #f8fafc; color: #94a3b8; border: 1.5px dashed #cbd5e1; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 600;" title="Retake Locked: Ask permission from your professor">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="3" y="11" width="18" height="11" rx="2"/>
+                                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                                    </svg>
+                                    <span>🔒 Retake Locked (Permission Required)</span>
+                                </button>
+                            `}
 
                             <button type="button" class="btn-download-cert" onclick="window.openCertificateModal('${scoreId}')">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1890,9 +1925,15 @@
             showToast(allowRetake ? '✓ Retake permission granted to student' : '🔒 Retake permission revoked', 'success');
 
             // Update in rawFacultyScores cache and re-render
-            const found = rawFacultyScores.find(item => item.id === scoreId);
-            if (found) {
-                found.retakeAllowed = allowRetake;
+            if (typeof rawFacultyScores !== 'undefined' && Array.isArray(rawFacultyScores)) {
+                const target = rawFacultyScores.find(item => item.id === scoreId);
+                if (target) {
+                    rawFacultyScores.forEach(item => {
+                        if (item.quizId === target.quizId && item.studentId === target.studentId) {
+                            item.retakeAllowed = allowRetake ? 1 : 0;
+                        }
+                    });
+                }
             }
             updateActiveTabContent();
         } catch (err) {
@@ -2166,19 +2207,33 @@
                                             </td>
                                             <td>
                                                 ${s.passed === 1 ? `
-                                                    <span style="color: #64748b; font-size: 0.75rem; font-weight: 600;">Passed (Complete)</span>
+                                                    <div class="faculty-retake-cell">
+                                                        <span class="retake-status-pill passed">
+                                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                                                            Passed (Mastered)
+                                                        </span>
+                                                        <small style="color: #64748b; font-size: 0.72rem;">No retake needed</small>
+                                                    </div>
                                                 ` : (s.retakeAllowed === 1 ? `
-                                                    <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
-                                                        <span class="badge" style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; font-size: 0.72rem; font-weight: 700; padding: 2px 7px; border-radius: 9999px;">✓ Retake Allowed</span>
-                                                        <button type="button" class="btn btn-sm" onclick="window.toggleRetakePermission('${s.id}', 0)" title="Revoke retake permission for this student" style="background: #fff; color: #dc2626; border: 1px solid #fca5a5; font-size: 0.72rem; padding: 2px 7px; border-radius: 6px; font-weight: 600; cursor: pointer;">
-                                                            🔒 Revoke Retake
+                                                    <div class="faculty-retake-cell">
+                                                        <span class="retake-status-pill allowed">
+                                                            <span class="pulse-indicator-green"></span>
+                                                            Retake Allowed
+                                                        </span>
+                                                        <button type="button" class="btn-faculty-retake revoke" onclick="window.toggleRetakePermission('${s.id}', 0)" title="Revoke retake permission for this student">
+                                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                                            Don't Allow (Lock)
                                                         </button>
                                                     </div>
                                                 ` : `
-                                                    <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
-                                                        <span class="badge" style="background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; font-size: 0.72rem; font-weight: 700; padding: 2px 7px; border-radius: 9999px;">Retake Locked</span>
-                                                        <button type="button" class="btn btn-sm btn-primary" onclick="window.toggleRetakePermission('${s.id}', 1)" title="Grant student retake permission" style="background: #2563eb; color: #fff; border: 1px solid #1d4ed8; font-size: 0.72rem; padding: 2px 8px; border-radius: 6px; font-weight: 700; cursor: pointer;">
-                                                            🔓 Allow Retake
+                                                    <div class="faculty-retake-cell">
+                                                        <span class="retake-status-pill locked">
+                                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                                            Retake Locked
+                                                        </span>
+                                                        <button type="button" class="btn-faculty-retake grant" onclick="window.toggleRetakePermission('${s.id}', 1)" title="Grant student retake permission">
+                                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
+                                                            Allow Retake
                                                         </button>
                                                     </div>
                                                 `)}
@@ -4970,6 +5025,39 @@ Explanation: Headless CMS delivers content via REST or GraphQL APIs to any front
         }
 
         openModal('lockedTopicModal');
+    };
+
+    // ============================================
+    // RETAKE PERMISSION MODAL INTERCEPTOR
+    // ============================================
+    window.showRetakeLockedNoticeModal = function (customMessage) {
+        const desc = document.getElementById('retakeLockedModalDesc');
+        if (desc && customMessage) {
+            desc.innerHTML = `
+                <p><strong>${escapeHtml(customMessage)}</strong></p>
+                <p style="margin-top: 0.5rem; color: #64748b; font-size: 0.85rem;">
+                    Quizzes are one-time assessments by default. Please contact your professor to authorize a retake in the Faculty Gradebook.
+                </p>`;
+        } else if (desc) {
+            desc.innerHTML = `
+                <p>Quizzes can only be taken once by default.</p>
+                <p style="margin-top: 0.5rem; color: #64748b; font-size: 0.85rem;">
+                    To retake this assessment, you must obtain permission from your professor. Once authorized, the retake button will unlock automatically.
+                </p>`;
+        }
+        openModal('retakeLockedModal');
+    };
+
+    window.showRetakeLockedNotice = function (quizTitle, score) {
+        window.showRetakeLockedNoticeModal(`Previous attempt score: ${score}%. Quizzes are single-attempt by default.`);
+    };
+
+    window.startQuizFromTopic = function (topicId, quizId) {
+        if (quizId) {
+            window.startQuizAttempt(quizId);
+        } else {
+            window.navigateTo('quizzes');
+        }
     };
 
     // Global Modal Helpers
