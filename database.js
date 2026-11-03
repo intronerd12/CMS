@@ -4,6 +4,7 @@ const fs = require('fs');
 const bcrypt = require('bcryptjs');
 const { randomUUID: uuidv4 } = require('crypto');
 const { SYLLABUS_14_TOPICS } = require('./quiz-data');
+const { getRandomizedSampleQuiz, SAMPLE_QUESTION_BANKS } = require('./sample-quiz-bank');
 const presentations = require('./presentations');
 const { extractPptxSlides } = require('./pptx-parser');
 
@@ -398,6 +399,79 @@ function seedFull14TopicsAndQuizzes() {
     console.log(`[SQLite] Successfully verified and seeded 14 curriculum topics and quizzes!`);
 }
 
+function seedRandomizedPptQuizzes(force = false) {
+    db.exec('CREATE TABLE IF NOT EXISTS app_meta (key TEXT PRIMARY KEY, value TEXT)');
+    if (!force) {
+        const alreadyDone = db.prepare("SELECT value FROM app_meta WHERE key = 'seed_randomized_ppt_quizzes_v2'").get();
+        if (alreadyDone) return;
+    }
+
+    const pptDecks = [
+        { key: 'cms', orderIndex: 1, targetCount: 11 },
+        { key: 'wordpress', orderIndex: 2, targetCount: 8 },
+        { key: 'joomla', orderIndex: 3, targetCount: 13 },
+        { key: 'drupal', orderIndex: 4, targetCount: 9 },
+        { key: 'wix', orderIndex: 5, targetCount: 12 },
+        { key: 'shopify', orderIndex: 6, targetCount: 10 },
+        { key: 'magento', orderIndex: 7, targetCount: 14 }
+    ];
+
+    const now = new Date().toISOString();
+
+    db.transaction(() => {
+        pptDecks.forEach(({ key, orderIndex, targetCount }) => {
+            let topic = db.prepare("SELECT * FROM topics WHERE presentationKey = ? LIMIT 1").get(key);
+            if (!topic) {
+                topic = db.prepare("SELECT * FROM topics WHERE orderIndex = ? LIMIT 1").get(orderIndex);
+            }
+            if (!topic) return;
+
+            const sample = getRandomizedSampleQuiz(key, targetCount);
+
+            let quiz = db.prepare("SELECT * FROM quizzes WHERE topicId = ? LIMIT 1").get(topic.id);
+            let quizId;
+            if (quiz) {
+                quizId = quiz.id;
+                db.prepare(`
+                    UPDATE quizzes 
+                    SET title = ?, description = ?, timeLimitMinutes = ?, passingScorePercent = ?, shuffleChoices = 1, updatedAt = ?
+                    WHERE id = ?
+                `).run(sample.title, `Comprehensive multiple choice evaluation for ${topic.title} based on lesson slides.`, sample.timeLimitMinutes, sample.passingScorePercent, now, quizId);
+            } else {
+                quizId = uuidv4();
+                db.prepare(`
+                    INSERT INTO quizzes (id, topicId, subjectId, title, description, timeLimitMinutes, passingScorePercent, shuffleChoices, createdAt, updatedAt)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+                `).run(quizId, topic.id, topic.subjectId, sample.title, `Comprehensive multiple choice evaluation for ${topic.title} based on lesson slides.`, sample.timeLimitMinutes, sample.passingScorePercent, now, now);
+            }
+
+            // Replace questions with randomized set
+            db.prepare("DELETE FROM quiz_questions WHERE quizId = ?").run(quizId);
+            const insertQStmt = db.prepare(`
+                INSERT INTO quiz_questions (id, quizId, questionText, options, correctAnswer, explanation, orderIndex, createdAt)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            `);
+
+            sample.questions.forEach((q, idx) => {
+                insertQStmt.run(
+                    uuidv4(),
+                    quizId,
+                    q.questionText,
+                    JSON.stringify(q.options),
+                    q.correctAnswer,
+                    q.explanation || '',
+                    idx + 1,
+                    now
+                );
+            });
+
+            console.log(`[SQLite] Seeded PPT quiz for "${topic.title}" with ${sample.questions.length} randomized questions.`);
+        });
+
+        db.prepare("INSERT OR REPLACE INTO app_meta (key, value) VALUES ('seed_randomized_ppt_quizzes_v2', '1')").run();
+    })();
+}
+
 function seedAndMigrate() {
     // 1. Migrate existing users.json if present
     const usersJsonPath = path.join(__dirname, 'data', 'users.json');
@@ -491,6 +565,9 @@ function seedAndMigrate() {
 
     // 4. Seed 14 topics & quizzes
     seedFull14TopicsAndQuizzes();
+
+    // 4b. Seed randomized PPT sample quizzes for the 7 presentation slide decks
+    seedRandomizedPptQuizzes();
 
     // 5. Backfill joinCode for any subjects missing one
     try {
@@ -826,6 +903,7 @@ module.exports = {
     DB_PATH,
     isServerless,
     shuffleArray,
+    seedRandomizedPptQuizzes: (force = false) => seedRandomizedPptQuizzes(force),
 
     // Users
     getUserByUsername: (username) => stmtGetUserByUsername.get(username),

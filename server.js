@@ -8,6 +8,7 @@ const multer = require('multer');
 const db = require('./database');
 const presentations = require('./presentations');
 const { extractPptxSlides } = require('./pptx-parser');
+const sampleQuizBank = require('./sample-quiz-bank');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -960,6 +961,29 @@ app.get('/api/topics/:id/quiz', (req, res) => {
     } catch (error) {
         console.error('Get topic quiz error:', error);
         res.status(500).json({ error: 'Server error loading topic quiz' });
+    }
+});
+
+// Generate randomized sample quiz tailored to topic's PPT slide deck
+app.get('/api/quizzes/sample/:topicId', (req, res) => {
+    try {
+        const { topicId } = req.params;
+        const topic = db.getTopicById(topicId);
+        const requestedCount = req.query.count ? parseInt(req.query.count, 10) : null;
+
+        const topicKey = topic ? (topic.presentationKey || topic.title || '') : 'cms';
+        const sample = sampleQuizBank.getRandomizedSampleQuiz(topicKey, requestedCount);
+
+        res.json({
+            success: true,
+            topicId,
+            topicTitle: topic ? topic.title : 'Lesson Assessment',
+            subjectId: topic ? topic.subjectId : null,
+            ...sample
+        });
+    } catch (error) {
+        console.error('Generate sample quiz error:', error);
+        res.status(500).json({ error: 'Failed to generate sample quiz: ' + error.message });
     }
 });
 
