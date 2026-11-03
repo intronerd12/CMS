@@ -1688,13 +1688,111 @@ module.exports = {
         };
     },
     getScoresByStudent: (studentId) => {
-        return stmtGetScoresByStudent.all(studentId).map(s => ({
+        const rawScores = stmtGetScoresByStudent.all(studentId).map(s => ({
+            ...s,
+            answers: s.answers ? JSON.parse(s.answers) : []
+        }));
+
+        const groups = new Map();
+        for (const s of rawScores) {
+            const key = s.topicId || s.id;
+            if (!groups.has(key)) {
+                groups.set(key, []);
+            }
+            groups.get(key).push(s);
+        }
+
+        const deduplicated = [];
+        for (const topicScores of groups.values()) {
+            if (topicScores.length === 1) {
+                const single = { ...topicScores[0] };
+                single.attemptsCount = 1;
+                single.allAttempts = [topicScores[0]];
+                deduplicated.push(single);
+                continue;
+            }
+
+            topicScores.sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt));
+
+            const passedScores = topicScores.filter(s => s.passed === 1 || s.passed === true);
+            let officialScore;
+            if (passedScores.length > 0) {
+                passedScores.sort((a, b) => (Number(b.percentage) || 0) - (Number(a.percentage) || 0) || new Date(b.completedAt) - new Date(a.completedAt));
+                officialScore = { ...passedScores[0] };
+            } else {
+                officialScore = { ...topicScores[0] };
+            }
+
+            const isPassed = officialScore.passed === 1 || officialScore.passed === true;
+            const hasRetakeAllowed = !isPassed && topicScores.some(s => s.retakeAllowed === 1 || s.retakeAllowed === true);
+
+            officialScore.retakeAllowed = hasRetakeAllowed ? 1 : 0;
+            officialScore.attemptsCount = topicScores.length;
+            officialScore.allAttempts = topicScores;
+
+            deduplicated.push(officialScore);
+        }
+
+        deduplicated.sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt));
+        return deduplicated;
+    },
+    getAllScoresForSubject: (subjectId) => {
+        const rawScores = stmtGetAllScoresForSubject.all(subjectId).map(s => ({
+            ...s,
+            answers: s.answers ? JSON.parse(s.answers) : []
+        }));
+
+        const groups = new Map();
+        for (const s of rawScores) {
+            const key = `${s.studentId}_${s.topicId}`;
+            if (!groups.has(key)) {
+                groups.set(key, []);
+            }
+            groups.get(key).push(s);
+        }
+
+        const deduplicated = [];
+        for (const topicScores of groups.values()) {
+            if (topicScores.length === 1) {
+                const single = { ...topicScores[0] };
+                single.attemptsCount = 1;
+                single.allAttempts = [topicScores[0]];
+                deduplicated.push(single);
+                continue;
+            }
+
+            topicScores.sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt));
+
+            const passedScores = topicScores.filter(s => s.passed === 1 || s.passed === true);
+            let officialScore;
+            if (passedScores.length > 0) {
+                passedScores.sort((a, b) => (Number(b.percentage) || 0) - (Number(a.percentage) || 0) || new Date(b.completedAt) - new Date(a.completedAt));
+                officialScore = { ...passedScores[0] };
+            } else {
+                officialScore = { ...topicScores[0] };
+            }
+
+            const isPassed = officialScore.passed === 1 || officialScore.passed === true;
+            const hasRetakeAllowed = !isPassed && topicScores.some(s => s.retakeAllowed === 1 || s.retakeAllowed === true);
+
+            officialScore.retakeAllowed = hasRetakeAllowed ? 1 : 0;
+            officialScore.attemptsCount = topicScores.length;
+            officialScore.allAttempts = topicScores;
+
+            deduplicated.push(officialScore);
+        }
+
+        deduplicated.sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt));
+        return deduplicated;
+    },
+    getRawScoresForSubject: (subjectId) => {
+        return stmtGetAllScoresForSubject.all(subjectId).map(s => ({
             ...s,
             answers: s.answers ? JSON.parse(s.answers) : []
         }));
     },
-    getAllScoresForSubject: (subjectId) => {
-        return stmtGetAllScoresForSubject.all(subjectId).map(s => ({
+    getRawScoresByStudent: (studentId) => {
+        return stmtGetScoresByStudent.all(studentId).map(s => ({
             ...s,
             answers: s.answers ? JSON.parse(s.answers) : []
         }));

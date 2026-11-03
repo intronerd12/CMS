@@ -1865,6 +1865,53 @@
     let matrixSearch = '';
     let rawStudentScores = [];
 
+    // Helper: Deduplicate topic scores per student and topic to ensure official 1-row record
+    function deduplicateScoresList(scoresList) {
+        if (!Array.isArray(scoresList) || scoresList.length === 0) return [];
+        const groups = new Map();
+        for (const s of scoresList) {
+            const key = `${s.studentId || s.username || s.userId || ''}_${s.topicId || s.topicOrderIndex || ''}`;
+            if (!groups.has(key)) {
+                groups.set(key, []);
+            }
+            groups.get(key).push(s);
+        }
+
+        const deduplicated = [];
+        for (const group of groups.values()) {
+            if (group.length === 1) {
+                const single = { ...group[0] };
+                single.attemptsCount = single.attemptsCount || 1;
+                single.allAttempts = single.allAttempts || [group[0]];
+                deduplicated.push(single);
+                continue;
+            }
+
+            group.sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt));
+
+            const passedScores = group.filter(s => s.passed === 1 || s.passed === true);
+            let official;
+            if (passedScores.length > 0) {
+                passedScores.sort((a, b) => (Number(b.percentage) || 0) - (Number(a.percentage) || 0) || new Date(b.completedAt) - new Date(a.completedAt));
+                official = { ...passedScores[0] };
+            } else {
+                official = { ...group[0] };
+            }
+
+            const isPassed = official.passed === 1 || official.passed === true;
+            const hasRetakeAllowed = !isPassed && group.some(s => s.retakeAllowed === 1 || s.retakeAllowed === true);
+
+            official.retakeAllowed = hasRetakeAllowed ? 1 : 0;
+            official.attemptsCount = official.attemptsCount || group.length;
+            official.allAttempts = official.allAttempts || group;
+
+            deduplicated.push(official);
+        }
+
+        deduplicated.sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt));
+        return deduplicated;
+    }
+
     async function loadScoresForSubject(subjectId) {
         const user = getCurrentUser();
         const isFaculty = isFacultyUser();
@@ -1882,7 +1929,7 @@
                 const gbData = await gbRes.json();
                 const matData = await matRes.json();
 
-                rawFacultyScores = gbData.scores || [];
+                rawFacultyScores = deduplicateScoresList(gbData.scores || []);
                 rawFacultyMatrix = matData || { topics: [], matrix: [] };
 
                 renderFacultyScoresUI();
@@ -1895,7 +1942,7 @@
             try {
                 const res = await fetch(`/api/scores/student/${user.id}`);
                 const data = await res.json();
-                rawStudentScores = data.scores || [];
+                rawStudentScores = deduplicateScoresList(data.scores || []);
                 renderStudentScoresUI();
             } catch (err) {
                 console.error('Error loading student scores:', err);
@@ -2042,7 +2089,7 @@
     // ============================================
 
     function getFilteredAndSortedTopicScores() {
-        let list = [...rawFacultyScores];
+        let list = deduplicateScoresList(rawFacultyScores);
 
         // Filter by topic
         if (summaryTopicFilter !== 'all') {
@@ -2095,14 +2142,15 @@
 
     function renderTopicSummaryHtml() {
         const scores = getFilteredAndSortedTopicScores();
+        const deduplicatedRaw = deduplicateScoresList(rawFacultyScores);
 
         // Unique topics for filter dropdown
         const topicOptions = Array.from({ length: 14 }, (_, i) => i + 1);
 
-        const totalAttempts = rawFacultyScores.length;
-        const passedAttempts = rawFacultyScores.filter(s => s.passed === 1).length;
-        const passRate = totalAttempts > 0 ? Math.round((passedAttempts / totalAttempts) * 100) : 0;
-        const avgScore = totalAttempts > 0 ? (rawFacultyScores.reduce((sum, s) => sum + s.percentage, 0) / totalAttempts).toFixed(1) : 0;
+        const totalRecords = deduplicatedRaw.length;
+        const passedAttempts = deduplicatedRaw.filter(s => s.passed === 1).length;
+        const passRate = totalRecords > 0 ? Math.round((passedAttempts / totalRecords) * 100) : 0;
+        const avgScore = totalRecords > 0 ? (deduplicatedRaw.reduce((sum, s) => sum + s.percentage, 0) / totalRecords).toFixed(1) : 0;
 
         return `
             <!-- Summary KPI Cards -->
@@ -2115,8 +2163,8 @@
                         </svg>
                     </div>
                     <div class="matrix-stat-body">
-                        <div class="matrix-stat-value" style="color: var(--color-primary);">${totalAttempts}</div>
-                        <div class="matrix-stat-label">Total Quiz Submissions</div>
+                        <div class="matrix-stat-value" style="color: var(--color-primary);">${totalRecords}</div>
+                        <div class="matrix-stat-label">Assessment Records</div>
                     </div>
                 </div>
                 <div class="matrix-stat-card">
@@ -2229,6 +2277,14 @@
                                             <td>
                                                 <strong>Topic ${s.topicOrderIndex}: ${escapeHtml(s.topicTitle)}</strong>
                                                 <br><small style="color: var(--color-text-muted);">${escapeHtml(s.quizTitle)}</small>
+                                                ${(s.attemptsCount && s.attemptsCount > 1) ? `
+                                                    <div style="margin-top: 4px;">
+                                                        <span class="badge" style="font-size: 0.68rem; font-weight: 600; padding: 1px 7px; border-radius: 9999px; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; display: inline-flex; align-items: center; gap: 3px;" title="${s.attemptsCount} total attempts recorded">
+                                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                                                            Attempt #${s.attemptsCount}
+                                                        </span>
+                                                    </div>
+                                                ` : ''}
                                             </td>
                                             <td>${s.score} / ${s.totalQuestions}</td>
                                             <td>
@@ -2262,7 +2318,7 @@
                                                 ` : `
                                                     <div class="faculty-retake-cell">
                                                         <span class="retake-status-pill locked">
-                                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
                                                             Retake Locked
                                                         </span>
                                                         <button type="button" class="btn-faculty-retake grant" onclick="window.toggleRetakePermission('${s.id}', 1)" title="Grant student retake permission">
@@ -2274,13 +2330,22 @@
                                             </td>
                                             <td>${new Date(s.completedAt).toLocaleDateString()} ${new Date(s.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
                                             <td>
-                                                <button type="button" class="btn btn-secondary btn-sm" onclick="window.viewPastResult('${s.id}')">View</button>
-                                                <button type="button" class="btn btn-secondary btn-sm" onclick="window.downloadGradeSlipDirectly('${s.id}', this)" title="Download Grade Slip PDF">Slip</button>
+                                                <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                                                    <button type="button" class="btn btn-secondary btn-sm" onclick="window.viewPastResult('${s.id}')">View</button>
+                                                    <button type="button" class="btn btn-secondary btn-sm" onclick="window.downloadGradeSlipDirectly('${s.id}', this)" title="Download Grade Slip PDF">Slip</button>
+                                                    ${(s.allAttempts && s.allAttempts.length > 1) ? `
+                                                        <button type="button" class="btn btn-secondary btn-sm" onclick="window.showAttemptHistoryModal('${s.id}')" title="View all ${s.allAttempts.length} attempts" style="font-size: 0.72rem; padding: 0.25rem 0.45rem; color: #475569;">
+                                                            History (${s.allAttempts.length})
+                                                        </button>
+                                                    ` : ''}
+                                                </div>
                                             </td>
                                         </tr>
                                     `).join('')}
                                 </tbody>
                             </table>
+                        </div>
+                    `}
                         </div>
                     `}
                 </div>
@@ -2545,7 +2610,7 @@
                 ]);
                 const scoresData = await scoresRes.json();
                 const subData = await subRes.json();
-                rawStudentScores = scoresData.scores || [];
+                rawStudentScores = deduplicateScoresList(scoresData.scores || []);
                 renderStudentMatrixPageUI(subData.subject);
             }
         } catch (err) {
@@ -3057,7 +3122,7 @@
             <div class="card">
                 <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
                     <h3>Academic Records</h3>
-                    <span class="badge badge-primary">${rawStudentScores.length} Assessment Attempt${rawStudentScores.length !== 1 ? 's' : ''}</span>
+                    <span class="badge badge-primary">${rawStudentScores.length} Assessment Record${rawStudentScores.length !== 1 ? 's' : ''}</span>
                 </div>
                 <div class="card-body">
                     <div class="table-wrapper">
@@ -3079,6 +3144,14 @@
                                         <td>
                                             <strong>Topic ${s.topicOrderIndex}: ${escapeHtml(s.topicTitle)}</strong>
                                             <br><small style="color: var(--color-text-muted);">${escapeHtml(s.quizTitle)}</small>
+                                            ${(s.attemptsCount && s.attemptsCount > 1) ? `
+                                                <div style="margin-top: 4px;">
+                                                    <span class="badge" style="font-size: 0.68rem; font-weight: 600; padding: 1px 7px; border-radius: 9999px; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; display: inline-flex; align-items: center; gap: 3px;" title="${s.attemptsCount} total attempts recorded">
+                                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                                                        Attempt #${s.attemptsCount}
+                                                    </span>
+                                                </div>
+                                            ` : ''}
                                         </td>
                                         <td>${s.score} / ${s.totalQuestions}</td>
                                         <td><strong style="color: ${s.passed ? '#10b981' : '#ef4444'}; font-size: 0.95rem;">${s.percentage}%</strong></td>
@@ -3090,8 +3163,15 @@
                                         </td>
                                         <td>${new Date(s.completedAt).toLocaleDateString()}</td>
                                         <td>
-                                            <button type="button" class="btn btn-secondary btn-sm" onclick="window.viewPastResult('${s.id}')">View</button>
-                                            <button type="button" class="btn btn-primary btn-sm" onclick="window.downloadGradeSlipDirectly('${s.id}', this)" title="Download Official Grade Slip PDF">Download Slip</button>
+                                            <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                                                <button type="button" class="btn btn-secondary btn-sm" onclick="window.viewPastResult('${s.id}')">View</button>
+                                                <button type="button" class="btn btn-primary btn-sm" onclick="window.downloadGradeSlipDirectly('${s.id}', this)" title="Download Official Grade Slip PDF">Download Slip</button>
+                                                ${(s.allAttempts && s.allAttempts.length > 1) ? `
+                                                    <button type="button" class="btn btn-secondary btn-sm" onclick="window.showAttemptHistoryModal('${s.id}')" title="View all ${s.allAttempts.length} attempts" style="font-size: 0.72rem; padding: 0.25rem 0.45rem;">
+                                                        History (${s.allAttempts.length})
+                                                    </button>
+                                                ` : ''}
+                                            </div>
                                         </td>
                                     </tr>
                                 `).join('')}
@@ -3102,6 +3182,103 @@
             </div>
         `;
     }
+
+    window.showAttemptHistoryModal = function (scoreId) {
+        let record = null;
+        if (typeof rawFacultyScores !== 'undefined' && Array.isArray(rawFacultyScores)) {
+            record = rawFacultyScores.find(s => s.id === scoreId || (s.allAttempts && s.allAttempts.some(a => a.id === scoreId)));
+        }
+        if (!record && typeof rawStudentScores !== 'undefined' && Array.isArray(rawStudentScores)) {
+            record = rawStudentScores.find(s => s.id === scoreId || (s.allAttempts && s.allAttempts.some(a => a.id === scoreId)));
+        }
+
+        if (!record || !Array.isArray(record.allAttempts) || record.allAttempts.length === 0) {
+            showToast('No past attempt history found', 'info');
+            return;
+        }
+
+        const attempts = [...record.allAttempts].sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt));
+        const total = attempts.length;
+
+        let modalEl = document.getElementById('attemptHistoryModal');
+        if (!modalEl) {
+            modalEl = document.createElement('div');
+            modalEl.id = 'attemptHistoryModal';
+            modalEl.className = 'modal-backdrop';
+            document.body.appendChild(modalEl);
+        }
+
+        modalEl.innerHTML = `
+            <div class="modal-dialog" style="max-width: 680px; width: 95%;">
+                <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--color-border); padding: 1rem 1.25rem;">
+                    <div>
+                        <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: var(--color-text);">Quiz Attempt History</h3>
+                        <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 2px;">
+                            Topic ${record.topicOrderIndex}: ${escapeHtml(record.topicTitle)}
+                            ${record.lastName ? ` • ${escapeHtml(record.lastName)}, ${escapeHtml(record.firstName)}` : ''}
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close-modal" onclick="document.getElementById('attemptHistoryModal').classList.remove('active')" style="background: none; border: none; font-size: 1.4rem; cursor: pointer; color: #64748b;">&times;</button>
+                </div>
+                <div class="modal-body" style="padding: 1.25rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.75rem 1rem;">
+                        <span style="font-size: 0.85rem; color: #475569; font-weight: 600;">Total Recorded Attempts:</span>
+                        <span class="badge badge-primary" style="font-size: 0.8rem; padding: 0.3rem 0.65rem;">${total} Attempt${total !== 1 ? 's' : ''}</span>
+                    </div>
+                    <div class="table-wrapper">
+                        <table class="data-table" style="font-size: 0.875rem;">
+                            <thead>
+                                <tr>
+                                    <th>Attempt</th>
+                                    <th>Score</th>
+                                    <th>Grade %</th>
+                                    <th>Verdict</th>
+                                    <th>Date &amp; Time</th>
+                                    <th style="text-align: right;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${attempts.map((att, idx) => {
+                                    const attemptNumber = total - idx;
+                                    const isPassed = att.passed === 1 || att.passed === true;
+                                    const isOfficial = att.id === record.id;
+                                    return `
+                                        <tr style="${isOfficial ? 'background: #f0fdf4;' : ''}">
+                                            <td>
+                                                <strong>Attempt #${attemptNumber}</strong>
+                                                ${isOfficial ? '<span style="display: block; font-size: 0.7rem; color: #059669; font-weight: 700;">★ Official Record</span>' : ''}
+                                            </td>
+                                            <td>${att.score} / ${att.totalQuestions}</td>
+                                            <td><strong style="color: ${isPassed ? '#059669' : '#dc2626'};">${att.percentage}%</strong></td>
+                                            <td>
+                                                <span class="quiz-status-badge ${isPassed ? 'status-passed' : 'status-failed'}" style="font-size: 0.72rem; padding: 2px 7px;">
+                                                    ${isPassed ? '✓ Passed' : '✗ Failed'}
+                                                </span>
+                                            </td>
+                                            <td style="font-size: 0.78rem; color: #64748b;">
+                                                ${new Date(att.completedAt).toLocaleDateString()} ${new Date(att.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </td>
+                                            <td style="text-align: right;">
+                                                <div style="display: inline-flex; gap: 4px;">
+                                                    <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('attemptHistoryModal').classList.remove('active'); window.viewPastResult('${att.id}')">View</button>
+                                                    <button type="button" class="btn btn-secondary btn-sm" onclick="window.downloadGradeSlipDirectly('${att.id}', this)" title="Download Slip">Slip</button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer" style="padding: 0.85rem 1.25rem; border-top: 1px solid var(--color-border); display: flex; justify-content: flex-end;">
+                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('attemptHistoryModal').classList.remove('active')">Close</button>
+                </div>
+            </div>
+        `;
+
+        modalEl.classList.add('active');
+    };
 
     // ============================================
     // SPREADSHEET EXPORTERS (CSV for Excel / Sheets)

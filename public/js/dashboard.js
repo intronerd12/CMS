@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Instant offline/cached avatar hydration from localStorage
     if (currentUser) {
         const cachedPic = localStorage.getItem('userAvatar_' + (currentUser.username || currentUser.id)) ||
-                          localStorage.getItem('userAvatar_' + currentUser.id);
+            localStorage.getItem('userAvatar_' + currentUser.id);
         if (cachedPic && !currentUser.profilePic) {
             currentUser.profilePic = cachedPic;
             sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(data => {
                 if (data && data.user) {
                     const fresh = data.user;
-                    
+
                     // If cloud DB has profilePic, cache it
                     if (fresh.profilePic && fresh.profilePic.trim().length > 0) {
                         localStorage.setItem('userAvatar_' + (fresh.username || fresh.id), fresh.profilePic);
@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else {
                         // If cloud DB returned empty avatar, check if client has cached avatar and restore to cloud
                         const cached = localStorage.getItem('userAvatar_' + (fresh.username || fresh.id)) ||
-                                       localStorage.getItem('userAvatar_' + fresh.id);
+                            localStorage.getItem('userAvatar_' + fresh.id);
                         if (cached && cached.trim().length > 0) {
                             fresh.profilePic = cached;
                             // Silently re-hydrate the cloud database
@@ -55,7 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     email: fresh.email,
                                     profilePic: cached
                                 })
-                            }).catch(() => {});
+                            }).catch(() => { });
                         }
                     }
 
@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     renderUserAvatar(fresh);
                 }
             })
-            .catch(() => {});
+            .catch(() => { });
     }
 });
 
@@ -309,7 +309,7 @@ async function loadDashboardData() {
     try {
         const role = currentUser ? (currentUser.role || 'student') : 'student';
         const userId = currentUser ? currentUser.id : '';
-        const userParam = role === 'faculty' 
+        const userParam = role === 'faculty'
             ? `&facultyId=${encodeURIComponent(userId)}`
             : `&studentId=${encodeURIComponent(userId)}`;
 
@@ -357,12 +357,23 @@ async function loadDashboardData() {
                 const allScores = scData.scores || [];
                 const enrolledScores = allScores.filter(s => enrolledSubjectIds.has(s.subjectId));
 
+                // Deduplicate per topic so student dashboard metrics are completely clean
+                const uniqueTopicScores = [];
+                const seenTopics = new Set();
+                for (const s of enrolledScores) {
+                    const tId = s.topicId || s.id;
+                    if (!seenTopics.has(tId)) {
+                        seenTopics.add(tId);
+                        uniqueTopicScores.push(s);
+                    }
+                }
+
                 if (statQuizzesEl) {
-                    statQuizzesEl.textContent = enrolledScores.filter(s => s.passed === 1).length;
+                    statQuizzesEl.textContent = uniqueTopicScores.filter(s => s.passed === 1).length;
                 }
                 if (statAvgScoreEl) {
-                    if (enrolledScores.length > 0) {
-                        const avg = Math.round(enrolledScores.reduce((acc, s) => acc + Number(s.percentage || 0), 0) / enrolledScores.length);
+                    if (uniqueTopicScores.length > 0) {
+                        const avg = Math.round(uniqueTopicScores.reduce((acc, s) => acc + Number(s.percentage || 0), 0) / uniqueTopicScores.length);
                         statAvgScoreEl.textContent = `${avg}%`;
                     } else {
                         statAvgScoreEl.textContent = '0%';
