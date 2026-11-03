@@ -876,7 +876,8 @@
             const user = getCurrentUser();
             const res = await fetch(`/api/scores/${scoreId}`, {
                 headers: {
-                    'x-user-id': user ? user.id : ''
+                    'x-user-id': user ? user.id : '',
+                    'x-user-role': user ? user.role : ''
                 }
             });
             if (!res.ok) throw new Error('Failed to load score record');
@@ -901,6 +902,44 @@
         }
     };
 
+    window.toggleRetakePermissionFromResults = async function (scoreId, allowRetake) {
+        if (!scoreId) return;
+        try {
+            const user = getCurrentUser();
+            const res = await fetch(`/api/scores/${scoreId}/retake-permission`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-user-role': user ? user.role : 'faculty',
+                    'x-user-id': user ? user.id : ''
+                },
+                body: JSON.stringify({ allowRetake: Boolean(allowRetake) })
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || 'Failed to update retake permission');
+            }
+
+            const data = await res.json();
+            showToast(allowRetake ? '✓ Retake permission granted to student' : '🔒 Retake permission revoked', 'success');
+
+            // Update in rawFacultyScores cache
+            if (typeof rawFacultyScores !== 'undefined' && Array.isArray(rawFacultyScores)) {
+                const found = rawFacultyScores.find(item => item.id === scoreId);
+                if (found) {
+                    found.retakeAllowed = allowRetake ? 1 : 0;
+                }
+            }
+
+            // Dynamically refresh the view
+            await window.viewPastResult(scoreId);
+        } catch (err) {
+            console.error('Error toggling retake from results:', err);
+            showToast(err.message || 'Error updating retake permission', 'error');
+        }
+    };
+
     function renderQuizResultPage(result) {
         const container = document.getElementById('quizResultContent');
         if (!container) return;
@@ -911,14 +950,39 @@
         const percentage = result.percentage;
         const passReq = result.passingScorePercent;
         const user = getCurrentUser();
+        const isFaculty = isFacultyUser();
         const scoreId = result.scoreId || (result.scoreRecord ? result.scoreRecord.id : '');
+        const scoreRec = result.scoreRecord || null;
+
+        // Determine if viewer is faculty reviewing a student's attempt
+        const isFacultyReviewingStudent = isFaculty || (scoreRec && user && scoreRec.studentId && scoreRec.studentId !== user.id);
+
+        let studentFullName = '';
+        let studentEmail = '';
+        let studentUsername = '';
+        if (scoreRec) {
+            studentFullName = `${scoreRec.firstName || ''} ${scoreRec.lastName || ''}`.trim() || scoreRec.username || 'Student';
+            studentEmail = scoreRec.email || '';
+            studentUsername = scoreRec.username || '';
+        } else if (user) {
+            studentFullName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username || 'Student';
+            studentEmail = user.email || '';
+            studentUsername = user.username || '';
+        }
 
         // Time spent formatting
         const mins = Math.floor((result.timeSpentSeconds || 0) / 60);
         const secs = (result.timeSpentSeconds || 0) % 60;
         const timeText = `${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
 
-        // Next topic information
+        // Date formatting
+        let dateText = '';
+        if (result.completedAt || (scoreRec && scoreRec.completedAt)) {
+            const d = new Date(result.completedAt || scoreRec.completedAt);
+            dateText = `${d.toLocaleDateString()} at ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+        }
+
+        // Next topic info for students
         let nextTopicTitle = 'the next lesson';
         let nextTopicOrder = '';
         if (result.nextTopic) {
@@ -926,130 +990,352 @@
             nextTopicOrder = result.nextTopic.orderIndex;
         }
 
+        // Retake status flag
+        const isRetakeAllowed = Boolean(scoreRec ? (scoreRec.retakeAllowed === 1 || scoreRec.retakeAllowed === true) : (result.retakeAllowed === 1 || result.retakeAllowed === true));
+
         // Hero banner HTML
         let heroHtml = '';
-        if (isPassed) {
-            heroHtml = `
-                <div class="result-hero-banner passed">
-                    <span class="result-hero-badge passed">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                            <polyline points="22 4 12 14.01 9 11.01"/>
-                        </svg>
-                        ASSESSMENT PASSED • MASTERY ACHIEVED
-                    </span>
-                    <h2 class="result-hero-title">Congratulations, ${user ? user.firstName : 'Student'}!</h2>
-                    <p class="result-hero-subtitle">
-                        Outstanding work! You scored <strong>${percentage}%</strong> (passing requirement: <strong>${passReq}%</strong>).
-                    </p>
 
-                    ${result.unlockedNextTopic ? `
-                        <div class="result-notice-box passed">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;">
-                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                                <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+        if (isFacultyReviewingStudent) {
+            // ============================================
+            // FACULTY REVIEW MODE: Inspecting Student Exam
+            // ============================================
+            if (isPassed) {
+                heroHtml = `
+                    <div class="result-hero-banner passed">
+                        <span class="result-hero-badge passed">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                <polyline points="22 4 12 14.01 9 11.01"/>
                             </svg>
-                            <div><strong>Topic Unlocked:</strong> <strong>${nextTopicTitle}</strong> has been successfully unlocked and is ready in your course classwork!</div>
-                        </div>` : ''}
+                            STUDENT EVALUATION • PASSED (${percentage}%)
+                        </span>
+                        <h2 class="result-hero-title">Student Submission: ${escapeHtml(studentFullName)}</h2>
+                        <p class="result-hero-subtitle">
+                            Student Account: <strong>${escapeHtml(studentEmail || studentUsername)}</strong> (@${escapeHtml(studentUsername)}) &bull; Completed ${dateText ? dateText : 'Recently'}
+                        </p>
 
-                    <div class="result-stats-row">
-                        <div class="result-stat-box">
-                            <div class="result-stat-value success">${score} / ${total}</div>
-                            <div class="result-stat-label">Correct Answers</div>
+                        <div class="result-notice-box passed" style="margin-top: 1rem;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;">
+                                <circle cx="12" cy="12" r="10"/>
+                                <polyline points="12 6 12 12 14 14"/>
+                            </svg>
+                            <div>
+                                <strong>Mastery Requirement Met:</strong> <strong>${escapeHtml(studentFullName)}</strong> achieved <strong>${percentage}%</strong> (passing threshold: <strong>${passReq}%</strong>). The sequential topic gate for this lesson is unlocked.
+                            </div>
                         </div>
-                        <div class="result-stat-box">
-                            <div class="result-stat-value success">${percentage}%</div>
-                            <div class="result-stat-label">Final Grade</div>
-                        </div>
-                        <div class="result-stat-box">
-                            <div class="result-stat-value">${passReq}%</div>
-                            <div class="result-stat-label">Passing Mark (${passReq}%)</div>
-                        </div>
-                        <div class="result-stat-box">
-                            <div class="result-stat-value">${timeText}</div>
-                            <div class="result-stat-label">Time Spent</div>
-                        </div>
-                    </div>
 
-                    <div class="result-actions-row">
-                        ${result.unlockedNextTopic ? `
-                            <button type="button" class="btn-proceed-topic" onclick="window.proceedToTopic('${result.nextTopic.id}')">
+                        <div class="result-stats-row">
+                            <div class="result-stat-box">
+                                <div class="result-stat-value success">${score} / ${total}</div>
+                                <div class="result-stat-label">Correct Answers</div>
+                            </div>
+                            <div class="result-stat-box">
+                                <div class="result-stat-value success">${percentage}%</div>
+                                <div class="result-stat-label">Final Grade</div>
+                            </div>
+                            <div class="result-stat-box">
+                                <div class="result-stat-value">${passReq}%</div>
+                                <div class="result-stat-label">Passing Mark (${passReq}%)</div>
+                            </div>
+                            <div class="result-stat-box">
+                                <div class="result-stat-value">${timeText}</div>
+                                <div class="result-stat-label">Time Spent</div>
+                            </div>
+                        </div>
+
+                        <div class="result-actions-row">
+                            <button type="button" class="btn-proceed-topic" onclick="window.navigateTo('scores')" style="background: #1e293b; color: #fff;">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                    <line x1="5" y1="12" x2="19" y2="12"/>
-                                    <polyline points="12 5 19 12 12 19"/>
+                                    <line x1="19" y1="12" x2="5" y2="12"/>
+                                    <polyline points="12 19 5 12 12 5"/>
                                 </svg>
-                                <span>Proceed to Topic ${nextTopicOrder}</span>
-                            </button>` : `
-                            <button type="button" class="btn-proceed-topic" onclick="window.navigateTo('topics')">
+                                <span>Return to Scores &amp; Gradebook</span>
+                            </button>
+
+                            <button type="button" class="btn-download-cert" onclick="window.openCertificateModal('${scoreId}')">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                    <polyline points="14 2 14 8 20 8"/>
+                                    <line x1="16" y1="13" x2="8" y2="13"/>
+                                    <line x1="16" y1="17" x2="8" y2="17"/>
+                                    <polyline points="10 9 9 9 8 9"/>
+                                </svg>
+                                <span>Download Official Student Certificate</span>
+                            </button>
+                        </div>
+                    </div>`;
+            } else {
+                heroHtml = `
+                    <div class="result-hero-banner failed">
+                        <span class="result-hero-badge failed">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"/>
+                                <line x1="12" y1="8" x2="12" y2="12"/>
+                                <line x1="12" y1="16" x2="12.01" y2="16"/>
+                            </svg>
+                            STUDENT EVALUATION • DID NOT PASS (${percentage}%)
+                        </span>
+                        <h2 class="result-hero-title">Student Submission: ${escapeHtml(studentFullName)}</h2>
+                        <p class="result-hero-subtitle">
+                            Student Account: <strong>${escapeHtml(studentEmail || studentUsername)}</strong> (@${escapeHtml(studentUsername)}) &bull; Attempt completed on ${dateText ? dateText : 'Recently'}
+                        </p>
+
+                        <div style="background: #fff5f5; border: 1.5px solid #fed7d7; border-left: 4px solid #e53e3e; border-radius: 8px; padding: 1rem 1.25rem; margin-top: 1rem; color: #9b2c2c; font-size: 0.875rem; line-height: 1.5;">
+                            <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; margin-bottom: 0.25rem;">
+                                <span>⚠️ Passing Threshold Not Met:</span>
+                            </div>
+                            <span><strong>${escapeHtml(studentFullName)}</strong> scored <strong>${percentage}%</strong> (passing threshold: <strong>${passReq}%</strong>). The sequential curriculum remains locked until this student attains a passing score. Review student answers below and decide whether to authorize a retake.</span>
+                        </div>
+
+                        <div class="result-stats-row">
+                            <div class="result-stat-box">
+                                <div class="result-stat-value danger">${score} / ${total}</div>
+                                <div class="result-stat-label">Correct Answers</div>
+                            </div>
+                            <div class="result-stat-box">
+                                <div class="result-stat-value danger">${percentage}%</div>
+                                <div class="result-stat-label">Student Grade</div>
+                            </div>
+                            <div class="result-stat-box">
+                                <div class="result-stat-value">${passReq}%</div>
+                                <div class="result-stat-label">Passing Mark (${passReq}%)</div>
+                            </div>
+                            <div class="result-stat-box">
+                                <div class="result-stat-value">${timeText}</div>
+                                <div class="result-stat-label">Time Spent</div>
+                            </div>
+                        </div>
+
+                        <!-- DEDICATED FACULTY RETAKE GOVERNANCE CARD -->
+                        ${isRetakeAllowed ? `
+                            <div class="faculty-retake-action-box" style="background: #ecfdf5; border: 1.5px solid #a7f3d0; border-radius: 10px; padding: 1.15rem 1.35rem; margin-top: 1.25rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+                                <div style="flex: 1; min-width: 260px;">
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 0.35rem;">
+                                        <span style="font-weight: 700; color: #065f46; font-size: 0.95rem;">Retake Authorization:</span>
+                                        <span class="badge" style="background: #ecfdf5; color: #047857; border: 1px solid #6ee7b7; font-weight: 700; font-size: 0.75rem; padding: 3px 8px; border-radius: 9999px;">✓ Retake Allowed</span>
+                                    </div>
+                                    <p style="margin: 0; font-size: 0.825rem; color: #047857; line-height: 1.45;">
+                                        Permission is currently granted. <strong>${escapeHtml(studentFullName)}</strong> can retake this quiz from their student portal.
+                                    </p>
+                                </div>
+                                <button type="button" class="btn" onclick="window.toggleRetakePermissionFromResults('${scoreId}', 0)" style="background: #ffffff; color: #dc2626; border: 1.5px solid #fca5a5; font-weight: 700; padding: 0.65rem 1.25rem; border-radius: 8px; display: inline-flex; align-items: center; gap: 7px; cursor: pointer; font-size: 0.85rem; box-shadow: 0 2px 6px rgba(220,38,38,0.12);">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                                        <rect x="3" y="11" width="18" height="11" rx="2"/>
+                                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                                    </svg>
+                                    <span>🔒 Revoke Retake Permission</span>
+                                </button>
+                            </div>
+                        ` : `
+                            <div class="faculty-retake-action-box" style="background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 10px; padding: 1.15rem 1.35rem; margin-top: 1.25rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+                                <div style="flex: 1; min-width: 260px;">
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 0.35rem;">
+                                        <span style="font-weight: 700; color: #1e3a8a; font-size: 0.95rem;">Retake Authorization:</span>
+                                        <span class="badge" style="background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; font-weight: 700; font-size: 0.75rem; padding: 3px 8px; border-radius: 9999px;">🔒 Currently Locked</span>
+                                    </div>
+                                    <p style="margin: 0; font-size: 0.825rem; color: #1e40af; line-height: 1.45;">
+                                        <strong>${escapeHtml(studentFullName)}</strong>'s retake button is locked. Student is waiting for your authorization. Click below to unlock retake.
+                                    </p>
+                                </div>
+                                <button type="button" class="btn btn-primary" onclick="window.toggleRetakePermissionFromResults('${scoreId}', 1)" style="background: #2563eb; color: #ffffff; font-weight: 700; padding: 0.65rem 1.25rem; border-radius: 8px; display: inline-flex; align-items: center; gap: 7px; border: none; cursor: pointer; box-shadow: 0 4px 12px rgba(37,99,235,0.25); font-size: 0.85rem;">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                                        <rect x="3" y="11" width="18" height="11" rx="2"/>
+                                        <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+                                    </svg>
+                                    <span>🔓 Allow Student to Retake Quiz</span>
+                                </button>
+                            </div>
+                        `}
+
+                        <div class="result-actions-row">
+                            <button type="button" class="btn-proceed-topic" onclick="window.navigateTo('scores')" style="background: #1e293b; color: #fff;">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="19" y1="12" x2="5" y2="12"/>
+                                    <polyline points="12 19 5 12 12 5"/>
+                                </svg>
+                                <span>Return to Scores &amp; Gradebook</span>
+                            </button>
+
+                            <button type="button" class="btn-download-cert" onclick="window.openCertificateModal('${scoreId}')">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                    <polyline points="14 2 14 8 20 8"/>
+                                    <line x1="16" y1="13" x2="8" y2="13"/>
+                                    <line x1="16" y1="17" x2="8" y2="17"/>
+                                </svg>
+                                <span>Download Grade Slip Record</span>
+                            </button>
+                        </div>
+                    </div>`;
+            }
+        } else {
+            // ============================================
+            // STUDENT MODE: Viewing Own Quiz Results
+            // ============================================
+            if (isPassed) {
+                heroHtml = `
+                    <div class="result-hero-banner passed">
+                        <span class="result-hero-badge passed">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                <polyline points="22 4 12 14.01 9 11.01"/>
+                            </svg>
+                            ASSESSMENT PASSED • MASTERY ACHIEVED
+                        </span>
+                        <h2 class="result-hero-title">Congratulations, ${escapeHtml(user ? user.firstName : 'Student')}!</h2>
+                        <p class="result-hero-subtitle">
+                            Outstanding work! You scored <strong>${percentage}%</strong> (passing requirement: <strong>${passReq}%</strong>).
+                        </p>
+
+                        ${result.unlockedNextTopic ? `
+                            <div class="result-notice-box passed">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;">
+                                    <rect x="3" y="11" width="18" height="11" rx="2"/>
+                                    <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+                                </svg>
+                                <div><strong>Topic Unlocked:</strong> <strong>${nextTopicTitle}</strong> has been successfully unlocked and is ready in your course classwork!</div>
+                            </div>` : ''}
+
+                        <div class="result-stats-row">
+                            <div class="result-stat-box">
+                                <div class="result-stat-value success">${score} / ${total}</div>
+                                <div class="result-stat-label">Correct Answers</div>
+                            </div>
+                            <div class="result-stat-box">
+                                <div class="result-stat-value success">${percentage}%</div>
+                                <div class="result-stat-label">Final Grade</div>
+                            </div>
+                            <div class="result-stat-box">
+                                <div class="result-stat-value">${passReq}%</div>
+                                <div class="result-stat-label">Passing Mark (${passReq}%)</div>
+                            </div>
+                            <div class="result-stat-box">
+                                <div class="result-stat-value">${timeText}</div>
+                                <div class="result-stat-label">Time Spent</div>
+                            </div>
+                        </div>
+
+                        <div class="result-actions-row">
+                            ${result.unlockedNextTopic ? `
+                                <button type="button" class="btn-proceed-topic" onclick="window.proceedToTopic('${result.nextTopic.id}')">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                        <line x1="5" y1="12" x2="19" y2="12"/>
+                                        <polyline points="12 5 19 12 12 19"/>
+                                    </svg>
+                                    <span>Proceed to Topic ${nextTopicOrder}</span>
+                                </button>` : `
+                                <button type="button" class="btn-proceed-topic" onclick="window.navigateTo('topics')">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                                    </svg>
+                                    <span>Back to Course Topics</span>
+                                </button>`}
+
+                            <button type="button" class="btn-download-cert" onclick="window.openCertificateModal('${scoreId}')">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                    <polyline points="14 2 14 8 20 8"/>
+                                    <line x1="16" y1="13" x2="8" y2="13"/>
+                                    <line x1="16" y1="17" x2="8" y2="17"/>
+                                    <polyline points="10 9 9 9 8 9"/>
+                                </svg>
+                                <span>Download Official Result &amp; Certificate</span>
+                            </button>
+                        </div>
+                    </div>`;
+            } else {
+                heroHtml = `
+                    <div class="result-hero-banner failed">
+                        <span class="result-hero-badge failed">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"/>
+                                <line x1="12" y1="8" x2="12" y2="12"/>
+                                <line x1="12" y1="16" x2="12.01" y2="16"/>
+                            </svg>
+                            ASSESSMENT NOT PASSED • RETAKE REQUIRED
+                        </span>
+                        <h2 class="result-hero-title">Cannot Proceed to Next Topic</h2>
+                        <p class="result-hero-subtitle">
+                            You scored <strong>${percentage}%</strong>. The required passing threshold is <strong>${passReq}%</strong>.
+                        </p>
+
+                        <div class="result-notice-box failed">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;">
+                                <circle cx="12" cy="12" r="10"/>
+                                <line x1="12" y1="8" x2="12" y2="12"/>
+                                <line x1="12" y1="16" x2="12.01" y2="16"/>
+                            </svg>
+                            <div>
+                                <strong>Prerequisite Requirement:</strong> You cannot advance to the next topic until you achieve a passing grade of ${passReq}%. Please review the lecture presentation and ask your professor for retake permission.
+                            </div>
+                        </div>
+
+                        <div class="result-stats-row">
+                            <div class="result-stat-box">
+                                <div class="result-stat-value danger">${score} / ${total}</div>
+                                <div class="result-stat-label">Correct Answers</div>
+                            </div>
+                            <div class="result-stat-box">
+                                <div class="result-stat-value danger">${percentage}%</div>
+                                <div class="result-stat-label">Your Grade</div>
+                            </div>
+                            <div class="result-stat-box">
+                                <div class="result-stat-value">${passReq}%</div>
+                                <div class="result-stat-label">Passing Mark (${passReq}%)</div>
+                            </div>
+                            <div class="result-stat-box">
+                                <div class="result-stat-value">${timeText}</div>
+                                <div class="result-stat-label">Time Spent</div>
+                            </div>
+                        </div>
+
+                        <div class="result-actions-row">
+                            <button type="button" class="btn-repeat-topic" onclick="window.repeatTopicLesson('${result.topicId || (scoreRec ? scoreRec.topicId : '')}')">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
                                     <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
                                 </svg>
-                                <span>Back to Course Topics</span>
-                            </button>`}
-
-                        <button type="button" class="btn-download-cert" onclick="window.openCertificateModal('${scoreId}')">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                <polyline points="14 2 14 8 20 8"/>
-                                <line x1="16" y1="13" x2="8" y2="13"/>
-                                <line x1="16" y1="17" x2="8" y2="17"/>
-                                <polyline points="10 9 9 9 8 9"/>
-                            </svg>
-                            <span>Download Official Result & Certificate</span>
-                        </button>
-                    </div>
-                </div>`;
-        } else {
-            const isRetakeAllowed = Boolean(result.retakeAllowed === 1 || result.retakeAllowed === true || (result.scoreRecord && (result.scoreRecord.retakeAllowed === 1 || result.scoreRecord.retakeAllowed === true)));
-            heroHtml = `
-                <div class="result-hero-banner failed">
-                    <span class="result-hero-badge failed">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="10"/>
-                            <line x1="12" y1="8" x2="12" y2="12"/>
-                            <line x1="12" y1="16" x2="12.01" y2="16"/>
-                        </svg>
-                        ASSESSMENT NOT PASSED • RETAKE REQUIRED
-                    </span>
-                    <h2 class="result-hero-title">Cannot Proceed to Next Topic</h2>
-                    <p class="result-hero-subtitle">
-                        You scored <strong>${percentage}%</strong>. The required passing threshold is <strong>${passReq}%</strong>.
-                    </p>
-
-                        ${isRetakeAllowed ? `
-                            <button type="button" class="btn-retake-quiz" onclick="window.startQuizAttempt('${activeQuiz ? activeQuiz.id : (result.scoreRecord ? result.scoreRecord.quizId : '')}')" style="background: #2563eb; color: #ffffff; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                    <polyline points="1 4 1 10 7 10"/>
-                                    <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
-                                </svg>
-                                <span>▷ Retake Quiz (Authorized by Professor)</span>
+                                <span>Repeat Topic (Review Lessons &amp; Presentation)</span>
                             </button>
-                        ` : `
-                            <button type="button" class="btn-retake-quiz disabled" disabled title="To retake this quiz, you need to wait on your professor or ask permission from your professor" style="opacity: 0.65; cursor: not-allowed; background: #f8fafc; color: #64748b; border: 1.5px solid #cbd5e1; display: inline-flex; align-items: center; gap: 0.5rem;">
+
+                            ${isRetakeAllowed ? `
+                                <button type="button" class="btn-retake-quiz" onclick="window.startQuizAttempt('${activeQuiz ? activeQuiz.id : (scoreRec ? scoreRec.quizId : '')}')" style="background: #2563eb; color: #ffffff; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="1 4 1 10 7 10"/>
+                                        <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+                                    </svg>
+                                    <span>▷ Retake Quiz (Authorized by Professor)</span>
+                                </button>
+                            ` : `
+                                <button type="button" class="btn-retake-quiz disabled" disabled title="To retake this quiz, you need to wait on your professor or ask permission from your professor" style="opacity: 0.65; cursor: not-allowed; background: #f8fafc; color: #64748b; border: 1.5px solid #cbd5e1; display: inline-flex; align-items: center; gap: 0.5rem;">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="3" y="11" width="18" height="11" rx="2"/>
+                                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                                    </svg>
+                                    <span>🔒 Retake Locked — Ask Professor</span>
+                                </button>
+                            `}
+
+                            ${!isRetakeAllowed ? `
+                                <div style="width: 100%; text-align: center; margin-top: 0.5rem; font-size: 0.78rem; color: #b45309; background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 0.5rem 0.85rem;">
+                                    ⚠️ To retake the quiz, you need to wait on your professor or ask permission from your professor.
+                                </div>
+                            ` : ''}
+
+                            <button type="button" class="btn-download-cert" onclick="window.openCertificateModal('${scoreId}')">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <rect x="3" y="11" width="18" height="11" rx="2"/>
-                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                    <polyline points="14 2 14 8 20 8"/>
+                                    <line x1="16" y1="13" x2="8" y2="13"/>
+                                    <line x1="16" y1="17" x2="8" y2="17"/>
                                 </svg>
-                                <span>🔒 Retake Locked — Ask Professor</span>
+                                <span>Download Grade Slip Record</span>
                             </button>
-                        `}
-                        ${!isRetakeAllowed ? `
-                            <div style="width: 100%; text-align: center; margin-top: 0.5rem; font-size: 0.78rem; color: #b45309; background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 0.5rem 0.85rem;">
-                                ⚠️ To retake the quiz, you need to wait on your professor or ask permission from your professor.
-                            </div>
-                        ` : ''}
-                        <button type="button" class="btn-download-cert" onclick="window.openCertificateModal('${scoreId}')">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                <polyline points="14 2 14 8 20 8"/>
-                                <line x1="16" y1="13" x2="8" y2="13"/>
-                                <line x1="16" y1="17" x2="8" y2="17"/>
-                            </svg>
-                            <span>Download Grade Slip Record</span>
-                        </button>
-                    </div>
-                </div>`;
+                        </div>
+                    </div>`;
+            }
         }
 
         window.repeatTopicLesson = function (topicId) {
@@ -1063,61 +1349,81 @@
         // Detailed Question Review Breakdown
         let reviewHtml = '';
         if (Array.isArray(result.reviewDetails) && result.reviewDetails.length > 0) {
-            reviewHtml = `
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; margin-bottom: 0.75rem;">
-                    <h3 class="review-section-title" style="margin: 0;">Question by Question Review</h3>
-                    <span class="badge ${isPassed ? 'badge-success' : 'badge-warning'}" style="font-size: 0.75rem;">
-                        ${isPassed ? '✓ Answer Key & Rationales Available' : '🔒 Answer Key Protected'}
-                    </span>
-                </div>
+            const sectionTitle = isFacultyReviewingStudent ? 'Question by Question Review (Faculty Evaluation View)' : 'Question by Question Review';
+            let badgeHtml = '';
+            if (isFacultyReviewingStudent) {
+                badgeHtml = `<span class="badge" style="font-size: 0.75rem; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-weight: 700; padding: 3px 8px; border-radius: 6px;">
+                    👁 Faculty Answer Key &amp; Rationales Visible
+                </span>`;
+            } else {
+                badgeHtml = `<span class="badge ${isPassed ? 'badge-success' : 'badge-warning'}" style="font-size: 0.75rem;">
+                    ${isPassed ? '✓ Answer Key &amp; Rationales Available' : '🔒 Answer Key Protected'}
+                </span>`;
+            }
 
-                ${!isPassed ? `
+            let protectionNotice = '';
+            if (!isFacultyReviewingStudent && !isPassed) {
+                protectionNotice = `
                     <div class="review-protection-notice" style="background: #fffbeb; border: 1.5px solid #fde68a; border-left: 4px solid #f59e0b; padding: 1rem 1.25rem; border-radius: 8px; margin-bottom: 1.5rem; display: flex; align-items: flex-start; gap: 0.75rem;">
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" style="flex-shrink: 0; margin-top: 2px;">
                             <rect x="3" y="11" width="18" height="11" rx="2"/>
                             <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                         </svg>
                         <div>
-                            <strong style="color: #92400e; font-size: 0.95rem;">Answer Key & Explanations Protected</strong>
+                            <strong style="color: #92400e; font-size: 0.95rem;">Answer Key &amp; Explanations Protected</strong>
                             <p style="margin: 0.25rem 0 0 0; font-size: 0.8125rem; color: #78350f; line-height: 1.45;">
                                 Because you did not reach the passing threshold (${passReq}%), the correct answers and faculty explanations are hidden. Please review the lecture presentation and notes for this topic, and ask your professor for retake authorization.
                             </p>
                         </div>
                     </div>
-                ` : ''}
+                `;
+            }
+
+            reviewHtml = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+                    <h3 class="review-section-title" style="margin: 0;">${sectionTitle}</h3>
+                    ${badgeHtml}
+                </div>
+
+                ${protectionNotice}
 
                 <div class="review-list">
-                    ${result.reviewDetails.map((item, i) => `
-                        <div class="review-card ${item.isCorrect ? 'correct' : 'incorrect'}">
-                            <div class="review-header">
-                                <span class="review-q-num">Question ${i + 1}</span>
-                                <span class="badge ${item.isCorrect ? 'badge-success' : 'badge-error'}">
-                                    ${item.isCorrect ? '✓ Correct' : '✗ Incorrect'}
-                                </span>
+                    ${result.reviewDetails.map((item, i) => {
+                        const answerLabel = isFacultyReviewingStudent ? 'Student Answer:' : 'Your Answer:';
+                        const canSeeCorrect = isFacultyReviewingStudent || isPassed;
+
+                        return `
+                            <div class="review-card ${item.isCorrect ? 'correct' : 'incorrect'}">
+                                <div class="review-header">
+                                    <span class="review-q-num">Question ${i + 1}</span>
+                                    <span class="badge ${item.isCorrect ? 'badge-success' : 'badge-error'}">
+                                        ${item.isCorrect ? '✓ Correct' : '✗ Incorrect'}
+                                    </span>
+                                </div>
+                                <div class="review-q-text tiptap-content">${item.questionText || ''}</div>
+
+                                <div class="review-answer-row review-student-answer ${item.isCorrect ? 'correct' : 'incorrect'}">
+                                    <strong>${answerLabel}</strong> ${item.selectedText || '<em style="color:#94a3b8;">No answer submitted</em>'}
+                                </div>
+
+                                ${canSeeCorrect && !item.isCorrect && item.correctText ? `
+                                    <div class="review-answer-row review-correct-answer">
+                                        <strong>Correct Answer:</strong> ${item.correctText}
+                                    </div>` : ''}
+
+                                ${canSeeCorrect && item.explanation ? `
+                                    <div class="review-explanation tiptap-content">
+                                        <strong>Faculty Explanation:</strong> ${item.explanation}
+                                    </div>` : ''}
+
+                                ${!canSeeCorrect && !item.isCorrect ? `
+                                    <div style="font-size: 0.75rem; color: #94a3b8; font-style: italic; margin-top: 0.35rem; display: flex; align-items: center; gap: 4px;">
+                                        <span>🔒</span>
+                                        <span>Correct answer hidden until assessment is passed.</span>
+                                    </div>` : ''}
                             </div>
-                            <div class="review-q-text tiptap-content">${item.questionText}</div>
-
-                            <div class="review-answer-row review-student-answer ${item.isCorrect ? 'correct' : 'incorrect'}">
-                                <strong>Your Answer:</strong> ${item.selectedText || 'No answer submitted'}
-                            </div>
-
-                            ${isPassed && !item.isCorrect && item.correctText ? `
-                                <div class="review-answer-row review-correct-answer">
-                                    <strong>Correct Answer:</strong> ${item.correctText}
-                                </div>` : ''}
-
-                            ${isPassed && item.explanation ? `
-                                <div class="review-explanation tiptap-content">
-                                    <strong>Explanation:</strong> ${item.explanation}
-                                </div>` : ''}
-
-                            ${!isPassed && !item.isCorrect ? `
-                                <div style="font-size: 0.75rem; color: #94a3b8; font-style: italic; margin-top: 0.35rem; display: flex; align-items: center; gap: 4px;">
-                                    <span>🔒</span>
-                                    <span>Correct answer hidden until assessment is passed.</span>
-                                </div>` : ''}
-                        </div>
-                    `).join('')}
+                        `;
+                    }).join('')}
                 </div>`;
         }
 

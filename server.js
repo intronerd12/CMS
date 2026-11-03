@@ -45,7 +45,15 @@ const upload = multer({
 
 function isStaffUser(req) {
     const role = (req.headers['x-user-role'] || req.query.role || '').toLowerCase();
-    return role === 'faculty';
+    if (role === 'faculty') return true;
+    const userId = req.headers['x-user-id'] || req.query.userId;
+    if (userId) {
+        try {
+            const u = db.getUserById(userId);
+            if (u && u.role === 'faculty') return true;
+        } catch (_) {}
+    }
+    return false;
 }
 
 // Middleware
