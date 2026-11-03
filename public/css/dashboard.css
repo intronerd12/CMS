@@ -172,22 +172,23 @@ body {
 }
 
 /* ============================================
-   SIDEBAR FOOTER
+   SIDEBAR FOOTER & USER PROFILE
    ============================================ */
 .sidebar-footer {
-    padding: var(--space-4) var(--space-5);
-    border-top: 1px solid var(--color-sidebar-border);
+    padding: 12px 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--space-3);
-    background: rgba(0, 0, 0, 0.1);
+    gap: 10px;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(10px);
 }
 
 .user-info {
     display: flex;
     align-items: center;
-    gap: var(--space-3);
+    gap: 10px;
     flex: 1;
     min-width: 0;
 }
@@ -196,70 +197,118 @@ body {
     width: 38px;
     height: 38px;
     border-radius: var(--radius-full);
-    background: var(--theme-avatar-gradient, linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-accent) 100%));
-    color: var(--color-text-inverse);
+    color: #ffffff;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 700;
-    font-size: var(--font-size-sm);
+    font-size: 0.9375rem;
     flex-shrink: 0;
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    box-shadow: var(--shadow-primary);
+    letter-spacing: -0.01em;
     transition: all var(--transition-base);
+}
+
+body.theme-faculty .user-avatar {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    border: 2px solid rgba(245, 158, 11, 0.45);
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.28);
+}
+
+body.theme-student .user-avatar {
+    background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+    border: 2px solid rgba(14, 165, 233, 0.45);
+    box-shadow: 0 0 12px rgba(14, 165, 233, 0.28);
 }
 
 .user-details {
     display: flex;
     flex-direction: column;
     min-width: 0;
+    gap: 3px;
 }
 
 .user-name {
-    font-size: var(--font-size-sm);
+    font-size: 0.85rem;
     font-weight: 600;
-    color: var(--color-text-inverse);
+    color: #f8fafc;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    letter-spacing: -0.01em;
+    line-height: 1.25;
 }
 
 .user-role {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    font-size: 0.6875rem;
+    gap: 5px;
+    font-size: 0.65rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
-    padding: 1px 8px;
+    letter-spacing: 0.08em;
+    padding: 2px 8px;
     border-radius: var(--radius-full);
-    background: var(--theme-role-pill-bg, rgba(255, 255, 255, 0.15));
-    color: var(--theme-role-pill-text, #ffffff);
-    border: 1px solid var(--theme-role-pill-border, transparent);
     width: fit-content;
-    margin-top: 3px;
+    white-space: nowrap;
+    line-height: 1.3;
     transition: all var(--transition-base);
 }
 
+.user-role .role-status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+/* Faculty role badge on dark sidebar */
+.user-role.role-faculty,
+body.theme-faculty .sidebar-footer .user-role {
+    background: rgba(245, 158, 11, 0.14) !important;
+    color: #fbbf24 !important;
+    border: 1px solid rgba(245, 158, 11, 0.32) !important;
+}
+
+body.theme-faculty .sidebar-footer .user-role .role-status-dot {
+    background: #f59e0b;
+    box-shadow: 0 0 6px #f59e0b;
+}
+
+/* Student role badge on dark sidebar */
+.user-role.role-student,
+body.theme-student .sidebar-footer .user-role {
+    background: rgba(14, 165, 233, 0.14) !important;
+    color: #38bdf8 !important;
+    border: 1px solid rgba(14, 165, 233, 0.32) !important;
+}
+
+body.theme-student .sidebar-footer .user-role .role-status-dot {
+    background: #38bdf8;
+    box-shadow: 0 0 6px #38bdf8;
+}
+
 .btn-logout {
-    background: none;
-    border: none;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     cursor: pointer;
-    color: var(--color-sidebar-text);
-    padding: var(--space-2);
-    border-radius: var(--radius-md);
+    color: #94a3b8;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
     transition: all var(--transition-fast);
     display: flex;
     align-items: center;
+    justify-content: center;
     flex-shrink: 0;
 }
 
 .btn-logout:hover {
-    background: rgba(214, 54, 56, 0.15);
-    color: #e65054;
+    background: rgba(239, 68, 68, 0.16);
+    color: #f87171;
+    border-color: rgba(239, 68, 68, 0.35);
+    transform: translateY(-1px);
 }
-
 /* ============================================
    MAIN CONTENT
    ============================================ */

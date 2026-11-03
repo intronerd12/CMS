@@ -36,7 +36,16 @@ function initializeDashboard() {
 
     // Set user info in sidebar
     document.getElementById('userName').textContent = `${currentUser.firstName} ${currentUser.lastName}`;
-    document.getElementById('userRole').textContent = role === 'faculty' ? 'Faculty Member' : 'Student';
+    const roleEl = document.getElementById('userRole');
+    if (roleEl) {
+        if (role === 'faculty') {
+            roleEl.innerHTML = '<span class="role-status-dot"></span>Faculty';
+            roleEl.className = 'user-role role-faculty';
+        } else {
+            roleEl.innerHTML = '<span class="role-status-dot"></span>Student';
+            roleEl.className = 'user-role role-student';
+        }
+    }
     document.getElementById('userAvatar').textContent = currentUser.firstName.charAt(0).toUpperCase();
 
     // Set greeting

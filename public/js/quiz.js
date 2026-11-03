@@ -657,11 +657,23 @@
 
     function updateTimerDisplay() {
         const timerEl = document.getElementById('theaterTimer');
+        const timerDigits = document.getElementById('theaterTimerDigits');
         if (!timerEl) return;
 
         const mins = Math.floor(Math.max(0, timeRemainingSeconds) / 60);
         const secs = Math.max(0, timeRemainingSeconds) % 60;
-        timerEl.textContent = `⏱ ${mins}:${secs < 10 ? '0' : ''}${secs}`;
+        const formatted = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+
+        if (timerDigits) {
+            timerDigits.textContent = formatted;
+        } else {
+            timerEl.innerHTML = `
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 16 14"/>
+                </svg>
+                <span id="theaterTimerDigits">${formatted}</span>`;
+        }
 
         if (timeRemainingSeconds <= 120) {
             timerEl.classList.add('urgent');
@@ -670,16 +682,82 @@
         }
     }
 
+    window.promptExitQuizTheater = function () {
+        const modal = document.getElementById('quizExitConfirmModal');
+        if (modal) {
+            modal.classList.add('active');
+        } else {
+            if (confirm('Are you sure you want to exit the quiz? Your answers will not be submitted.')) {
+                window.closeQuizTheater();
+            }
+        }
+    };
+
+    window.closeExitConfirmModal = function () {
+        const modal = document.getElementById('quizExitConfirmModal');
+        if (modal) modal.classList.remove('active');
+    };
+
+    window.confirmExitQuizTheater = function () {
+        window.closeExitConfirmModal();
+        window.closeQuizTheater();
+    };
+
     window.confirmSubmitQuiz = function () {
         const answeredCount = Object.keys(studentAnswers).length;
         const total = activeQuestions.length;
         const unanswered = total - answeredCount;
 
-        if (unanswered > 0) {
-            if (!confirm(`You have ${unanswered} unanswered question${unanswered !== 1 ? 's' : ''}. Are you sure you want to submit?`)) {
-                return;
+        const modal = document.getElementById('quizSubmitConfirmModal');
+        const modalTitle = document.getElementById('quizSubmitModalTitle');
+        const modalText = document.getElementById('quizSubmitModalText');
+        const modalIcon = document.getElementById('quizSubmitModalIcon');
+
+        if (modal && modalTitle && modalText) {
+            if (unanswered > 0) {
+                if (modalIcon) {
+                    modalIcon.style.background = '#fef2f2';
+                    modalIcon.style.borderColor = '#fee2e2';
+                    modalIcon.style.color = '#dc2626';
+                    modalIcon.innerHTML = `
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                            <line x1="12" y1="9" x2="12" y2="13"/>
+                            <line x1="12" y1="17" x2="12.01" y2="17"/>
+                        </svg>`;
+                }
+                modalTitle.textContent = 'Unanswered Questions';
+                modalText.innerHTML = `You have <strong style="color: #dc2626;">${unanswered} unanswered question${unanswered !== 1 ? 's' : ''}</strong> out of ${total}. Are you sure you want to finalize and submit? Unanswered items will receive 0 points.`;
+            } else {
+                if (modalIcon) {
+                    modalIcon.style.background = '#ecfdf5';
+                    modalIcon.style.borderColor = '#d1fae5';
+                    modalIcon.style.color = '#059669';
+                    modalIcon.innerHTML = `
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                            <polyline points="22 4 12 14.01 9 11.01"/>
+                        </svg>`;
+                }
+                modalTitle.textContent = 'Submit Assessment?';
+                modalText.textContent = `You have answered all ${total} questions. Are you ready to submit your test for official grading?`;
             }
+            modal.classList.add('active');
+        } else {
+            if (unanswered > 0) {
+                if (!confirm(`You have ${unanswered} unanswered question${unanswered !== 1 ? 's' : ''}. Are you sure you want to submit?`)) return;
+            }
+            window.submitActiveQuiz(false);
         }
+    };
+
+    window.closeSubmitConfirmModal = function () {
+        const modal = document.getElementById('quizSubmitConfirmModal');
+        if (modal) modal.classList.remove('active');
+    };
+
+    window.finalizeSubmitQuiz = function () {
+        window.closeSubmitConfirmModal();
         window.submitActiveQuiz(false);
     };
 
@@ -810,31 +888,39 @@
         if (isPassed) {
             heroHtml = `
                 <div class="result-hero-banner passed">
-                    <span class="result-hero-badge">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <span class="result-hero-badge passed">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
                             <polyline points="22 4 12 14.01 9 11.01"/>
                         </svg>
-                        ASSESSMENT PASSED (MASTERY ACHIEVED)
+                        ASSESSMENT PASSED • MASTERY ACHIEVED
                     </span>
                     <h2 class="result-hero-title">Congratulations, ${user ? user.firstName : 'Student'}!</h2>
                     <p class="result-hero-subtitle">
                         Outstanding work! You scored <strong>${percentage}%</strong> (passing requirement: <strong>${passReq}%</strong>).
-                        ${result.unlockedNextTopic ? `<br>🔓 <strong>${nextTopicTitle}</strong> has been successfully UNLOCKED and is ready in your course classwork!` : ''}
                     </p>
+
+                    ${result.unlockedNextTopic ? `
+                        <div class="result-notice-box passed">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                                <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+                            </svg>
+                            <div><strong>Topic Unlocked:</strong> <strong>${nextTopicTitle}</strong> has been successfully unlocked and is ready in your course classwork!</div>
+                        </div>` : ''}
 
                     <div class="result-stats-row">
                         <div class="result-stat-box">
-                            <div class="result-stat-value">${score} / ${total}</div>
+                            <div class="result-stat-value success">${score} / ${total}</div>
                             <div class="result-stat-label">Correct Answers</div>
                         </div>
                         <div class="result-stat-box">
-                            <div class="result-stat-value">${percentage}%</div>
+                            <div class="result-stat-value success">${percentage}%</div>
                             <div class="result-stat-label">Final Grade</div>
                         </div>
                         <div class="result-stat-box">
                             <div class="result-stat-value">${passReq}%</div>
-                            <div class="result-stat-label">Required Mark</div>
+                            <div class="result-stat-label">Passing Mark (${passReq}%)</div>
                         </div>
                         <div class="result-stat-box">
                             <div class="result-stat-value">${timeText}</div>
@@ -845,51 +931,71 @@
                     <div class="result-actions-row">
                         ${result.unlockedNextTopic ? `
                             <button type="button" class="btn-proceed-topic" onclick="window.proceedToTopic('${result.nextTopic.id}')">
-                                <span>🚀 Proceed to Topic ${nextTopicOrder}</span>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="5" y1="12" x2="19" y2="12"/>
+                                    <polyline points="12 5 19 12 12 19"/>
+                                </svg>
+                                <span>Proceed to Topic ${nextTopicOrder}</span>
                             </button>` : `
                             <button type="button" class="btn-proceed-topic" onclick="window.navigateTo('topics')">
-                                <span>📚 Back to Course Topics</span>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                                </svg>
+                                <span>Back to Course Topics</span>
                             </button>`}
 
                         <button type="button" class="btn-download-cert" onclick="window.openCertificateModal('${scoreId}')">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                <polyline points="7 10 12 15 17 10"/>
-                                <line x1="12" y1="15" x2="12" y2="3"/>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                                <line x1="16" y1="13" x2="8" y2="13"/>
+                                <line x1="16" y1="17" x2="8" y2="17"/>
+                                <polyline points="10 9 9 9 8 9"/>
                             </svg>
-                            Download Official Result & Certificate
+                            <span>Download Official Result & Certificate</span>
                         </button>
                     </div>
                 </div>`;
         } else {
             heroHtml = `
-                <div class="result-hero-banner failed" style="border-left: 6px solid #ef4444; background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);">
-                    <span class="result-hero-badge" style="background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <div class="result-hero-banner failed">
+                    <span class="result-hero-badge failed">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="12" cy="12" r="10"/>
                             <line x1="12" y1="8" x2="12" y2="12"/>
                             <line x1="12" y1="16" x2="12.01" y2="16"/>
                         </svg>
-                        FAILED QUIZ • CANNOT PROCEED TO NEXT TOPIC
+                        ASSESSMENT NOT PASSED • RETAKE REQUIRED
                     </span>
-                    <h2 class="result-hero-title" style="color: #991b1b;">Cannot Proceed to Next Topic</h2>
-                    <p class="result-hero-subtitle" style="color: #7f1d1d;">
+                    <h2 class="result-hero-title">Cannot Proceed to Next Topic</h2>
+                    <p class="result-hero-subtitle">
                         You scored <strong>${percentage}%</strong>. The required passing threshold is <strong>${passReq}%</strong>.
-                        <br>⚠️ <strong>You cannot proceed to the next topic until you pass this quiz.</strong> Please repeat this topic and review the lecture presentation before retaking the test.
                     </p>
+
+                    <div class="result-notice-box failed">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                            <line x1="12" y1="9" x2="12" y2="13"/>
+                            <line x1="12" y1="17" x2="12.01" y2="17"/>
+                        </svg>
+                        <div>
+                            <strong>Prerequisite Requirement:</strong> You cannot advance to the next topic until you achieve a passing grade of <strong>${passReq}%</strong>. Please review the lecture presentation and retake the test.
+                        </div>
+                    </div>
 
                     <div class="result-stats-row">
                         <div class="result-stat-box">
-                            <div class="result-stat-value" style="color: #dc2626;">${score} / ${total}</div>
+                            <div class="result-stat-value danger">${score} / ${total}</div>
                             <div class="result-stat-label">Correct Answers</div>
                         </div>
                         <div class="result-stat-box">
-                            <div class="result-stat-value" style="color: #dc2626;">${percentage}%</div>
+                            <div class="result-stat-value danger">${percentage}%</div>
                             <div class="result-stat-label">Your Grade</div>
                         </div>
                         <div class="result-stat-box">
-                            <div class="result-stat-value" style="color: #15803d;">${passReq}%</div>
-                            <div class="result-stat-label">Passing Mark (75%)</div>
+                            <div class="result-stat-value">${passReq}%</div>
+                            <div class="result-stat-label">Passing Mark (${passReq}%)</div>
                         </div>
                         <div class="result-stat-box">
                             <div class="result-stat-value">${timeText}</div>
@@ -898,30 +1004,40 @@
                     </div>
 
                     <div class="result-actions-row">
-                        <button type="button" class="btn-proceed-topic" style="background: #dc2626; border-color: #b91c1c; color: #fff;" onclick="window.repeatTopicLesson('${result.scoreRecord ? result.scoreRecord.topicId : ''}')">
-                            <span>🔄 Repeat Topic (Review Lessons & Presentation)</span>
+                        <button type="button" class="btn-repeat-topic" onclick="window.repeatTopicLesson('${result.scoreRecord ? result.scoreRecord.topicId : ''}')">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                            </svg>
+                            <span>Repeat Topic (Review Lessons & Presentation)</span>
                         </button>
                         <button type="button" class="btn-retake-quiz" onclick="window.startQuizAttempt('${activeQuiz ? activeQuiz.id : (result.scoreRecord ? result.scoreRecord.quizId : '')}')">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                 <polyline points="1 4 1 10 7 10"/>
                                 <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
                             </svg>
                             <span>Retake Quiz Now</span>
                         </button>
                         <button type="button" class="btn-download-cert" onclick="window.openCertificateModal('${scoreId}')">
-                            📄 Download Grade Slip Record
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                                <line x1="16" y1="13" x2="8" y2="13"/>
+                                <line x1="16" y1="17" x2="8" y2="17"/>
+                            </svg>
+                            <span>Download Grade Slip Record</span>
                         </button>
                     </div>
                 </div>`;
         }
 
-    window.repeatTopicLesson = function (topicId) {
-        if (topicId && typeof window.openTopicSlides === 'function') {
-            window.openTopicSlides(topicId);
-        } else {
-            window.navigateTo('topics');
-        }
-    };
+        window.repeatTopicLesson = function (topicId) {
+            if (topicId && typeof window.openTopicSlides === 'function') {
+                window.openTopicSlides(topicId);
+            } else {
+                window.navigateTo('topics');
+            }
+        };
 
         // Detailed Question Review Breakdown
         let reviewHtml = '';
