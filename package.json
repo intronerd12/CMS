@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
+    "sync": "node scripts/sync-live-data.js",
     "build:tiptap": "node scripts/build-tiptap.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

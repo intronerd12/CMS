@@ -514,8 +514,8 @@ function seedAndMigrate() {
                 });
                 insertMany(jsonUsers);
 
-                // Sync any updated profile pics from SQLite back to users.json so git/disk keeps them
-                const dbUsers = db.prepare('SELECT id, username, email, firstName, lastName, role, profilePic, createdAt, isActive FROM users ORDER BY createdAt DESC').all();
+                // Sync any updated profile pics and new users from SQLite back to users.json so git/disk keeps them
+                const dbUsers = db.prepare('SELECT id, username, email, password, firstName, lastName, role, profilePic, createdAt, isActive FROM users ORDER BY createdAt DESC').all();
                 let changed = false;
                 for (const dbu of dbUsers) {
                     const found = jsonUsers.find(u => u.id === dbu.id || (u.username && u.username.toLowerCase() === dbu.username.toLowerCase()));
@@ -524,11 +524,16 @@ function seedAndMigrate() {
                             found.profilePic = dbu.profilePic;
                             changed = true;
                         }
+                        if (dbu.password && !found.password) {
+                            found.password = dbu.password;
+                            changed = true;
+                        }
                     } else {
                         jsonUsers.push({
                             id: dbu.id,
                             username: dbu.username,
                             email: dbu.email,
+                            password: dbu.password,
                             firstName: dbu.firstName,
                             lastName: dbu.lastName,
                             role: dbu.role,
@@ -956,6 +961,77 @@ module.exports = {
     getUserByEmail: (email) => stmtGetUserByEmail.get(email),
     getUserById: (id) => stmtGetUserById.get(id),
     getAllUsers: () => stmtGetAllUsers.all(),
+    getAllUsersWithPassword: () => db.prepare('SELECT * FROM users ORDER BY createdAt DESC').all(),
+    restoreUser: (userData) => {
+        if (!userData || !userData.username) return null;
+        const existing = stmtGetUserByUsername.get(userData.username.trim());
+        if (existing) {
+            // If existing user lacks profilePic and incoming has it, update profilePic
+            if ((!existing.profilePic || existing.profilePic === '') && userData.profilePic) {
+                stmtUpdateUserProfile.run({
+                    id: existing.id,
+                    firstName: existing.firstName,
+                    lastName: existing.lastName,
+                    email: existing.email,
+                    profilePic: userData.profilePic
+                });
+            }
+            return existing;
+        }
+
+        let passwordHash = userData.password;
+        if (!passwordHash && userData.plainPassword) {
+            passwordHash = bcrypt.hashSync(userData.plainPassword, 10);
+        } else if (passwordHash && !passwordHash.startsWith('$2')) {
+            passwordHash = bcrypt.hashSync(passwordHash, 10);
+        }
+
+        if (!passwordHash) {
+            passwordHash = bcrypt.hashSync('student123', 10);
+        }
+
+        const fullUser = {
+            id: userData.id || uuidv4(),
+            username: userData.username.trim(),
+            email: userData.email ? userData.email.trim() : `${userData.username.trim()}@student.university.edu`,
+            password: passwordHash,
+            firstName: userData.firstName ? userData.firstName.trim() : userData.username.trim(),
+            lastName: userData.lastName ? userData.lastName.trim() : 'User',
+            role: userData.role === 'faculty' ? 'faculty' : 'student',
+            profilePic: userData.profilePic || '',
+            createdAt: userData.createdAt || new Date().toISOString(),
+            isActive: userData.isActive === false ? 0 : 1
+        };
+
+        stmtInsertUser.run(fullUser);
+
+        try {
+            const usersJsonPath = path.join(__dirname, 'data', 'users.json');
+            let list = [];
+            if (fs.existsSync(usersJsonPath)) {
+                list = JSON.parse(fs.readFileSync(usersJsonPath, 'utf8'));
+            }
+            if (!list.some(u => u.id === fullUser.id || (u.username && u.username.toLowerCase() === fullUser.username.toLowerCase()))) {
+                list.push(fullUser);
+                fs.writeFileSync(usersJsonPath, JSON.stringify(list, null, 2), 'utf8');
+            }
+        } catch (_) {}
+
+        return fullUser;
+    },
+    syncRoster: (accounts) => {
+        if (!Array.isArray(accounts) || accounts.length === 0) return [];
+        const restored = [];
+        for (const acc of accounts) {
+            try {
+                const user = module.exports.restoreUser(acc);
+                if (user) restored.push(user);
+            } catch (err) {
+                console.warn('[SQLite] Roster restore warning:', err.message);
+            }
+        }
+        return restored;
+    },
     createUser: (userData) => {
         const fullUser = {
             id: userData.id || uuidv4(),

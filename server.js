@@ -177,6 +177,40 @@ app.post('/api/auth/login', (req, res) => {
     }
 });
 
+// Self-healing: Restore user if database restarted / wiped on git push
+app.post('/api/auth/restore-user', (req, res) => {
+    try {
+        const userData = req.body.user || req.body;
+        if (!userData || !userData.username) {
+            return res.status(400).json({ error: 'User data required' });
+        }
+        const restored = db.restoreUser(userData);
+        if (!restored) {
+            return res.status(500).json({ error: 'Failed to restore user' });
+        }
+        const { password: _, ...userWithoutPassword } = restored;
+        res.json({ message: 'User restored successfully', user: userWithoutPassword });
+    } catch (err) {
+        console.error('Restore user error:', err);
+        res.status(500).json({ error: 'Server error restoring user' });
+    }
+});
+
+// Self-healing: Batch sync roster from client account registry
+app.post('/api/auth/sync-roster', (req, res) => {
+    try {
+        const accounts = req.body.accounts || [];
+        if (!Array.isArray(accounts)) {
+            return res.status(400).json({ error: 'Accounts array required' });
+        }
+        const restored = db.syncRoster(accounts);
+        res.json({ message: `Synced ${restored.length} accounts`, count: restored.length });
+    } catch (err) {
+        console.error('Sync roster error:', err);
+        res.status(500).json({ error: 'Server error syncing roster' });
+    }
+});
+
 // Get current user profile
 app.get('/api/auth/profile/:userId', (req, res) => {
     try {
@@ -1636,6 +1670,89 @@ app.get('/api/stats', (req, res) => {
         });
     } catch (error) {
         res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// ==================== SYSTEM BACKUP & RESTORE ====================
+
+// Export complete state (users, scores, enrollments) so database survives across git pushes and redeploys
+app.get('/api/system/backup', (req, res) => {
+    try {
+        const users = db.getAllUsersWithPassword();
+        const enrollments = db.raw.prepare('SELECT * FROM class_enrollments').all();
+        const scores = db.raw.prepare('SELECT * FROM scores').all();
+        res.json({
+            timestamp: new Date().toISOString(),
+            usersCount: users.length,
+            scoresCount: scores.length,
+            enrollmentsCount: enrollments.length,
+            users,
+            scores,
+            enrollments
+        });
+    } catch (err) {
+        console.error('System backup error:', err);
+        res.status(500).json({ error: 'Server error generating backup' });
+    }
+});
+
+app.post('/api/system/restore', (req, res) => {
+    try {
+        const { users, scores, enrollments } = req.body;
+        let userCount = 0;
+        let scoreCount = 0;
+        let enrollCount = 0;
+
+        if (Array.isArray(users)) {
+            const restored = db.syncRoster(users);
+            userCount = restored.length;
+        }
+
+        if (Array.isArray(enrollments)) {
+            const stmtEnroll = db.raw.prepare('INSERT OR IGNORE INTO class_enrollments (id, subjectId, studentId, enrolledAt) VALUES (@id, @subjectId, @studentId, @enrolledAt)');
+            enrollments.forEach(e => {
+                try {
+                    stmtEnroll.run(e);
+                    enrollCount++;
+                } catch (_) {}
+            });
+        }
+
+        if (Array.isArray(scores)) {
+            const stmtScore = db.raw.prepare(`
+                INSERT OR IGNORE INTO scores (id, quizId, topicId, studentId, score, totalQuestions, percentage, passed, answers, timeSpentSeconds, completedAt, retakeAllowed)
+                VALUES (@id, @quizId, @topicId, @studentId, @score, @totalQuestions, @percentage, @passed, @answers, @timeSpentSeconds, @completedAt, @retakeAllowed)
+            `);
+            scores.forEach(s => {
+                try {
+                    stmtScore.run({
+                        id: s.id,
+                        quizId: s.quizId,
+                        topicId: s.topicId,
+                        studentId: s.studentId,
+                        score: s.score,
+                        totalQuestions: s.totalQuestions,
+                        percentage: s.percentage,
+                        passed: s.passed,
+                        answers: typeof s.answers === 'string' ? s.answers : JSON.stringify(s.answers || []),
+                        timeSpentSeconds: s.timeSpentSeconds || 0,
+                        completedAt: s.completedAt,
+                        retakeAllowed: s.retakeAllowed || 0
+                    });
+                    scoreCount++;
+                } catch (_) {}
+            });
+        }
+
+        res.json({
+            message: 'System restore completed',
+            userCount,
+            scoreCount,
+            enrollCount
+        });
+    } catch (err) {
+        console.error('System restore error:', err);
+        res.status(500).json({ error: 'Server error restoring system' });
     }
 });
 

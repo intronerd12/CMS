@@ -30,6 +30,21 @@ document.addEventListener('DOMContentLoaded', () => {
         fetch(`${API_BASE}/api/health`).catch(() => {});
     } catch (e) {}
 
+    // Auto-sync client account registry to backend so created users survive git push / database restart
+    try {
+        const rawRegistry = localStorage.getItem('cms_account_registry');
+        if (rawRegistry) {
+            const accounts = JSON.parse(rawRegistry);
+            if (Array.isArray(accounts) && accounts.length > 0) {
+                fetch(`${API_BASE}/api/auth/sync-roster`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ accounts })
+                }).catch(() => {});
+            }
+        }
+    } catch (_) {}
+
     // Check if user is already logged in
     const currentUser = sessionStorage.getItem('currentUser');
     if (currentUser) {
@@ -63,13 +78,42 @@ document.addEventListener('DOMContentLoaded', () => {
             hideError(errorDiv);
 
             try {
-                const response = await fetch(`${API_BASE}/api/auth/login`, {
+                let response = await fetch(`${API_BASE}/api/auth/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, password })
                 });
 
-                const data = await response.json();
+                let data = await response.json();
+
+                // Self-healing: If login failed because database restarted/wiped on git push, check client registry and re-hydrate
+                if (!response.ok) {
+                    try {
+                        const rawReg = localStorage.getItem('cms_account_registry');
+                        if (rawReg) {
+                            const registry = JSON.parse(rawReg);
+                            const matching = registry.find(a => a.username.toLowerCase() === username.toLowerCase());
+                            if (matching && (matching.plainPassword === password || !matching.plainPassword)) {
+                                const restorePayload = { ...matching };
+                                if (!restorePayload.plainPassword) restorePayload.plainPassword = password;
+                                const restoreRes = await fetch(`${API_BASE}/api/auth/restore-user`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ user: restorePayload })
+                                });
+                                if (restoreRes.ok) {
+                                    // Retry login seamlessly
+                                    response = await fetch(`${API_BASE}/api/auth/login`, {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ username, password })
+                                    });
+                                    data = await response.json();
+                                }
+                            }
+                        }
+                    } catch (_) {}
+                }
 
                 if (!response.ok) {
                     throw new Error(data.error || 'Login failed');
@@ -288,6 +332,30 @@ document.addEventListener('DOMContentLoaded', () => {
                         localStorage.setItem('userAvatar_' + data.user.id, selectedRegisterAvatar);
                     }
                 }
+
+                // Persist created user into client account registry so it survives server rebuilds/restarts
+                try {
+                    const rawReg = localStorage.getItem('cms_account_registry');
+                    const registry = rawReg ? JSON.parse(rawReg) : [];
+                    const accData = {
+                        id: (data.user && data.user.id) || '',
+                        username: username.trim(),
+                        email: email.trim(),
+                        plainPassword: password,
+                        firstName: firstName.trim(),
+                        lastName: lastName.trim(),
+                        role,
+                        profilePic: selectedRegisterAvatar || '',
+                        createdAt: (data.user && data.user.createdAt) || new Date().toISOString()
+                    };
+                    const existingIdx = registry.findIndex(a => a.username.toLowerCase() === username.trim().toLowerCase());
+                    if (existingIdx !== -1) {
+                        registry[existingIdx] = accData;
+                    } else {
+                        registry.push(accData);
+                    }
+                    localStorage.setItem('cms_account_registry', JSON.stringify(registry));
+                } catch (_) {}
 
                 // Show success
                 showSuccess(successDiv, `Account created for ${firstName} ${lastName} (@${username})! Redirecting to login...`);

@@ -30,7 +30,26 @@ document.addEventListener('DOMContentLoaded', () => {
     // Asynchronously sync profile to ensure registered name, handle, and cloud avatar are always up to date
     if (currentUser && currentUser.id) {
         fetch(`${API_BASE}/api/auth/profile/${currentUser.id}`)
-            .then(res => res.ok ? res.json() : null)
+            .then(res => {
+                if (res.status === 404) {
+                    // Database was restarted / wiped on git push: auto-restore user profile immediately
+                    const rawReg = localStorage.getItem('cms_account_registry');
+                    let userToRestore = currentUser;
+                    if (rawReg) {
+                        try {
+                            const list = JSON.parse(rawReg);
+                            const found = list.find(u => u.id === currentUser.id || u.username === currentUser.username);
+                            if (found) userToRestore = found;
+                        } catch (_) {}
+                    }
+                    return fetch(`${API_BASE}/api/auth/restore-user`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ user: userToRestore })
+                    }).then(r => r.json()).catch(() => null);
+                }
+                return res.ok ? res.json() : null;
+            })
             .then(data => {
                 if (data && data.user) {
                     const fresh = data.user;
